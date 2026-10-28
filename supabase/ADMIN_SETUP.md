@@ -2,6 +2,28 @@
 
 The app does not create administrator accounts automatically. An admin must exist in both Supabase Auth and the `admins` table.
 
+## Supabase Dashboard (no terminal)
+
+1. In the Supabase project used by the deployed app, open **Authentication → Users** and choose **Add user**.
+2. Enter the admin's email and a unique password. Confirm the user's email if the dashboard offers that option, then create the user.
+3. Open the new user and copy their **UID**.
+4. Open **SQL Editor → New query** and run the following, replacing the example values with the new user's UID, email, and display name:
+
+   ```sql
+   insert into public.admins (id, email, name)
+   values ('PASTE-USER-UID-HERE', 'admin@example.com', 'Administrator')
+   on conflict (id) do update
+     set email = excluded.email, name = excluded.name;
+   ```
+
+5. Sign in to the deployed app with that email and password.
+
+The `admins` table must already exist; run `schema.sql` first if you have not created the tables. Use an account that is not already registered as a student.
+
+## Optional local command
+
+If you prefer the terminal, the command below automates the same setup:
+
 1. Make sure `schema.sql` has been run on the Supabase project used by the deployed app.
 2. In your local, git-ignored `.env`, set the deployed project's URL, anon key, and these admin-provisioning values:
 
