@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-color: #f7f8fa;
+  --text-color: #1e2430;
+  --text-muted: #6b7280;
+  --accent-color: #16a34a;
+  --accent-color-soft: #eafbef;
+  --surface-color: #ffffff;
+  --border-color: #e5e7eb;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(22, 163, 74, 0.16);
+  --sidebar-bg: #ffffff;
+  --header-bg: rgba(255, 255, 255, 0.92);
+}
+
+body {
+  margin: 0;
+  font-family: "Nunito", sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Friendlier, clearer keyboard focus everywhere in the app */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(34, 197, 94, 0.55);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
