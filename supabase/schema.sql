@@ -70,7 +70,7 @@ create table awareness_content (
   id        bigint generated always as identity primary key,
   type      text,
   title     text,
-  desc      text,
+  "desc"    text,
   link      text,
   thumbnail text,
   video_url text
