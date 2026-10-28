@@ -144,49 +144,6 @@
   font-weight: 500;
 }
 
-.demo-login {
-  display: grid;
-  gap: 7px;
-  margin-top: 20px;
-  padding: 14px;
-  border: 1px solid #bbf7d0;
-  border-radius: 12px;
-  background: #f0fdf4;
-  text-align: center;
-}
-
-.demo-login p {
-  color: #166534;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.demo-login button {
-  padding: 10px 14px;
-  border: 1px solid #15803d;
-  border-radius: 9px;
-  background: #fff;
-  color: #15803d;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.demo-login button:hover:not(:disabled) {
-  background: #15803d;
-  color: #fff;
-}
-
-.demo-login button:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.demo-login small {
-  color: #64748b;
-  font-size: 11px;
-}
-
 /* ── SIGN IN / SIGN UP TOGGLE ── */
 .role-toggle {
   display: flex;

@@ -1,77 +1,11 @@
 /**
- * store.js — Supabase-backed data layer with local-only demo storage.
+ * store.js — Supabase-backed data layer.
  * Both StudentDashboard and AdminDashboard import from here.
  *
- * All CRUD functions are async — callers must `await` them. Demo changes are
- * persisted in browser localStorage. Login/registration/session live in
- * src/lib/auth.js, not here.
+ * All CRUD functions are async — callers must `await` them. Login,
+ * registration, and session management live in src/lib/auth.js.
  */
 import { supabase } from "../lib/supabaseClient";
-
-const DEMO_STORAGE_KEY = "cnhsDemoData";
-
-function isDemoMode() {
-  return localStorage.getItem("cnhsDemoMode") === "true";
-}
-
-function createDemoState() {
-  const now = new Date();
-  const date = (daysAgo) => {
-    const value = new Date(now);
-    value.setDate(value.getDate() - daysAgo);
-    return value.toISOString().slice(0, 10);
-  };
-  return {
-    reports: [
-      { id: 1, type: "Verbal", date: date(2), time: "10:30", location: "Hallway", description: "A student was repeatedly called hurtful names near the classroom.", descriptionLeadUp: "This has happened several times this week.", descriptionImpact: "The student felt upset and avoided the hallway.", descriptionActions: "Reported to the adviser.", reporterType: "Student", victims: [{ name: "Alex Santos", grade: "Grade 8", section: "Mabini" }], offenders: [{ name: "Jordan Reyes", grade: "Grade 8", section: "Mabini" }], witnesses: [], status: "Pending", priority: "High", submittedBy: "Demo Student", submittedId: "demo-student", reporterAge: 14, reporterSex: "Female", reporterGrade: "Grade 8", reporterSection: "Mabini", isAnonymous: false, adminNotes: "", evidence: [], scheduledConference: null, submittedAt: now.toISOString(), updatedAt: null },
-      { id: 2, type: "Cyber", date: date(7), time: "18:00", location: "Online/Cyber", description: "Unkind messages were shared in a class group chat.", descriptionLeadUp: "", descriptionImpact: "The student is worried about returning to school.", descriptionActions: "", reporterType: "Student", victims: [{ name: "Jamie Cruz", grade: "Grade 9", section: "Rizal" }], offenders: [], witnesses: [], status: "Under Investigation", priority: "Medium", submittedBy: "Anonymous", submittedId: null, reporterAge: null, reporterSex: null, reporterGrade: null, reporterSection: null, isAnonymous: true, adminNotes: "Follow-up scheduled with the guidance office.", evidence: [], scheduledConference: null, submittedAt: new Date(now.getTime() - 86400000 * 7).toISOString(), updatedAt: null },
-      { id: 3, type: "Physical", date: date(18), time: "12:15", location: "Cafeteria/Canteen", description: "A student's belongings were knocked off a table during lunch.", descriptionLeadUp: "", descriptionImpact: "No injuries were reported.", descriptionActions: "Teacher on duty intervened.", reporterType: "Teacher", victims: [], offenders: [], witnesses: [], status: "Resolved", priority: "Low", submittedBy: "Demo Administrator", submittedId: "demo-admin", reporterAge: null, reporterSex: null, reporterGrade: null, reporterSection: null, isAnonymous: false, adminNotes: "Resolved after meeting with the students.", evidence: [], scheduledConference: null, submittedAt: new Date(now.getTime() - 86400000 * 18).toISOString(), updatedAt: null },
-    ],
-    awareness: [
-      { id: 1, type: "Article", title: "How to Be an Upstander", desc: "Simple, safe ways to support someone experiencing bullying.", link: "https://www.stopbullying.gov/", thumbnail: "", videoUrl: "" },
-      { id: 2, type: "Article", title: "Online Safety and Respect", desc: "Tips for keeping school group chats safe and respectful.", link: "https://www.unicef.org/end-violence/how-to-stop-cyberbullying", thumbnail: "", videoUrl: "" },
-    ],
-    notifications: [
-      { id: 1, audience: "admin", title: "Demo data loaded. Changes are saved in this browser only.", type: "info", read: false, created_at: now.toISOString() },
-      { id: 2, audience: "student", title: "Welcome to the local demo account.", type: "success", read: false, created_at: now.toISOString() },
-    ],
-    locations: [],
-    sections: ["Mabini", "Rizal", "Bonifacio"].flatMap((section, index) =>
-      ["Grade 7", "Grade 8", "Grade 9", "Grade 10"].map((grade, gradeIndex) => ({
-        id: gradeIndex * 3 + index + 1,
-        grade,
-        section,
-      }))
-    ),
-    students: [
-      { id: "demo-student", name: "Demo Student", email: "student.demo@cnhs.edu.ph", lrn: "123456789012", age: 14, sex: "Female", grade: "Grade 8", section: "Mabini", approved: false, created_at: now.toISOString() },
-      { id: "demo-student-2", name: "Taylor Garcia", email: "taylor.demo@cnhs.edu.ph", lrn: "234567890123", age: 15, sex: "Male", grade: "Grade 9", section: "Rizal", approved: true, created_at: now.toISOString() },
-    ],
-  };
-}
-
-function getDemoState() {
-  const stored = localStorage.getItem(DEMO_STORAGE_KEY);
-  if (stored) return JSON.parse(stored);
-  const initial = createDemoState();
-  localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(initial));
-  return initial;
-}
-
-function saveDemoState(state) {
-  localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
-}
-
-function addDemoNotification(state, audience, title, type = "info") {
-  state.notifications.unshift({
-    id: Date.now(),
-    audience,
-    title,
-    type,
-    read: false,
-    created_at: new Date().toISOString(),
-  });
-}
 
 // ─── CURRENT-USER CACHE ────────────────────────────────────────────────────
 // Populated at login time by src/lib/auth.js. Kept as localStorage so the
@@ -191,37 +125,12 @@ function locationRowToObj(row) {
 
 // ─── REPORTS API ────────────────────────────────────────────────────────────
 export async function getReports() {
-  if (isDemoMode()) return getDemoState().reports;
   const { data, error } = await supabase.from("reports").select("*").order("submitted_at", { ascending: false });
   if (error) throw error;
   return (data || []).map(reportRowToObj);
 }
 
 export async function submitReport(reportData, evidenceFiles = []) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    const report = {
-      ...reportData,
-      id: Math.max(0, ...state.reports.map((item) => item.id)) + 1,
-      status: "Pending",
-      submittedBy: getCurrentUserName(),
-      submittedId: getCurrentUserId(),
-      reporterAge: getCurrentUserAge(),
-      reporterSex: getCurrentUserSex(),
-      reporterGrade: getCurrentUserGrade(),
-      reporterSection: getCurrentUserSection(),
-      isAnonymous: !!reportData.isAnonymous,
-      adminNotes: "",
-      evidence: evidenceFiles,
-      submittedAt: new Date().toISOString(),
-      updatedAt: null,
-    };
-    report.priority = computePriority(report, state.reports);
-    state.reports.unshift(report);
-    addDemoNotification(state, "admin", `New report #${report.id} submitted — ${report.type}`, "report");
-    saveDemoState(state);
-    return report;
-  }
   const existingReports = await getReports();
   const isAnon = !!reportData.isAnonymous;
   const submittedBy = getCurrentUserName();
@@ -268,19 +177,6 @@ export async function submitReport(reportData, evidenceFiles = []) {
 }
 
 export async function updateReportStatus(reportId, newStatus, adminNotes = "", conference = undefined) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    const report = state.reports.find((item) => item.id === reportId);
-    if (!report) throw new Error(`Demo report ${reportId} was not found.`);
-    report.status = newStatus;
-    report.adminNotes = adminNotes;
-    report.updatedAt = new Date().toISOString();
-    if (conference !== undefined) report.scheduledConference = conference;
-    report.priority = computePriority(report, state.reports.filter((item) => item.id !== reportId));
-    addDemoNotification(state, "student", `Case #${reportId} status updated to '${newStatus}'`, "status");
-    saveDemoState(state);
-    return report;
-  }
   const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
@@ -313,33 +209,18 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "", c
 }
 
 export async function deleteReport(reportId) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.reports = state.reports.filter((item) => item.id !== reportId);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("reports").delete().eq("id", reportId);
   if (error) throw error;
 }
 
 // ─── AWARENESS API ──────────────────────────────────────────────────────────
 export async function getAwarenessContent() {
-  if (isDemoMode()) return getDemoState().awareness;
   const { data, error } = await supabase.from("awareness_content").select("*").order("id", { ascending: false });
   if (error) throw error;
   return (data || []).map(awarenessRowToObj);
 }
 
 export async function addAwarenessContent(item) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    const content = { ...item, id: Date.now() };
-    state.awareness.unshift(content);
-    addDemoNotification(state, "student", `New Awareness Content: '${item.title}'`, "hub");
-    saveDemoState(state);
-    return content;
-  }
   const row = { type: item.type, title: item.title, desc: item.desc, link: item.link, thumbnail: item.thumbnail, video_url: item.videoUrl };
   const { data, error } = await supabase.from("awareness_content").insert(row).select().single();
   if (error) throw error;
@@ -349,12 +230,6 @@ export async function addAwarenessContent(item) {
 }
 
 export async function updateAwarenessContent(id, updates) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.awareness = state.awareness.map((item) => item.id === id ? { ...item, ...updates } : item);
-    saveDemoState(state);
-    return;
-  }
   const row = {};
   if (updates.type      !== undefined) row.type      = updates.type;
   if (updates.title     !== undefined) row.title     = updates.title;
@@ -368,103 +243,52 @@ export async function updateAwarenessContent(id, updates) {
 }
 
 export async function deleteAwarenessContent(id) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.awareness = state.awareness.filter((item) => item.id !== id);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("awareness_content").delete().eq("id", id);
   if (error) throw error;
 }
 
 // ─── NOTIFICATIONS API ──────────────────────────────────────────────────────
 export async function getStudentNotifications() {
-  if (isDemoMode()) return getDemoState().notifications.filter((item) => item.audience === "student").map(notifRowToObj);
   const { data, error } = await supabase.from("notifications").select("*").eq("audience", "student").order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map(notifRowToObj);
 }
 
 export async function getAdminNotifications() {
-  if (isDemoMode()) return getDemoState().notifications.filter((item) => item.audience === "admin").map(notifRowToObj);
   const { data, error } = await supabase.from("notifications").select("*").eq("audience", "admin").order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map(notifRowToObj);
 }
 
 async function addStudentNotification(notif, studentId) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    addDemoNotification(state, "student", notif.title, notif.type);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("notifications").insert({ audience: "student", student_id: studentId, title: notif.title, type: notif.type, read: false });
   if (error) throw error;
 }
 
 async function addAdminNotification(notif) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    addDemoNotification(state, "admin", notif.title, notif.type);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("notifications").insert({ audience: "admin", student_id: null, title: notif.title, type: notif.type, read: false });
   if (error) throw error;
 }
 
 export async function markStudentNotifRead(id) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.notifications.forEach((item) => { if (item.audience === "student" && item.id === id) item.read = true; });
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
   if (error) throw error;
 }
 export async function markAllStudentNotifRead() {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.notifications.forEach((item) => { if (item.audience === "student") item.read = true; });
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("notifications").update({ read: true }).eq("audience", "student");
   if (error) throw error;
 }
 export async function markAdminNotifRead(id) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.notifications.forEach((item) => { if (item.audience === "admin" && item.id === id) item.read = true; });
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
   if (error) throw error;
 }
 export async function markAllAdminNotifRead() {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.notifications.forEach((item) => { if (item.audience === "admin") item.read = true; });
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("notifications").update({ read: true }).eq("audience", "admin");
   if (error) throw error;
 }
 
 // ─── STUDENT PROFILE API ────────────────────────────────────────────────────
 export async function updateStudentProfile(studentId, updates) {
-  if (isDemoMode()) {
-    Object.entries(updates).forEach(([key, value]) => {
-      const storageKey = { age: "studentAge", sex: "studentSex", grade: "studentGrade", section: "studentSection" }[key];
-      if (storageKey) localStorage.setItem(storageKey, String(value));
-    });
-    return { success: true, student: { id: studentId, ...updates } };
-  }
   const row = {};
   if (updates.age     !== undefined) row.age     = updates.age;
   if (updates.sex     !== undefined) row.sex     = updates.sex;
@@ -484,7 +308,6 @@ export async function updateStudentProfile(studentId, updates) {
 
 // ─── CUSTOM LOCATIONS API (admin-managed places for Location Breakdown) ────
 export async function getCustomLocations() {
-  if (isDemoMode()) return getDemoState().locations;
   const { data, error } = await supabase.from("custom_locations").select("*");
   if (error) throw error;
   return (data || []).map(locationRowToObj);
@@ -493,17 +316,6 @@ export async function getCustomLocations() {
 export async function addCustomLocation({ name, icon, color, zone, keywords }) {
   const trimmedName = (name || "").trim();
   if (!trimmedName) return { success: false, error: "Place name is required." };
-  if (isDemoMode()) {
-    const state = getDemoState();
-    if (state.locations.some((item) => item.key.toLowerCase() === trimmedName.toLowerCase())) {
-      return { success: false, error: "A place with this name already exists." };
-    }
-    const location = { key: trimmedName, icon: icon || "📍", color: color || "#64748b", zone: zone === "outside" ? "outside" : "inside", keywords: (keywords || []).map((item) => item.trim()).filter(Boolean), custom: true };
-    state.locations.push(location);
-    saveDemoState(state);
-    return { success: true, location };
-  }
-
   const { data: existing, error: checkError } = await supabase.from("custom_locations").select("key").ilike("key", trimmedName);
   if (checkError) return { success: false, error: checkError.message };
   if (existing && existing.length > 0) return { success: false, error: "A place with this name already exists." };
@@ -522,19 +334,12 @@ export async function addCustomLocation({ name, icon, color, zone, keywords }) {
 }
 
 export async function deleteCustomLocation(key) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.locations = state.locations.filter((item) => item.key !== key);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("custom_locations").delete().eq("key", key);
   if (error) throw error;
 }
 
 // ─── GRADE SECTIONS API (admin-managed sections per grade level) ───────────
 export async function getGradeSections() {
-  if (isDemoMode()) return getDemoState().sections;
   const { data, error } = await supabase.from("grade_sections").select("*").order("grade").order("section");
   if (error) throw error;
   return data || [];
@@ -544,17 +349,6 @@ export async function addGradeSection({ grade, section }) {
   const trimmed = (section || "").trim();
   if (!grade)   return { success: false, error: "Grade level is required." };
   if (!trimmed) return { success: false, error: "Section name is required." };
-  if (isDemoMode()) {
-    const state = getDemoState();
-    if (state.sections.some((item) => item.grade === grade && item.section.toLowerCase() === trimmed.toLowerCase())) {
-      return { success: false, error: `"${trimmed}" already exists under ${grade}.` };
-    }
-    const row = { id: Date.now(), grade, section: trimmed };
-    state.sections.push(row);
-    saveDemoState(state);
-    return { success: true, section: row };
-  }
-
   const { data: existing, error: checkError } = await supabase
     .from("grade_sections").select("id").eq("grade", grade).ilike("section", trimmed);
   if (checkError) return { success: false, error: checkError.message };
@@ -568,18 +362,6 @@ export async function addGradeSection({ grade, section }) {
 export async function updateGradeSection(id, section, grade) {
   const trimmed = (section || "").trim();
   if (!trimmed) return { success: false, error: "Section name is required." };
-  if (isDemoMode()) {
-    const state = getDemoState();
-    if (state.sections.some((item) => item.id !== id && item.grade === grade && item.section.toLowerCase() === trimmed.toLowerCase())) {
-      return { success: false, error: `"${trimmed}" already exists under ${grade}.` };
-    }
-    const row = state.sections.find((item) => item.id === id);
-    if (!row) return { success: false, error: "Section not found." };
-    row.section = trimmed;
-    saveDemoState(state);
-    return { success: true, section: row };
-  }
-
   const { data: existing, error: checkError } = await supabase
     .from("grade_sections").select("id").eq("grade", grade).ilike("section", trimmed).neq("id", id);
   if (checkError) return { success: false, error: checkError.message };
@@ -592,34 +374,18 @@ export async function updateGradeSection(id, section, grade) {
 }
 
 export async function deleteGradeSection(id) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.sections = state.sections.filter((item) => item.id !== id);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.from("grade_sections").delete().eq("id", id);
   if (error) throw error;
 }
 
 // ─── ACCOUNT CONFIRMATION API (admin approves new student registrations) ───
 export async function getStudentAccounts() {
-  if (isDemoMode()) return getDemoState().students;
   const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];
 }
 
 export async function approveStudentAccount(id) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    const student = state.students.find((item) => item.id === id);
-    if (!student) throw new Error(`Demo student ${id} was not found.`);
-    student.approved = true;
-    addDemoNotification(state, "student", "Your account has been approved.", "success");
-    saveDemoState(state);
-    return student;
-  }
   // .select().single() forces a real check: if RLS silently blocks the
   // update (no matching admin policy, etc.), 0 rows come back and this
   // throws — instead of quietly "succeeding" while nothing was written.
@@ -640,12 +406,6 @@ export async function approveStudentAccount(id) {
 // row), so a declined email/LRN is free to sign up again. See
 // decline_student_signup() in schema.sql.
 export async function declineStudentAccount(id) {
-  if (isDemoMode()) {
-    const state = getDemoState();
-    state.students = state.students.filter((item) => item.id !== id);
-    saveDemoState(state);
-    return;
-  }
   const { error } = await supabase.rpc("decline_student_signup", { target_id: id });
   if (error) throw error;
 }
@@ -657,14 +417,12 @@ export async function declineStudentAccount(id) {
 // doesn't blank out everything else, and the admin can see *why* the list
 // is empty instead of it looking like a real empty state.
 export async function getUnconfirmedSignups() {
-  if (isDemoMode()) return [];
   const { data, error } = await supabase.rpc("get_unconfirmed_signups");
   if (error) throw error;
   return data || [];
 }
 
 export async function resendConfirmationEmail(email) {
-  if (isDemoMode()) return { success: false, error: "Email confirmation is unavailable in local demo mode." };
   const { error } = await supabase.auth.resend({ type: "signup", email });
   if (error) return { success: false, error: error.message };
   return { success: true };
@@ -672,12 +430,6 @@ export async function resendConfirmationEmail(email) {
 
 // ─── ADMIN: FULL RESET (deletes all reports + notifications) ───────────────
 export async function resetAllData() {
-  if (isDemoMode()) {
-    localStorage.removeItem(DEMO_STORAGE_KEY);
-    getDemoState();
-    window.location.reload();
-    return;
-  }
   const { error: notifError } = await supabase.from("notifications").delete().neq("id", -1);
   if (notifError) throw notifError;
   const { error: reportsError } = await supabase.from("reports").delete().neq("id", -1);

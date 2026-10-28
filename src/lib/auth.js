@@ -1,5 +1,12 @@
 import { supabase } from "./supabaseClient";
 
+if (localStorage.getItem("cnhsDemoMode") === "true") {
+  ["studentName", "studentId", "studentAge", "studentSex", "studentGrade", "studentSection", "userRole"]
+    .forEach((key) => localStorage.removeItem(key));
+  localStorage.removeItem("cnhsDemoData");
+  localStorage.removeItem("cnhsDemoMode");
+}
+
 // Creates the students-table profile row from the registration details
 // stashed in user_metadata at signUp() time (see signUpStudent). Used both
 // right after email confirmation (finalizeEmailConfirmation, below) and as
@@ -134,19 +141,10 @@ export async function signUpStudent({ name, email, password, lrn, age, sex, grad
  * Returns { success, error, role: "admin" | "student" }.
  */
 export async function signIn(email, password) {
-  if (email.toLowerCase() === "demo.admin@cnhs.edu.ph" && password === "Demo123!") {
-    localStorage.setItem("cnhsDemoMode", "true");
-    localStorage.setItem("studentName", "Demo Administrator");
-    localStorage.setItem("studentId", "demo-admin");
-    localStorage.setItem("userRole", "admin");
-    return { success: true, role: "admin", admin: { name: "Demo Administrator" } };
-  }
-
-  localStorage.removeItem("cnhsDemoMode");
   if (!supabase) {
     return {
       success: false,
-      error: "Supabase is not configured. Use the demo account or configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+      error: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to sign in.",
     };
   }
 
@@ -189,12 +187,9 @@ export async function signIn(email, password) {
 }
 
 export async function signOut() {
-  if (supabase && !localStorage.getItem("cnhsDemoMode")) {
-    await supabase.auth.signOut();
-  }
+  if (supabase) await supabase.auth.signOut();
   ["studentName", "studentId", "studentLRN", "studentAge", "studentSex", "studentGrade", "studentSection", "email", "userRole"]
     .forEach((k) => localStorage.removeItem(k));
-  localStorage.removeItem("cnhsDemoMode");
 }
 
 export async function getCurrentUserId() {

@@ -89,18 +89,6 @@ export default function Login() {
     navigate(result.role === "admin" ? "/admindashboard" : "/studentdashboard");
   };
 
-  const handleDemoLogin = async () => {
-    setError("");
-    setLoading(true);
-    const result = await signIn("demo.admin@cnhs.edu.ph", "Demo123!");
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error);
-      return;
-    }
-    navigate("/admindashboard");
-  };
-
   // ── REGISTER ──────────────────────────────────────────────────────────────
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -456,15 +444,6 @@ export default function Login() {
                   {loading ? "Signing in…" : "Login"}
                 </button>
               </form>
-
-              <div className="demo-login">
-                <p>Want to explore without connecting to Supabase?</p>
-                <button type="button" onClick={handleDemoLogin} disabled={loading}>
-                  {loading ? "Opening demo…" : "Try the local demo account"}
-                </button>
-                <small>Demo admin · demo.admin@cnhs.edu.ph · Demo123!</small>
-                <small>Demo changes are saved in this browser only.</small>
-              </div>
 
               <button className="back-btn" type="button" onClick={() => navigate("/")}>
                 ← Back to Home
