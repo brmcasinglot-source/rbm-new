@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Chart, BarController, BarElement, LineController, LineElement, PointElement,
@@ -198,6 +198,19 @@ export default function AdminDashboard() {
   const [searchQuery,   setSearchQuery]   = useState("");
   const [caseFilter,    setCaseFilter]    = useState("Pending");
 
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setIncidentsPage(0);
+  };
+  const handleCaseFilterChange = (value) => {
+    setCaseFilter(value);
+    setIncidentsPage(0);
+  };
+  const handleMultiFilterChange = (setter, value) => {
+    setter(value);
+    setRecordsPage(0);
+  };
+
   // Manage Incident modal
   const [showUpdateModal,      setShowUpdateModal]      = useState(false);
   const [selectedReport,       setSelectedReport]       = useState(null);
@@ -391,7 +404,7 @@ export default function AdminDashboard() {
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
   const typeCounts  = getTypeCounts(incidents);
-  const monthlyData = getMonthlyTrend(incidents, 6);
+  const monthlyData = useMemo(() => getMonthlyTrend(incidents, 6), [incidents]);
   const recs        = getRecommendations(typeCounts, incidents.length);
   const totalSorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
 
@@ -420,9 +433,12 @@ export default function AdminDashboard() {
     );
   });
 
-  const mfTypes = ["Physical","Verbal","Cyber","Social","Property","Others"];
-  const mfChartData  = mfTypes.map(t => mfFiltered.filter(r=>r.type===t).length);
-  const mfChartColors = ["#16a34a","#3b82f6","#f59e0b","#8b5cf6","#f97316","#64748b"];
+  const mfTypes = useMemo(() => ["Physical","Verbal","Cyber","Social","Property","Others"], []);
+  const mfChartData = useMemo(
+    () => mfTypes.map((t) => mfFiltered.filter((r) => r.type === t).length),
+    [mfFiltered, mfTypes]
+  );
+  const mfChartColors = useMemo(() => ["#16a34a", "#3b82f6", "#f59e0b", "#8b5cf6", "#f97316", "#64748b"], []);
 
   const mfTopIdx   = mfChartData.indexOf(Math.max(...mfChartData));
   const mfTopType  = mfTypes[mfTopIdx];
@@ -585,7 +601,7 @@ export default function AdminDashboard() {
       },
     });
     return () => { if (chartInstanceRef.current) { chartInstanceRef.current.destroy(); chartInstanceRef.current = null; } };
-  }, [activeTab, mfType, mfGrade, mfGender, mfSection, mfStatus, incidents]);
+  }, [activeTab, mfType, mfGrade, mfGender, mfSection, mfStatus, incidents, mfChartColors, mfChartData]);
 
   // ── Chart.js modern area/line trend chart (Dashboard tab) ────────────────
   useEffect(() => {
@@ -663,16 +679,16 @@ export default function AdminDashboard() {
       },
     });
     return () => { if (trendChartInstanceRef.current) { trendChartInstanceRef.current.destroy(); trendChartInstanceRef.current = null; } };
-  }, [activeTab, incidents]);
+  }, [activeTab, incidents, monthlyData]);
 
   const mfActiveTags = [
-    mfType    !== "All" ? { label: mfType,    clear: () => setMfType("All")    } : null,
-    mfGrade   !== "All" ? { label: mfGrade,   clear: () => setMfGrade("All")   } : null,
-    mfGender  !== "All" ? { label: mfGender,  clear: () => setMfGender("All")  } : null,
-    mfSection !== "All" ? { label: `Section ${mfSection}`, clear: () => setMfSection("All") } : null,
-    mfStatus  !== "All" ? { label: mfStatus,  clear: () => setMfStatus("All")  } : null,
-    mfMonth   !== "All" ? { label: mfMonth,   clear: () => setMfMonth("All")   } : null,
-    mfYear    !== "All" ? { label: mfYear,    clear: () => setMfYear("All")    } : null,
+    mfType    !== "All" ? { label: mfType,    clear: () => handleMultiFilterChange(setMfType, "All")    } : null,
+    mfGrade   !== "All" ? { label: mfGrade,   clear: () => handleMultiFilterChange(setMfGrade, "All")   } : null,
+    mfGender  !== "All" ? { label: mfGender,  clear: () => handleMultiFilterChange(setMfGender, "All")  } : null,
+    mfSection !== "All" ? { label: `Section ${mfSection}`, clear: () => handleMultiFilterChange(setMfSection, "All") } : null,
+    mfStatus  !== "All" ? { label: mfStatus,  clear: () => handleMultiFilterChange(setMfStatus, "All")  } : null,
+    mfMonth   !== "All" ? { label: mfMonth,   clear: () => handleMultiFilterChange(setMfMonth, "All")   } : null,
+    mfYear    !== "All" ? { label: mfYear,    clear: () => handleMultiFilterChange(setMfYear, "All")    } : null,
   ].filter(Boolean);
 
   const mfHasFilters = mfActiveTags.length > 0;
@@ -687,12 +703,6 @@ export default function AdminDashboard() {
     const matchFilter = caseFilter === "All" || item.status === caseFilter;
     return matchSearch && matchFilter;
   });
-
-  // Jump back to page 1 whenever the search or filter changes the result set.
-  useEffect(() => { setIncidentsPage(0); }, [searchQuery, caseFilter]);
-
-  // Jump back to page 1 whenever a multi-filter changes the Incident Records result set.
-  useEffect(() => { setRecordsPage(0); }, [mfType, mfGrade, mfGender, mfSection, mfStatus, mfMonth, mfYear]);
 
   const adminName = localStorage.getItem("studentName") || "Administrator";
 
@@ -1303,14 +1313,14 @@ export default function AdminDashboard() {
               <div className="search-bar-wrap">
                 <Search size={14} />
                 <input type="text" placeholder="Search by ID, type, reporter, status…"
-                  value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} />
               </div>
               <div className="filter-tabs">
                 {["Pending","Under Investigation","Resolved","All"].map((f) => (
                   <button
                     key={f}
                     className={`filter-tab filter-tab-${f.toLowerCase().replace(/\s/g,"-")} ${caseFilter === f ? "active" : ""}`}
-                    onClick={() => setCaseFilter(f)}
+                    onClick={() => handleCaseFilterChange(f)}
                   >{f}</button>
                 ))}
               </div>
@@ -1561,7 +1571,7 @@ export default function AdminDashboard() {
                         <div className="mf-type-chips">
                           {["All","Physical","Verbal","Cyber","Social","Property","Others"].map(t => (
                             <button key={t} className={`analytics-chip ${mfType === t ? "active" : ""}`}
-                              onClick={() => setMfType(t)}>{t}</button>
+                              onClick={() => handleMultiFilterChange(setMfType, t)}>{t}</button>
                           ))}
                         </div>
                       </div>
@@ -1577,7 +1587,7 @@ export default function AdminDashboard() {
                             <button
                               key={s}
                               className={`filter-tab filter-tab-${s.toLowerCase().replace(/\s/g,"-")} ${mfStatus === s ? "active" : ""}`}
-                              onClick={() => setMfStatus(s)}
+                              onClick={() => handleMultiFilterChange(setMfStatus, s)}
                             >{s}</button>
                           ))}
                         </div>
@@ -1590,14 +1600,14 @@ export default function AdminDashboard() {
                       <div className="mf-filter-row mf-dropdowns-inline">
                         <div className="mf-inline-field">
                           <span className="mf-filter-label">Grade level</span>
-                          <select className="mf-select" value={mfGrade} onChange={e => setMfGrade(e.target.value)}>
+                          <select className="mf-select" value={mfGrade} onChange={e => handleMultiFilterChange(setMfGrade, e.target.value)}>
                             <option value="All">All grades</option>
                             {["Grade 7","Grade 8","Grade 9","Grade 10"].map(g => <option key={g} value={g}>{g}</option>)}
                           </select>
                         </div>
                         <div className="mf-inline-field">
                           <span className="mf-filter-label">Gender</span>
-                          <select className="mf-select" value={mfGender} onChange={e => setMfGender(e.target.value)}>
+                          <select className="mf-select" value={mfGender} onChange={e => handleMultiFilterChange(setMfGender, e.target.value)}>
                             <option value="All">All genders</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -1605,21 +1615,21 @@ export default function AdminDashboard() {
                         </div>
                         <div className="mf-inline-field">
                           <span className="mf-filter-label">Section</span>
-                          <select className="mf-select" value={mfSection} onChange={e => setMfSection(e.target.value)}>
+                          <select className="mf-select" value={mfSection} onChange={e => handleMultiFilterChange(setMfSection, e.target.value)}>
                             <option value="All">All sections</option>
                             {allSections.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                         <div className="mf-inline-field">
                           <span className="mf-filter-label">Month</span>
-                          <select className="mf-select" value={mfMonth} onChange={e => setMfMonth(e.target.value)}>
+                          <select className="mf-select" value={mfMonth} onChange={e => handleMultiFilterChange(setMfMonth, e.target.value)}>
                             <option value="All">All months</option>
                             {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => <option key={m} value={m}>{m}</option>)}
                           </select>
                         </div>
                         <div className="mf-inline-field">
                           <span className="mf-filter-label">Year</span>
-                          <select className="mf-select" value={mfYear} onChange={e => setMfYear(e.target.value)}>
+                          <select className="mf-select" value={mfYear} onChange={e => handleMultiFilterChange(setMfYear, e.target.value)}>
                             <option value="All">All years</option>
                             {allYears.map(y => <option key={y} value={y}>{y}</option>)}
                           </select>
@@ -1630,7 +1640,15 @@ export default function AdminDashboard() {
                       <div className="mf-filter-row mf-clear-row">
                         <button
                           className={`mf-clear-filters-btn${mfHasFilters ? " active" : ""}`}
-                          onClick={() => { setMfType("All"); setMfGrade("All"); setMfGender("All"); setMfSection("All"); setMfStatus("All"); setMfMonth("All"); setMfYear("All"); }}
+                          onClick={() => {
+                            handleMultiFilterChange(setMfType, "All");
+                            handleMultiFilterChange(setMfGrade, "All");
+                            handleMultiFilterChange(setMfGender, "All");
+                            handleMultiFilterChange(setMfSection, "All");
+                            handleMultiFilterChange(setMfStatus, "All");
+                            handleMultiFilterChange(setMfMonth, "All");
+                            handleMultiFilterChange(setMfYear, "All");
+                          }}
                           disabled={!mfHasFilters}
                         >
                           <X size={13} /> Clear Filters

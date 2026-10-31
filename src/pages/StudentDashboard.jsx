@@ -150,6 +150,11 @@ export default function StudentDashboard() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   // One-time check on load: if admin just approved this account, there's an
   // unread "success" notification waiting — surface it as a toast (not just
   // buried in the bell), then mark it read so it doesn't repeat next login.
@@ -202,12 +207,6 @@ export default function StudentDashboard() {
 
   const removeEvidence = (idx) =>
     setEvidenceFiles((prev) => prev.filter((_, i) => i !== idx));
-
-  // ── Toast helper ──────────────────────────────────────────────────────────
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   // ── Report submission ─────────────────────────────────────────────────────
   // ── Person list helpers ──────────────────────────────────────────────────
