@@ -47,7 +47,7 @@ export default function Login() {
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
 
-  // All required fields filled? Drives the "Create Account" button + hint below it.
+  // Used for the registration guidance below the submit button.
   const isRegisterFormComplete =
     regName.trim() && regLRN.length === 12 && regEmail.trim() && regAge &&
     regSex && regGrade && regSection && regPass && regConfirm;
@@ -368,7 +368,7 @@ export default function Login() {
                 <button
                   className={`login-btn ${loading ? "loading" : ""}`}
                   type="submit"
-                  disabled={loading || !isRegisterFormComplete}
+                  disabled={loading}
                 >
                   {loading ? "Creating account…" : "Create Account"}
                 </button>
