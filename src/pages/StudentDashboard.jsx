@@ -28,13 +28,60 @@ function statusIcon(status) {
   if (status === "Under Review" || status === "Under Investigation") return <Clock size={13} />;
   return <AlertTriangle size={13} />;
 }
-function readFile(file) {
+function readBlobAsDataUrl(blob) {
   return new Promise((res, rej) => {
     const reader = new FileReader();
-    reader.onload  = (e) => res({ name: file.name, type: file.type, data: e.target.result });
+    reader.onload  = (e) => res(e.target.result);
     reader.onerror = rej;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
+}
+async function readFile(file) {
+  const optimizableTypes = ["image/jpeg", "image/png", "image/webp"];
+  let optimizedFile = file;
+
+  if (optimizableTypes.includes(file.type) && typeof createImageBitmap === "function") {
+    const bitmap = await createImageBitmap(file);
+    try {
+      const maxDimension = 1600;
+      const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Could not optimize image.");
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      const optimizedBlob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error("Could not optimize image.")),
+          "image/webp",
+          0.8
+        );
+      });
+
+      if (optimizedBlob.size < file.size) {
+        const extension = {
+          "image/jpeg": ".jpg",
+          "image/png": ".png",
+          "image/webp": ".webp",
+        }[optimizedBlob.type] || "";
+        const baseName = file.name.replace(/\.[^.]+$/, "");
+        optimizedFile = new File([optimizedBlob], `${baseName}${extension}`, {
+          type: optimizedBlob.type,
+          lastModified: file.lastModified,
+        });
+      }
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  return {
+    name: optimizedFile.name,
+    type: optimizedFile.type,
+    data: await readBlobAsDataUrl(optimizedFile),
+  };
 }
 
 export default function StudentDashboard() {
@@ -194,16 +241,17 @@ export default function StudentDashboard() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // ── Evidence file handler ─────────────────────────────────────────────────
-  const handleEvidencePick = async (e) => {
-    const files = Array.from(e.target.files);
+  const addEvidenceFiles = async (files) => {
     if (!files.length) return;
     try {
       const converted = await Promise.all(files.map(readFile));
       setEvidenceFiles((prev) => [...prev, ...converted]);
     } catch {
-      setFormError("Could not read one or more files. Please try again.");
+      setFormError("Could not read or optimize one or more files. Please try again.");
     }
   };
+
+  const handleEvidencePick = (e) => addEvidenceFiles(Array.from(e.target.files));
 
   const removeEvidence = (idx) =>
     setEvidenceFiles((prev) => prev.filter((_, i) => i !== idx));
@@ -902,9 +950,7 @@ export default function StudentDashboard() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={async (e) => {
                         e.preventDefault();
-                        const files = Array.from(e.dataTransfer.files);
-                        const converted = await Promise.all(files.map(readFile));
-                        setEvidenceFiles((prev) => [...prev, ...converted]);
+                        await addEvidenceFiles(Array.from(e.dataTransfer.files));
                       }}>
                       <Upload size={22} color="var(--s-accent)" style={{ marginBottom: 8 }} />
                       <p>Click or drag &amp; drop files here</p>
