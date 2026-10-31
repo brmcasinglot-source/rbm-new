@@ -132,7 +132,7 @@ export default function StudentDashboard() {
   // Report form
   const [reportForm, setReportForm] = useState({
     type: "", date: "", time: "", location: "", description: "",
-    descriptionLeadUp: "", descriptionImpact: "", descriptionActions: "",
+    descriptionLeadUp: "", descriptionImpact: "",
     involved: "",
   });
   const [locationChoice, setLocationChoice] = useState("");
@@ -297,7 +297,7 @@ export default function StudentDashboard() {
     }
     setReports(await getReports());
     setNotifications(await getStudentNotifications());
-    setReportForm({ type: "", date: "", time: "", location: "", description: "", descriptionLeadUp: "", descriptionImpact: "", descriptionActions: "", involved: "" });
+    setReportForm({ type: "", date: "", time: "", location: "", description: "", descriptionLeadUp: "", descriptionImpact: "", involved: "" });
     setLocationChoice("");
     setReporterType("");
     setVictims([emptyPerson()]);
@@ -934,12 +934,6 @@ export default function StudentDashboard() {
                     <textarea placeholder="How was the victim affected? Physically, emotionally, socially…" style={{ minHeight: 80 }}
                       value={reportForm.descriptionImpact}
                       onChange={(e) => setReportForm({ ...reportForm, descriptionImpact: e.target.value })} />
-                  </div>
-                  <div className="s-form-group">
-                    <label>Immediate actions taken</label>
-                    <textarea placeholder="Was anyone notified? Did anyone intervene? What happened after…" style={{ minHeight: 80 }}
-                      value={reportForm.descriptionActions}
-                      onChange={(e) => setReportForm({ ...reportForm, descriptionActions: e.target.value })} />
                   </div>
 
                   {/* Evidence Upload */}
