@@ -17,7 +17,7 @@ import {
   getReports, submitReport,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
-  updateStudentProfile,
+  updateStudentProfile, requestConferenceChange,
   LOCATION_META, getCustomLocations,
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
@@ -38,6 +38,23 @@ function formatConferenceTime(timeStr) {
   const hour   = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, "0")} ${period}`;
 }
+function formatConferenceDate(dateStr) {
+  if (!dateStr || dateStr === "Date TBD") return dateStr || "Date TBD";
+  const date = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? dateStr
+    : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(date);
+}
+function getConferenceStatus(conference) {
+  return conference.status || (conference.completed ? "Completed" : "Scheduled");
+}
+const CONFERENCE_TYPE_COLORS = {
+  Physical: "#ef4444",
+  Verbal: "#f97316",
+  Cyber: "#8b5cf6",
+  Social: "#3b82f6",
+  Property: "#f59e0b",
+};
 function readBlobAsDataUrl(blob) {
   return new Promise((res, rej) => {
     const reader = new FileReader();
@@ -132,6 +149,9 @@ export default function StudentDashboard() {
   const [hubViewItem, setHubViewItem] = useState(null);
   const [caseViewItem, setCaseViewItem] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
+  const [conferenceRequestType, setConferenceRequestType] = useState(null);
+  const [conferenceRequestReason, setConferenceRequestReason] = useState("");
+  const [conferenceRequestSaving, setConferenceRequestSaving] = useState(false);
 
   // Live data
   const [reports,          setReports]          = useState([]);
@@ -323,23 +343,53 @@ export default function StudentDashboard() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const myReports  = reports.filter((r) => r.submittedBy === studentName);
-  const scheduledConferenceList = [...myReports]
+  const conferenceList = [...myReports]
     .filter((r) => r.scheduledConference && (r.scheduledConference.date || r.scheduledConference.time || r.scheduledConference.location))
-    .map((r) => ({
-      id: r.id,
-      type: r.type,
-      status: r.scheduledConference.completed ? "Completed" : "Scheduled",
-      completed: !!r.scheduledConference.completed,
-      date: r.scheduledConference.date || "Date TBD",
-      time: formatConferenceTime(r.scheduledConference.time),
-      location: r.scheduledConference.location || "Location TBD",
-      notes: r.scheduledConference.notes || "",
-      completedAt: r.scheduledConference.completedAt || null,
-    }))
+    .map((r) => {
+      const conference = r.scheduledConference;
+      return {
+        id: r.id,
+        type: r.type,
+        status: getConferenceStatus(conference),
+        date: conference.date || "Date TBD",
+        time: formatConferenceTime(conference.time),
+        location: conference.location || "Location TBD",
+        notes: conference.notes || "",
+        request: conference.request || null,
+        previousSchedule: conference.previousSchedule || null,
+      };
+    })
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+  const scheduledConferenceStatuses = ["Scheduled", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
+  const scheduledConferenceList = conferenceList.filter((conference) => scheduledConferenceStatuses.includes(conference.status));
+  const conferenceHistoryList = conferenceList.filter((conference) => ["Completed", "Cancelled", "No-show"].includes(conference.status));
   const activeConferenceViewItem = conferenceViewItem
-    ? scheduledConferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
+    ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
+
+  const handleSubmitConferenceRequest = async (event) => {
+    event.preventDefault();
+    if (!activeConferenceViewItem || !conferenceRequestType || conferenceRequestSaving) return;
+
+    setConferenceRequestSaving(true);
+    try {
+      const updatedReport = await requestConferenceChange(
+        activeConferenceViewItem.id,
+        conferenceRequestType,
+        conferenceRequestReason
+      );
+      setReports((current) => current.map((report) => report.id === updatedReport.id ? updatedReport : report));
+      setConferenceRequestType(null);
+      setConferenceRequestReason("");
+      showToast(conferenceRequestType === "reschedule"
+        ? "Reschedule request sent to the Prefect."
+        : "Cancellation request sent to the Prefect.");
+    } catch (error) {
+      showToast(`Could not submit conference request: ${error.message}`, "error");
+    } finally {
+      setConferenceRequestSaving(false);
+    }
+  };
 
   const filteredHub = awarenessContent.filter((item) => {
     const q = hubSearchQuery.toLowerCase();
@@ -635,15 +685,67 @@ export default function StudentDashboard() {
                         >
                           <div className="s-conference-top">
                             <span className="s-conference-badge">Case #{conf.id}</span>
-                            <span className={`s-conference-status ${conf.completed ? "completed" : "scheduled"}`}>
-                              {conf.completed ? "✓ Completed" : "Scheduled"}
+                            <span className={`s-conference-status ${conf.status.toLowerCase().replace(/\s/g, "-")}`}>
+                              {conf.status}
                             </span>
                           </div>
-                          <div className="s-conference-meta"><strong>{conf.type}</strong></div>
-                          <div className="s-conference-meta">📅 {conf.date}</div>
+                          <div className="s-conference-meta s-conference-type">
+                            <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
+                            <strong>{conf.type}</strong>
+                          </div>
+                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date)}</div>
                           <div className="s-conference-meta">🕒 {conf.time}</div>
                           <div className="s-conference-meta">📍 {conf.location}</div>
+                          {conf.previousSchedule && conf.status === "Rescheduled" && (
+                            <div className="s-conference-previous">
+                              Previously scheduled for {formatConferenceDate(conf.previousSchedule.date)} at {formatConferenceTime(conf.previousSchedule.time)}.
+                            </div>
+                          )}
                           {conf.notes && <div className="s-conference-note">{conf.notes}</div>}
+                          <div className="s-conference-footer">
+                            <span>View details</span>
+                            <ArrowUpRight size={12} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="s-conference-card s-conference-history-card">
+                  <div className="s-conference-header">
+                    <CheckCircle size={12} />
+                    <span>Conference History</span>
+                  </div>
+                  {conferenceHistoryList.length === 0 ? (
+                    <div className="s-conference-empty">Completed, cancelled, and no-show conferences will appear here.</div>
+                  ) : (
+                    <div className="s-conference-list">
+                      {conferenceHistoryList.map((conf) => (
+                        <div
+                          className="s-conference-item"
+                          key={conf.id}
+                          onClick={() => setConferenceViewItem(conf)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setConferenceViewItem(conf);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View conference history for case ${conf.id}`}
+                        >
+                          <div className="s-conference-top">
+                            <span className="s-conference-badge">Case #{conf.id}</span>
+                            <span className={`s-conference-status ${conf.status.toLowerCase().replace(/\s/g, "-")}`}>
+                              {conf.status === "Completed" ? "✓ Completed" : conf.status === "Cancelled" ? "✕ Cancelled" : "⚠ No-show"}
+                            </span>
+                          </div>
+                          <div className="s-conference-meta s-conference-type">
+                            <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
+                            <strong>{conf.type}</strong>
+                          </div>
+                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date)} • 🕐 {conf.time}</div>
                           <div className="s-conference-footer">
                             <span>View details</span>
                             <ArrowUpRight size={12} />
@@ -1380,24 +1482,100 @@ export default function StudentDashboard() {
               <div className="s-case-details-box" style={{ marginTop: 16 }}>
                 <div className="s-case-detail-grid">
                   <div><label>Case</label><span>#{activeConferenceViewItem.id}</span></div>
-                  <div><label>Status</label><span>{activeConferenceViewItem.completed ? "✓ Completed" : "Scheduled"}</span></div>
-                  <div><label>Date</label><span>{activeConferenceViewItem.date || "Date TBD"}</span></div>
+                  <div><label>Status</label><span className={`s-conference-status ${activeConferenceViewItem.status.toLowerCase().replace(/\s/g, "-")}`}>
+                    {activeConferenceViewItem.status === "Completed" ? "✓ Completed" : activeConferenceViewItem.status === "Cancelled" ? "✕ Cancelled" : activeConferenceViewItem.status === "No-show" ? "⚠ No-show" : activeConferenceViewItem.status}
+                  </span></div>
+                  <div><label>Date</label><span>{formatConferenceDate(activeConferenceViewItem.date)}</span></div>
                   <div><label>Time</label><span>{formatConferenceTime(activeConferenceViewItem.time) || "Time TBD"}</span></div>
                   <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
+                {activeConferenceViewItem.previousSchedule && activeConferenceViewItem.status === "Rescheduled" && (
+                  <p className="s-conference-previous">
+                    Previously scheduled for {formatConferenceDate(activeConferenceViewItem.previousSchedule.date)} at {formatConferenceTime(activeConferenceViewItem.previousSchedule.time)}.
+                  </p>
+                )}
                 {activeConferenceViewItem.notes && (
                   <div style={{ marginTop: 12 }}>
                     <label className="s-case-detail-label">Agenda / Notes</label>
                     <p className="s-case-detail-text">{activeConferenceViewItem.notes}</p>
                   </div>
                 )}
-                <p className={`s-conference-info${activeConferenceViewItem.completed ? " completed" : ""}`}>
-                  {activeConferenceViewItem.completed
-                    ? "This conference has been completed."
-                    : "Please attend the conference at the scheduled date and time."}
-                </p>
+                {activeConferenceViewItem.status === "Reschedule Requested" && (
+                  <p className="s-conference-info">Your reschedule request has been sent to the Prefect. Please wait for confirmation.</p>
+                )}
+                {activeConferenceViewItem.status === "Cancellation Requested" && (
+                  <p className="s-conference-info">Your cancellation request has been sent to the Prefect for review.</p>
+                )}
+                {["Scheduled", "Rescheduled"].includes(activeConferenceViewItem.status) && (
+                  <>
+                    <p className="s-conference-info">Please attend the conference at the scheduled date and time.</p>
+                    <div className="s-conference-actions">
+                      <button type="button" onClick={() => { setConferenceRequestType("reschedule"); setConferenceRequestReason(""); }}>
+                        Request Reschedule
+                      </button>
+                      <button type="button" className="secondary" onClick={() => { setConferenceRequestType("cancellation"); setConferenceRequestReason(""); }}>
+                        Request Cancellation
+                      </button>
+                    </div>
+                  </>
+                )}
+                {activeConferenceViewItem.status === "Completed" && <p className="s-conference-info completed">This conference has been completed.</p>}
+                {activeConferenceViewItem.status === "Cancelled" && <p className="s-conference-info">This conference was cancelled by the Prefect.</p>}
+                {activeConferenceViewItem.status === "No-show" && <p className="s-conference-info">This conference was marked as no-show by the Prefect.</p>}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {conferenceRequestType && activeConferenceViewItem && (
+        <div className="s-modal-overlay s-conference-request-overlay" onClick={() => setConferenceRequestType(null)}>
+          <div className="s-modal-box s-conference-request-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="s-modal-header">
+              <div>
+                <h3>{conferenceRequestType === "reschedule" ? "Request Reschedule" : "Cancel Conference?"}</h3>
+                <p>Case #{activeConferenceViewItem.id}</p>
+              </div>
+              <button className="s-modal-close" onClick={() => setConferenceRequestType(null)} aria-label="Close request">
+                <X size={18} />
+              </button>
+            </div>
+            <form className="s-modal-body" onSubmit={handleSubmitConferenceRequest}>
+              {conferenceRequestType === "reschedule" ? (
+                <>
+                  <p className="s-conference-confirm-text">Why do you need to reschedule?</p>
+                  <label className="s-conference-request-label" htmlFor="conference-request-reason">Message (optional)</label>
+                  <textarea
+                    id="conference-request-reason"
+                    value={conferenceRequestReason}
+                    onChange={(event) => setConferenceRequestReason(event.target.value)}
+                    placeholder="Please provide a reason for your request."
+                    rows={4}
+                  />
+                </>
+              ) : (
+                <>
+                  <p className="s-conference-confirm-text">Are you sure you want to request cancellation of this conference?</p>
+                  <label className="s-conference-request-label" htmlFor="conference-cancellation-reason">Reason (optional)</label>
+                  <textarea
+                    id="conference-cancellation-reason"
+                    value={conferenceRequestReason}
+                    onChange={(event) => setConferenceRequestReason(event.target.value)}
+                    placeholder="Please provide a reason for your request."
+                    rows={3}
+                  />
+                </>
+              )}
+              <div className="s-conference-request-actions">
+                <button type="button" className="s-cancel-btn" onClick={() => setConferenceRequestType(null)}>
+                  {conferenceRequestType === "reschedule" ? "Cancel" : "Keep Conference"}
+                </button>
+                <button type="submit" className="s-submit-btn" disabled={conferenceRequestSaving}>
+                  {conferenceRequestSaving
+                    ? "Submitting..."
+                    : conferenceRequestType === "reschedule" ? "Submit Reschedule Request" : "Submit Cancellation Request"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -2693,12 +2693,161 @@
 }
 
 .s-conference-status {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 700;
   background: #ccfbf1;
   color: #0f766e;
   border-radius: 999px;
   padding: 4px 7px;
+}
+
+.s-conference-status.scheduled {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.s-conference-status.rescheduled,
+.s-conference-status.reschedule-requested {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.s-conference-status.cancellation-requested {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.s-conference-status.completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.s-conference-status.cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.s-conference-status.no-show {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.s-conference-type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.s-conference-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 8px;
+}
+
+.s-conference-previous {
+  margin-top: 6px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.s-conference-history-card {
+  margin-top: 14px;
+}
+
+.s-conference-actions,
+.s-conference-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.s-conference-actions button {
+  flex: 1 1 160px;
+  min-height: 40px;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #166534;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.s-conference-actions button:hover {
+  background: #dcfce7;
+}
+
+.s-conference-actions button.secondary {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #475569;
+}
+
+.s-conference-actions button.secondary:hover {
+  background: #f8fafc;
+}
+
+.s-conference-request-modal {
+  max-width: 460px;
+}
+
+.s-conference-request-modal .s-modal-header > div p {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.s-conference-request-label {
+  display: block;
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.s-conference-request-modal textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #1e293b;
+  font: inherit;
+  font-size: 13px;
+}
+
+.s-conference-request-modal textarea:focus {
+  outline: 2px solid #86efac;
+  border-color: #22c55e;
+}
+
+.s-conference-confirm-text {
+  margin: 0 0 15px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.s-conference-request-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.s-conference-request-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .s-conference-meta {
@@ -3259,4 +3408,16 @@
   .s-case-detail-grid { grid-template-columns: 1fr; }
   .s-hub-grid { grid-template-columns: 1fr; }
   .s-welcome p { display: none; }
+}
+
+@media (max-width: 600px) {
+  .s-conference-actions,
+  .s-conference-request-actions {
+    flex-direction: column;
+  }
+
+  .s-conference-actions button,
+  .s-conference-request-actions button {
+    width: 100%;
+  }
 }

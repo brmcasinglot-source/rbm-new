@@ -20,6 +20,8 @@ The app does not create administrator accounts automatically. An admin must exis
 
 The `admins` table must already exist; run `schema.sql` first if you have not created the tables. Use an account that is not already registered as a student.
 
+For an existing database, run [`conference_management.sql`](./conference_management.sql) in the Supabase SQL Editor to enable student reschedule/cancellation requests. New databases created from `schema.sql` already include this function.
+
 ## Optional local command
 
 If you prefer the terminal, the command below automates the same setup:
