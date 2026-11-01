@@ -1003,6 +1003,11 @@ export default function AdminDashboard() {
   };
 
   const today = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const involvedGroups = selectedReport ? [
+    { label: "Victims", people: selectedReport.victims || [] },
+    { label: "Reported students", people: selectedReport.offenders || [] },
+    { label: "Witnesses", people: selectedReport.witnesses || [] },
+  ].filter((group) => group.people.length > 0) : [];
 
   return (
     <div className="dashboard admin-theme" style={{ backgroundImage: `url(${bg})` }}>
@@ -2451,13 +2456,52 @@ export default function AdminDashboard() {
               )}
 
               <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                <label>Description</label>
+                <label>What Happened?</label>
                 <div className="description-display">{selectedReport.description || "No description provided."}</div>
               </div>
 
               <div className="detail-group full-width" style={{ marginBottom: 14 }}>
+                <label>Events Leading to the Incident</label>
+                <div className="description-display">{selectedReport.descriptionLeadUp || "No prior events or context provided."}</div>
+              </div>
+
+              <div className="detail-group full-width" style={{ marginBottom: 14 }}>
+                <label>Impact on the Victim</label>
+                <div className="description-display">{selectedReport.descriptionImpact || "No impact details provided."}</div>
+              </div>
+
+              <div className="detail-group full-width" style={{ marginBottom: 14 }}>
                 <label>People Involved</label>
-                <div className="involved-display">{selectedReport.involved || "Not specified."}</div>
+                <div className="involved-display">
+                  {involvedGroups.length > 0 ? (
+                    involvedGroups.map((group) => (
+                      <div key={group.label} style={{ marginBottom: 8 }}>
+                        <strong>{group.label}</strong>
+                        <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+                          {group.people.map((person, index) => (
+                            <li key={`${group.label}-${index}`}>
+                              {person.name || "Name not provided"}
+                              {[
+                                person.age && `Age ${person.age}`,
+                                person.grade && `Grade ${person.grade}`,
+                                person.section && `Section ${person.section}`,
+                              ].filter(Boolean).length > 0 && (
+                                <span>
+                                  {" — "}
+                                  {[
+                                    person.age && `Age ${person.age}`,
+                                    person.grade && `Grade ${person.grade}`,
+                                    person.section && `Section ${person.section}`,
+                                  ].filter(Boolean).join(", ")}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))
+                  ) : selectedReport.involved || "No people involved were specified."}
+                </div>
               </div>
 
               {/* Evidence */}
