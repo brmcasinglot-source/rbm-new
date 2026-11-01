@@ -355,6 +355,8 @@ create policy "grade_sections select public" on grade_sections for select
   using (true);
 create policy "grade_sections insert admin" on grade_sections for insert
   with check (is_admin());
+create policy "grade_sections update admin" on grade_sections for update
+  using (is_admin()) with check (is_admin());
 create policy "grade_sections delete admin" on grade_sections for delete
   using (is_admin());
 
