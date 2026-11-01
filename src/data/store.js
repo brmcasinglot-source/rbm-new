@@ -518,8 +518,14 @@ export async function updateGradeSection(id, section, grade) {
   if (existing && existing.length > 0) return { success: false, error: `"${trimmed}" already exists under ${grade}.` };
 
   const { data, error } = await supabase
-    .from("grade_sections").update({ section: trimmed }).eq("id", id).select().single();
+    .from("grade_sections").update({ section: trimmed }).eq("id", id).select().maybeSingle();
   if (error) return { success: false, error: error.message };
+  if (!data) {
+    return {
+      success: false,
+      error: "No section was updated. Confirm the grade_sections update policy is installed and that your signed-in account is configured as an Admin in Supabase.",
+    };
+  }
   return { success: true, section: data };
 }
 
