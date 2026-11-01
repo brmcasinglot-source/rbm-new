@@ -28,6 +28,16 @@ function statusIcon(status) {
   if (status === "Under Review" || status === "Under Investigation") return <Clock size={13} />;
   return <AlertTriangle size={13} />;
 }
+function formatConferenceTime(timeStr) {
+  if (!timeStr) return "Time TBD";
+  const raw = String(timeStr).trim();
+  if (/AM|PM/i.test(raw)) return raw;
+  const [h, m] = raw.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return raw;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour   = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
 function readBlobAsDataUrl(blob) {
   return new Promise((res, rej) => {
     const reader = new FileReader();
@@ -320,7 +330,7 @@ export default function StudentDashboard() {
       type: r.type,
       status: r.status,
       date: r.scheduledConference.date || "Date TBD",
-      time: r.scheduledConference.time || "Time TBD",
+      time: formatConferenceTime(r.scheduledConference.time),
       location: r.scheduledConference.location || "Location TBD",
       notes: r.scheduledConference.notes || "",
     }))
@@ -1291,7 +1301,7 @@ export default function StudentDashboard() {
                     <Calendar size={12} color="#2563eb" />
                     <div>
                       <strong>Scheduled Conference:</strong> {r.scheduledConference.date || "Date TBD"}
-                      {r.scheduledConference.time ? ` at ${r.scheduledConference.time}` : ""}
+                      {r.scheduledConference.time ? ` at ${formatConferenceTime(r.scheduledConference.time)}` : ""}
                       {r.scheduledConference.location ? ` • ${r.scheduledConference.location}` : ""}
                       {r.scheduledConference.notes ? ` • ${r.scheduledConference.notes}` : ""}
                     </div>
@@ -1365,7 +1375,7 @@ export default function StudentDashboard() {
                   <div><label>Case</label><span>#{conferenceViewItem.id}</span></div>
                   <div><label>Status</label><span>{conferenceViewItem.status}</span></div>
                   <div><label>Date</label><span>{conferenceViewItem.date || "Date TBD"}</span></div>
-                  <div><label>Time</label><span>{conferenceViewItem.time || "Time TBD"}</span></div>
+                  <div><label>Time</label><span>{formatConferenceTime(conferenceViewItem.time) || "Time TBD"}</span></div>
                   <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{conferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
                 {conferenceViewItem.notes && (

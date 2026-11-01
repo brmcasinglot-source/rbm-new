@@ -96,8 +96,10 @@ function getRecommendations(typeCounts, total) {
 // ─── Time formatter: "17:00" → "5:00 PM" ─────────────────────────────────────
 function to12Hour(timeStr) {
   if (!timeStr) return "—";
-  const [h, m] = timeStr.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return timeStr;
+  const raw = String(timeStr).trim();
+  if (/AM|PM/i.test(raw)) return raw;
+  const [h, m] = raw.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return raw;
   const period = h >= 12 ? "PM" : "AM";
   const hour   = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, "0")} ${period}`;
@@ -396,7 +398,7 @@ export default function AdminDashboard() {
       type: r.type,
       status: r.status,
       date: r.scheduledConference.date || "Date TBD",
-      time: r.scheduledConference.time || "Time TBD",
+      time: to12Hour(r.scheduledConference.time) || "Time TBD",
       location: r.scheduledConference.location || "Location TBD",
       notes: r.scheduledConference.notes || "",
       reporterName: r.isAnonymous ? "Anonymous" : (r.submittedBy || "Unknown reporter"),
@@ -2511,7 +2513,7 @@ export default function AdminDashboard() {
                   <div><label>Type</label><span>{conferenceViewItem.type}</span></div>
                   <div><label>Reporter</label><span>{conferenceViewItem.reporterName}</span></div>
                   <div><label>Date</label><span>{conferenceViewItem.date || "Date TBD"}</span></div>
-                  <div><label>Time</label><span>{conferenceViewItem.time || "Time TBD"}</span></div>
+                  <div><label>Time</label><span>{to12Hour(conferenceViewItem.time) || "Time TBD"}</span></div>
                   <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{conferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
                 {conferenceViewItem.notes && (
