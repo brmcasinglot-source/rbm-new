@@ -366,6 +366,7 @@
   justify-content: space-between;
   padding: 14px 16px 12px;
   border-bottom: 1.5px solid #e5e7eb;
+  z-index: 11111;
 }
 
 .s-notif-header span {
