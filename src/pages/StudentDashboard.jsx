@@ -17,7 +17,7 @@ import {
   getReports, submitReport,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
-  updateStudentProfile,
+  updateStudentProfile, markConferenceCompleted,
   LOCATION_META, getCustomLocations,
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
@@ -132,6 +132,7 @@ export default function StudentDashboard() {
   const [hubViewItem, setHubViewItem] = useState(null);
   const [caseViewItem, setCaseViewItem] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
+  const [conferenceCompletionConfirm, setConferenceCompletionConfirm] = useState(null);
 
   // Live data
   const [reports,          setReports]          = useState([]);
@@ -250,6 +251,39 @@ export default function StudentDashboard() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const handleMarkConferenceCompleted = async () => {
+    if (!conferenceCompletionConfirm) return;
+
+    try {
+      await markConferenceCompleted(conferenceCompletionConfirm.id);
+      const refreshedReports = await getReports();
+      setReports(refreshedReports);
+      setNotifications(await getStudentNotifications());
+
+      const refreshedConference = refreshedReports
+        .find((r) => r.id === conferenceCompletionConfirm.id)
+        ?.scheduledConference;
+
+      setConferenceViewItem((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          completed: !!refreshedConference?.completed,
+          status: refreshedConference?.completed ? "Completed" : "Scheduled",
+          time: refreshedConference?.time || prev.time,
+          date: refreshedConference?.date || prev.date,
+          location: refreshedConference?.location || prev.location,
+          notes: refreshedConference?.notes || prev.notes,
+        };
+      });
+
+      setConferenceCompletionConfirm(null);
+      showToast("Conference marked as completed.");
+    } catch (err) {
+      showToast("Could not mark conference as completed: " + err.message, "error");
+    }
+  };
+
   // ── Evidence file handler ─────────────────────────────────────────────────
   const addEvidenceFiles = async (files) => {
     if (!files.length) return;
@@ -328,11 +362,13 @@ export default function StudentDashboard() {
     .map((r) => ({
       id: r.id,
       type: r.type,
-      status: r.status,
+      status: r.scheduledConference.completed ? "Completed" : "Scheduled",
+      completed: !!r.scheduledConference.completed,
       date: r.scheduledConference.date || "Date TBD",
       time: formatConferenceTime(r.scheduledConference.time),
       location: r.scheduledConference.location || "Location TBD",
       notes: r.scheduledConference.notes || "",
+      completedAt: r.scheduledConference.completedAt || null,
     }))
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
@@ -630,7 +666,9 @@ export default function StudentDashboard() {
                         >
                           <div className="s-conference-top">
                             <span className="s-conference-badge">Case #{conf.id}</span>
-                            <span className="s-conference-status">{conf.status}</span>
+                            <span className={`s-conference-status ${conf.completed ? "completed" : "scheduled"}`}>
+                              {conf.completed ? "✓ Completed" : "Scheduled"}
+                            </span>
                           </div>
                           <div className="s-conference-meta"><strong>{conf.type}</strong></div>
                           <div className="s-conference-meta">📅 {conf.date}</div>
@@ -1384,6 +1422,49 @@ export default function StudentDashboard() {
                     <p className="s-case-detail-text">{conferenceViewItem.notes}</p>
                   </div>
                 )}
+
+                <div style={{ marginTop: 18 }}>
+                  {conferenceViewItem.completed ? (
+                    <div className="s-completed-status-pill">
+                      <CheckCircle size={15} /> Conference Completed
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="s-complete-conference-btn"
+                      onClick={() => setConferenceCompletionConfirm({ id: conferenceViewItem.id, title: `Case #${conferenceViewItem.id}` })}
+                    >
+                      <CheckCircle size={15} /> Mark as Completed
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {conferenceCompletionConfirm && (
+        <div className="s-modal-overlay" onClick={() => setConferenceCompletionConfirm(null)}>
+          <div className="s-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="s-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="s-hub-type-badge" style={{ position: "static" }}>Confirm</span>
+                <h3>Conference Completion</h3>
+              </div>
+              <button className="s-modal-close" onClick={() => setConferenceCompletionConfirm(null)}><X size={18} /></button>
+            </div>
+            <div className="s-modal-body">
+              <p style={{ fontSize: 15, lineHeight: 1.6, color: "#475569", margin: "8px 0 18px" }}>
+                Have you already attended this conference?
+              </p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button type="button" className="s-cancel-btn" onClick={() => setConferenceCompletionConfirm(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="s-submit-btn" onClick={handleMarkConferenceCompleted}>
+                  Yes, Mark as Completed
+                </button>
               </div>
             </div>
           </div>

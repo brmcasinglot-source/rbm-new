@@ -185,8 +185,11 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "", c
 
   if (conference !== undefined) {
     const hasConferenceValues = conference && (conference.date || conference.time || conference.location || conference.notes);
+    const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
+      ? currentRow.scheduled_conference
+      : {};
     updates.scheduled_conference = hasConferenceValues
-      ? { date: conference.date || "", time: conference.time || "", location: conference.location || "", notes: conference.notes || "", createdAt: new Date().toISOString() }
+      ? { ...existingConference, date: conference.date || existingConference.date || "", time: conference.time || existingConference.time || "", location: conference.location || existingConference.location || "", notes: conference.notes || existingConference.notes || "", createdAt: existingConference.createdAt || new Date().toISOString(), completed: !!existingConference.completed, completedAt: existingConference.completedAt || null }
       : null;
   }
 
@@ -204,6 +207,33 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "", c
     { title: `Case #${reportId} status updated to '${newStatus}'${conferenceText}`, type: "status" },
     data.submitted_id
   );
+
+  return reportRowToObj(data);
+}
+
+export async function markConferenceCompleted(reportId) {
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  if (fetchError) throw fetchError;
+
+  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
+    ? currentRow.scheduled_conference
+    : {};
+
+  const updatedConference = {
+    ...existingConference,
+    completed: true,
+    completedAt: existingConference.completedAt || new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase.from("reports")
+    .update({ scheduled_conference: updatedConference, updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  await addStudentNotification({ title: `Conference for Case #${reportId} was marked as completed.`, type: "status" }, data.submitted_id);
 
   return reportRowToObj(data);
 }
