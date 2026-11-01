@@ -17,7 +17,7 @@ import {
   getReports, submitReport,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
-  updateStudentProfile, markConferenceCompleted,
+  updateStudentProfile,
   LOCATION_META, getCustomLocations,
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
@@ -132,7 +132,6 @@ export default function StudentDashboard() {
   const [hubViewItem, setHubViewItem] = useState(null);
   const [caseViewItem, setCaseViewItem] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
-  const [conferenceCompletionConfirm, setConferenceCompletionConfirm] = useState(null);
 
   // Live data
   const [reports,          setReports]          = useState([]);
@@ -251,39 +250,6 @@ export default function StudentDashboard() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const handleMarkConferenceCompleted = async () => {
-    if (!conferenceCompletionConfirm) return;
-
-    try {
-      await markConferenceCompleted(conferenceCompletionConfirm.id);
-      const refreshedReports = await getReports();
-      setReports(refreshedReports);
-      setNotifications(await getStudentNotifications());
-
-      const refreshedConference = refreshedReports
-        .find((r) => r.id === conferenceCompletionConfirm.id)
-        ?.scheduledConference;
-
-      setConferenceViewItem((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          completed: !!refreshedConference?.completed,
-          status: refreshedConference?.completed ? "Completed" : "Scheduled",
-          time: refreshedConference?.time || prev.time,
-          date: refreshedConference?.date || prev.date,
-          location: refreshedConference?.location || prev.location,
-          notes: refreshedConference?.notes || prev.notes,
-        };
-      });
-
-      setConferenceCompletionConfirm(null);
-      showToast("Conference marked as completed.");
-    } catch (err) {
-      showToast("Could not mark conference as completed: " + err.message, "error");
-    }
-  };
-
   // ── Evidence file handler ─────────────────────────────────────────────────
   const addEvidenceFiles = async (files) => {
     if (!files.length) return;
@@ -371,6 +337,9 @@ export default function StudentDashboard() {
       completedAt: r.scheduledConference.completedAt || null,
     }))
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+  const activeConferenceViewItem = conferenceViewItem
+    ? scheduledConferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
+    : null;
 
   const filteredHub = awarenessContent.filter((item) => {
     const q = hubSearchQuery.toLowerCase();
@@ -1390,12 +1359,12 @@ export default function StudentDashboard() {
       })()}
 
       {/* ── SCHEDULED CONFERENCE VIEW MODAL ── */}
-      {conferenceViewItem && (
+      {activeConferenceViewItem && (
         <div className="s-modal-overlay" onClick={() => setConferenceViewItem(null)}>
           <div className="s-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div className="s-modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="s-hub-type-badge" style={{ position: "static" }}>{conferenceViewItem.type}</span>
+                <span className="s-hub-type-badge" style={{ position: "static" }}>{activeConferenceViewItem.type}</span>
                 <h3>Conference Details</h3>
               </div>
               <button className="s-modal-close" onClick={() => setConferenceViewItem(null)}><X size={18} /></button>
@@ -1403,68 +1372,30 @@ export default function StudentDashboard() {
             <div className="s-modal-body">
               <div className="s-case-status-banner" style={{ background: "#dbeafe", borderColor: "#93c5fd" }}>
                 <span className="s-status-badge" style={{ background: "#dbeafe", color: "#1d4ed8" }}>
-                  <Calendar size={12} /> Case #{conferenceViewItem.id}
+                  <Calendar size={12} /> Case #{activeConferenceViewItem.id}
                 </span>
                 <p style={{ color: "#1e3a8a", margin: 0 }}>Your scheduled conference for this case is shown below.</p>
               </div>
 
               <div className="s-case-details-box" style={{ marginTop: 16 }}>
                 <div className="s-case-detail-grid">
-                  <div><label>Case</label><span>#{conferenceViewItem.id}</span></div>
-                  <div><label>Status</label><span>{conferenceViewItem.status}</span></div>
-                  <div><label>Date</label><span>{conferenceViewItem.date || "Date TBD"}</span></div>
-                  <div><label>Time</label><span>{formatConferenceTime(conferenceViewItem.time) || "Time TBD"}</span></div>
-                  <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{conferenceViewItem.location || "Location TBD"}</span></div>
+                  <div><label>Case</label><span>#{activeConferenceViewItem.id}</span></div>
+                  <div><label>Status</label><span>{activeConferenceViewItem.completed ? "✓ Completed" : "Scheduled"}</span></div>
+                  <div><label>Date</label><span>{activeConferenceViewItem.date || "Date TBD"}</span></div>
+                  <div><label>Time</label><span>{formatConferenceTime(activeConferenceViewItem.time) || "Time TBD"}</span></div>
+                  <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
-                {conferenceViewItem.notes && (
+                {activeConferenceViewItem.notes && (
                   <div style={{ marginTop: 12 }}>
                     <label className="s-case-detail-label">Agenda / Notes</label>
-                    <p className="s-case-detail-text">{conferenceViewItem.notes}</p>
+                    <p className="s-case-detail-text">{activeConferenceViewItem.notes}</p>
                   </div>
                 )}
-
-                <div style={{ marginTop: 18 }}>
-                  {conferenceViewItem.completed ? (
-                    <div className="s-completed-status-pill">
-                      <CheckCircle size={15} /> Conference Completed
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className="s-complete-conference-btn"
-                      onClick={() => setConferenceCompletionConfirm({ id: conferenceViewItem.id, title: `Case #${conferenceViewItem.id}` })}
-                    >
-                      <CheckCircle size={15} /> Mark as Completed
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {conferenceCompletionConfirm && (
-        <div className="s-modal-overlay" onClick={() => setConferenceCompletionConfirm(null)}>
-          <div className="s-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
-            <div className="s-modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="s-hub-type-badge" style={{ position: "static" }}>Confirm</span>
-                <h3>Conference Completion</h3>
-              </div>
-              <button className="s-modal-close" onClick={() => setConferenceCompletionConfirm(null)}><X size={18} /></button>
-            </div>
-            <div className="s-modal-body">
-              <p style={{ fontSize: 15, lineHeight: 1.6, color: "#475569", margin: "8px 0 18px" }}>
-                Have you already attended this conference?
-              </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <button type="button" className="s-cancel-btn" onClick={() => setConferenceCompletionConfirm(null)}>
-                  Cancel
-                </button>
-                <button type="button" className="s-submit-btn" onClick={handleMarkConferenceCompleted}>
-                  Yes, Mark as Completed
-                </button>
+                <p className={`s-conference-info${activeConferenceViewItem.completed ? " completed" : ""}`}>
+                  {activeConferenceViewItem.completed
+                    ? "This conference has been completed."
+                    : "Please attend the conference at the scheduled date and time."}
+                </p>
               </div>
             </div>
           </div>

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 import {
-  getReports, updateReportStatus, deleteReport,
+  getReports, updateReportStatus, markConferenceCompleted, deleteReport,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
@@ -228,6 +228,7 @@ export default function AdminDashboard() {
   // Evidence lightbox
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
+  const [conferenceCompletionSaving, setConferenceCompletionSaving] = useState(false);
   const [conferencePanelHidden, setConferencePanelHidden] = useState(false);
   const [conferencePanelPinned, setConferencePanelPinned] = useState(false);
 
@@ -396,7 +397,8 @@ export default function AdminDashboard() {
     .map((r) => ({
       id: r.id,
       type: r.type,
-      status: r.status,
+      completed: !!r.scheduledConference.completed,
+      status: r.scheduledConference.completed ? "Completed" : "Scheduled",
       date: r.scheduledConference.date || "Date TBD",
       time: to12Hour(r.scheduledConference.time) || "Time TBD",
       location: r.scheduledConference.location || "Location TBD",
@@ -714,6 +716,24 @@ export default function AdminDashboard() {
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleMarkConferenceCompleted = async () => {
+    if (!conferenceViewItem || conferenceViewItem.completed || conferenceCompletionSaving) return;
+
+    setConferenceCompletionSaving(true);
+    try {
+      await markConferenceCompleted(conferenceViewItem.id);
+      setIncidents(await getReports());
+      setConferenceViewItem((current) => current
+        ? { ...current, completed: true, status: "Completed" }
+        : current);
+      showToast("Conference marked as completed.");
+    } catch (err) {
+      showToast("Could not mark conference as completed: " + err.message, "error");
+    } finally {
+      setConferenceCompletionSaving(false);
+    }
+  };
+
   const handleOpenManage = (report) => {
     setSelectedReport(report);
     // Skip the redundant "Pending" step — managing a pending report means it's
@@ -1283,7 +1303,9 @@ export default function AdminDashboard() {
                       >
                         <div className="admin-conference-top">
                           <span className="admin-conference-case">Case #{conf.id}</span>
-                          <span className="admin-conference-status">{conf.status}</span>
+                          <span className={`admin-conference-status${conf.completed ? " completed" : ""}`}>
+                            {conf.completed ? "✓ Completed" : "Scheduled"}
+                          </span>
                         </div>
                         <div className="admin-conference-type-row">
                           <span className="admin-conference-type">
@@ -2509,7 +2531,7 @@ export default function AdminDashboard() {
               <div className="admin-case-detail-box" style={{ marginTop: 16 }}>
                 <div className="admin-details-grid">
                   <div><label>Case</label><span>#{conferenceViewItem.id}</span></div>
-                  <div><label>Status</label><span>{conferenceViewItem.status}</span></div>
+                  <div><label>Status</label><span>{conferenceViewItem.completed ? "✓ Completed" : "Scheduled"}</span></div>
                   <div><label>Type</label><span>{conferenceViewItem.type}</span></div>
                   <div><label>Reporter</label><span>{conferenceViewItem.reporterName}</span></div>
                   <div><label>Date</label><span>{conferenceViewItem.date || "Date TBD"}</span></div>
@@ -2522,6 +2544,19 @@ export default function AdminDashboard() {
                     <p className="admin-case-detail-text">{conferenceViewItem.notes}</p>
                   </div>
                 )}
+                <div className="admin-conference-completion">
+                  {conferenceViewItem.completed ? (
+                    <p>This conference has been completed.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleMarkConferenceCompleted}
+                      disabled={conferenceCompletionSaving}
+                    >
+                      {conferenceCompletionSaving ? "Saving..." : "✓ Mark as Completed"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
