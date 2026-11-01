@@ -229,6 +229,7 @@ export default function AdminDashboard() {
   // Evidence lightbox
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
+  const [conferenceManagementFilter, setConferenceManagementFilter] = useState("All");
   const [conferenceActionSaving, setConferenceActionSaving] = useState(false);
   const [conferenceRescheduleDate, setConferenceRescheduleDate] = useState("");
   const [conferenceRescheduleTime, setConferenceRescheduleTime] = useState("");
@@ -415,6 +416,17 @@ export default function AdminDashboard() {
       };
     })
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+  const filteredConferenceManagementList = conferenceManagementFilter === "All"
+    ? conferenceManagementList
+    : conferenceManagementList.filter((conference) => {
+      if (conferenceManagementFilter === "Requests") {
+        return ["Reschedule Requested", "Cancellation Requested"].includes(conference.status);
+      }
+      if (conferenceManagementFilter === "History") {
+        return ["Completed", "Cancelled", "No-show"].includes(conference.status);
+      }
+      return conference.status === conferenceManagementFilter;
+    });
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceManagementList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
@@ -1331,13 +1343,36 @@ export default function AdminDashboard() {
                   <span>Conference Management</span>
                 </div>
 
+                {conferenceManagementList.length > 0 && (
+                  <label className="admin-conference-filter">
+                    <span>Filter conferences</span>
+                    <select
+                      value={conferenceManagementFilter}
+                      onChange={(event) => setConferenceManagementFilter(event.target.value)}
+                    >
+                      <option value="All">All conferences</option>
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Rescheduled">Rescheduled</option>
+                      <option value="Requests">Pending requests</option>
+                      <option value="History">Conference history</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
+                      <option value="No-show">No-show</option>
+                    </select>
+                  </label>
+                )}
+
                 {conferenceManagementList.length === 0 ? (
                   <div className="admin-conference-empty">
                     No conference has been scheduled yet.
                   </div>
+                ) : filteredConferenceManagementList.length === 0 ? (
+                  <div className="admin-conference-empty">
+                    No conferences match this filter.
+                  </div>
                 ) : (
                   <div className="admin-conference-list">
-                    {conferenceManagementList.map((conf) => (
+                    {filteredConferenceManagementList.map((conf) => (
                       <div
                         className="admin-conference-item"
                         key={conf.id}

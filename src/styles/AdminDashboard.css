@@ -753,6 +753,27 @@
   color: #b91c1c;
 }
 
+.admin-conference-filter {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.admin-conference-filter select {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 11px;
+}
+
 .admin-conference-completion {
   margin-top: 18px;
 }

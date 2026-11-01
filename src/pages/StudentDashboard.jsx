@@ -149,6 +149,7 @@ export default function StudentDashboard() {
   const [hubViewItem, setHubViewItem] = useState(null);
   const [caseViewItem, setCaseViewItem] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
+  const [conferenceHistoryFilter, setConferenceHistoryFilter] = useState("All");
   const [conferenceRequestType, setConferenceRequestType] = useState(null);
   const [conferenceRequestReason, setConferenceRequestReason] = useState("");
   const [conferenceRequestSaving, setConferenceRequestSaving] = useState(false);
@@ -363,6 +364,9 @@ export default function StudentDashboard() {
   const scheduledConferenceStatuses = ["Scheduled", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
   const scheduledConferenceList = conferenceList.filter((conference) => scheduledConferenceStatuses.includes(conference.status));
   const conferenceHistoryList = conferenceList.filter((conference) => ["Completed", "Cancelled", "No-show"].includes(conference.status));
+  const filteredConferenceHistory = conferenceHistoryFilter === "All"
+    ? conferenceHistoryList
+    : conferenceHistoryList.filter((conference) => conference.status === conferenceHistoryFilter);
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
@@ -712,15 +716,28 @@ export default function StudentDashboard() {
                   )}
                 </div>
                 <div className="s-conference-card s-conference-history-card">
-                  <div className="s-conference-header">
-                    <CheckCircle size={12} />
-                    <span>Conference History</span>
+                  <div className="s-conference-history-header">
+                    <div className="s-conference-header">
+                      <CheckCircle size={12} />
+                      <span>Conference History</span>
+                    </div>
+                    <select
+                      value={conferenceHistoryFilter}
+                      onChange={(event) => setConferenceHistoryFilter(event.target.value)}
+                      aria-label="Filter conference history by status"
+                    >
+                      {["All", "Completed", "Cancelled", "No-show"].map((status) => (
+                        <option key={status} value={status}>{status === "All" ? "All history" : status}</option>
+                      ))}
+                    </select>
                   </div>
                   {conferenceHistoryList.length === 0 ? (
                     <div className="s-conference-empty">Completed, cancelled, and no-show conferences will appear here.</div>
+                  ) : filteredConferenceHistory.length === 0 ? (
+                    <div className="s-conference-empty">No {conferenceHistoryFilter.toLowerCase()} conferences in your history.</div>
                   ) : (
                     <div className="s-conference-list">
-                      {conferenceHistoryList.map((conf) => (
+                      {filteredConferenceHistory.map((conf) => (
                         <div
                           className="s-conference-item"
                           key={conf.id}
