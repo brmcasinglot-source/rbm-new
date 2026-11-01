@@ -21,6 +21,7 @@ import {
   LOCATION_META, getCustomLocations,
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
+import { translateStudentUI } from "../lib/studentLocale";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusIcon(status) {
@@ -38,12 +39,16 @@ function formatConferenceTime(timeStr) {
   const hour   = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, "0")} ${period}`;
 }
-function formatConferenceDate(dateStr) {
+function formatConferenceDate(dateStr, language = "en") {
   if (!dateStr || dateStr === "Date TBD") return dateStr || "Date TBD";
   const date = new Date(`${dateStr}T00:00:00`);
   return Number.isNaN(date.getTime())
     ? dateStr
-    : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(date);
+    : new Intl.DateTimeFormat(language === "fil" ? "fil-PH" : "en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }).format(date);
 }
 function getConferenceStatus(conference) {
   return conference.status || (conference.completed ? "Completed" : "Scheduled");
@@ -115,6 +120,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
 
   const studentName = localStorage.getItem("studentName") || "";
+  const languagePreferenceKey = `studentLanguage:${localStorage.getItem("studentId") || "default"}`;
   const [profileEditing,    setProfileEditing]    = useState(false);
   const [profileGrade,      setProfileGrade]      = useState(() => localStorage.getItem("studentGrade")   || "");
   const [profileSection,    setProfileSection]    = useState(() => localStorage.getItem("studentSection") || "");
@@ -125,6 +131,7 @@ export default function StudentDashboard() {
   const [profileAgeEdit,    setProfileAgeEdit]    = useState(() => localStorage.getItem("studentAge")     || "");
   const [profileGenderEdit, setProfileGenderEdit] = useState(() => localStorage.getItem("studentSex")     || "");
   const [activeTab,   setActiveTab]   = useState("dashboard");
+  const [language, setLanguage] = useState(() => localStorage.getItem(languagePreferenceKey) || "en");
   const [hubSearchQuery, setHubSearchQuery] = useState("");
   const [hubFilter,   setHubFilter]   = useState("all");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -412,12 +419,17 @@ export default function StudentDashboard() {
     report:    { title: "Submit an Incident Report",  sub: "Your report is handled with confidentiality. You are not alone." },
     profile:   { title: "My Profile",                 sub: "Manage your account settings and privacy preferences." },
     cases:     { title: "My Case Monitoring",         sub: "Track the status of your submitted reports in real-time." },
-    dashboard: { title: `👋 Welcome, ${studentName || "Student"}!`, sub: "A safer school starts with speaking up." },
+    dashboard: {
+      title: language === "fil"
+        ? `👋 Maligayang pagdating, ${studentName || "Mag-aaral"}!`
+        : `👋 Welcome, ${studentName || "Student"}!`,
+      sub: "A safer school starts with speaking up.",
+    },
   }[activeTab] || { title: "Dashboard", sub: "" });
 
   const { title, sub } = getTabHeader();
 
-  return (
+  return translateStudentUI((
     <div className="s-dashboard" style={{ backgroundImage: `url(${bg})` }}>
 
       {/* ── MOBILE NAV BACKDROP ── */}
@@ -445,7 +457,6 @@ export default function StudentDashboard() {
             { tab: "report",    icon: <FileText size={16} />,        label: "Submit Report" },
             { tab: "cases",     icon: <Shield size={16} />,          label: "Case Monitoring" },
             { tab: "profile",   icon: <User size={16} />,            label: "My Profile" },
-
           ].map(({ tab, icon, label }) => (
             <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => { setActiveTab(tab); setMobileNavOpen(false); }}>
               {icon} {label}
@@ -563,7 +574,11 @@ export default function StudentDashboard() {
               <div className="s-hub-header-bar">
                 <div>
                   <h3 className="s-hub-title">Awareness Hub</h3>
-                  <p className="s-hub-subtitle">{filteredHub.length} resource{filteredHub.length !== 1 ? "s" : ""} available</p>
+                  <p className="s-hub-subtitle">
+                    {language === "fil"
+                      ? `${filteredHub.length} sanggunian ang magagamit`
+                      : `${filteredHub.length} resource${filteredHub.length !== 1 ? "s" : ""} available`}
+                  </p>
                 </div>
               </div>
 
@@ -697,12 +712,15 @@ export default function StudentDashboard() {
                             <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
                             <strong>{conf.type}</strong>
                           </div>
-                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date)}</div>
+                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date, language)}</div>
                           <div className="s-conference-meta">🕒 {conf.time}</div>
                           <div className="s-conference-meta">📍 {conf.location}</div>
                           {conf.previousSchedule && conf.status === "Rescheduled" && (
                             <div className="s-conference-previous">
-                              Previously scheduled for {formatConferenceDate(conf.previousSchedule.date)} at {formatConferenceTime(conf.previousSchedule.time)}.
+                              {language === "fil" ? "Dating itinakda noong " : "Previously scheduled for "}
+                              {formatConferenceDate(conf.previousSchedule.date, language)}
+                              {language === "fil" ? " nang " : " at "}
+                              {formatConferenceTime(conf.previousSchedule.time)}.
                             </div>
                           )}
                           {conf.notes && <div className="s-conference-note">{conf.notes}</div>}
@@ -734,7 +752,11 @@ export default function StudentDashboard() {
                   {conferenceHistoryList.length === 0 ? (
                     <div className="s-conference-empty">Completed, cancelled, and no-show conferences will appear here.</div>
                   ) : filteredConferenceHistory.length === 0 ? (
-                    <div className="s-conference-empty">No {conferenceHistoryFilter.toLowerCase()} conferences in your history.</div>
+                    <div className="s-conference-empty">
+                      {language === "fil"
+                        ? `Walang ${conferenceHistoryFilter === "All" ? "mga" : conferenceHistoryFilter.toLowerCase()} na kumperensya sa iyong kasaysayan.`
+                        : `No ${conferenceHistoryFilter.toLowerCase()} conferences in your history.`}
+                    </div>
                   ) : (
                     <div className="s-conference-list">
                       {filteredConferenceHistory.map((conf) => (
@@ -762,7 +784,7 @@ export default function StudentDashboard() {
                             <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
                             <strong>{conf.type}</strong>
                           </div>
-                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date)} • 🕐 {conf.time}</div>
+                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date, language)} • 🕐 {conf.time}</div>
                           <div className="s-conference-footer">
                             <span>View details</span>
                             <ArrowUpRight size={12} />
@@ -1312,6 +1334,29 @@ export default function StudentDashboard() {
                 </div>
               </div>
             </div>
+            <div className="s-panel" style={{ maxWidth: 720, padding: 24, marginTop: 16 }}>
+              <div className="s-help-header">
+                <h3>Language Preference</h3>
+              </div>
+              <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
+                Choose the language used across your student dashboard. This preference is saved for your account on this device.
+              </p>
+              <div className="s-form-group" style={{ marginTop: 18, maxWidth: 360 }}>
+                <label htmlFor="student-language">Dashboard Language</label>
+                <select
+                  id="student-language"
+                  value={language}
+                  onChange={(event) => {
+                    const selectedLanguage = event.target.value;
+                    localStorage.setItem(languagePreferenceKey, selectedLanguage);
+                    setLanguage(selectedLanguage);
+                  }}
+                >
+                  <option value="en">English</option>
+                  <option value="fil">Filipino</option>
+                </select>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1502,13 +1547,16 @@ export default function StudentDashboard() {
                   <div><label>Status</label><span className={`s-conference-status ${activeConferenceViewItem.status.toLowerCase().replace(/\s/g, "-")}`}>
                     {activeConferenceViewItem.status === "Completed" ? "✓ Completed" : activeConferenceViewItem.status === "Cancelled" ? "✕ Cancelled" : activeConferenceViewItem.status === "No-show" ? "⚠ No-show" : activeConferenceViewItem.status}
                   </span></div>
-                  <div><label>Date</label><span>{formatConferenceDate(activeConferenceViewItem.date)}</span></div>
+                  <div><label>Date</label><span>{formatConferenceDate(activeConferenceViewItem.date, language)}</span></div>
                   <div><label>Time</label><span>{formatConferenceTime(activeConferenceViewItem.time) || "Time TBD"}</span></div>
                   <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
                 {activeConferenceViewItem.previousSchedule && activeConferenceViewItem.status === "Rescheduled" && (
                   <p className="s-conference-previous">
-                    Previously scheduled for {formatConferenceDate(activeConferenceViewItem.previousSchedule.date)} at {formatConferenceTime(activeConferenceViewItem.previousSchedule.time)}.
+                    {language === "fil" ? "Dating itinakda noong " : "Previously scheduled for "}
+                    {formatConferenceDate(activeConferenceViewItem.previousSchedule.date, language)}
+                    {language === "fil" ? " nang " : " at "}
+                    {formatConferenceTime(activeConferenceViewItem.previousSchedule.time)}.
                   </p>
                 )}
                 {activeConferenceViewItem.notes && (
@@ -1688,5 +1736,5 @@ export default function StudentDashboard() {
       )}
 
     </div>
-  );
+  ), language);
 }
