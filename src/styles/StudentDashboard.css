@@ -342,12 +342,15 @@
   top: calc(100% + 10px);
   right: 0;
   width: 300px;
+  max-height: min(62vh, 420px);
   background: #ffffff;
   border: 2px solid #e5e7eb;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   z-index: 200;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   animation: s-notif-dropdown-in 0.18s ease-out;
   transform-origin: top right;
 }
