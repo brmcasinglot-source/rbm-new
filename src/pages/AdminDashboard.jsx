@@ -115,6 +115,9 @@ function formatConferenceDate(dateValue) {
     ? value
     : date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
+function formatGrade(grade) {
+  return grade ? `Grade ${String(grade).replace(/^grade\s*/i, "").trim()}` : "";
+}
 function hexToRgba(hex, alpha = 1) {
   const h = hex.replace("#", "");
   const r = parseInt(h.length === 3 ? h[0] + h[0] : h.substring(0, 2), 16);
@@ -2793,14 +2796,14 @@ export default function AdminDashboard() {
                               {person.name || "Name not provided"}
                               {[
                                 person.age && `Age ${person.age}`,
-                                person.grade && `Grade ${person.grade}`,
+                                person.grade && formatGrade(person.grade),
                                 person.section && `Section ${person.section}`,
                               ].filter(Boolean).length > 0 && (
                                 <span>
                                   {" — "}
                                   {[
                                     person.age && `Age ${person.age}`,
-                                    person.grade && `Grade ${person.grade}`,
+                                    person.grade && formatGrade(person.grade),
                                     person.section && `Section ${person.section}`,
                                   ].filter(Boolean).join(", ")}
                                 </span>
