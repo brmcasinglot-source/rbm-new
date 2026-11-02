@@ -291,6 +291,7 @@ export default function AdminDashboard() {
   const [exportMonthFilter, setExportMonthFilter] = useState([]);
   const [exportYearFilter, setExportYearFilter] = useState([]);
   const [exportMenuOpen,       setExportMenuOpen]        = useState(false);
+  const [exportPreviewFormat, setExportPreviewFormat] = useState(null);
   const exportMenuRef = useRef(null);
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -1088,19 +1089,28 @@ export default function AdminDashboard() {
     (exportYearFilter.length === 0 || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
   );
 
+  const beginExportPreview = (format) => {
+    setExportPreviewFormat(format);
+    setExportMenuOpen(false);
+  };
+
   const handleExportCSV = () => {
     downloadCSV(exportFilteredIncidents);
-    setExportMenuOpen(false);
+    setExportPreviewFormat(null);
   };
 
   const handleExportText = () => {
     downloadTextReport(exportFilteredIncidents);
-    setExportMenuOpen(false);
+    setExportPreviewFormat(null);
   };
 
   const handleExportPDF = () => {
     const data = getAnalyticsData(exportFilteredIncidents);
     const win = window.open("", "_blank");
+    if (!win) {
+      showToast("The export preview window was blocked. Allow pop-ups and try again.", "error");
+      return;
+    }
     const rows = data.reports.map((r) => `
       <tr>
         <td>#${r.id}</td><td>${r.date || "—"}</td><td>${r.type}</td>
@@ -1135,7 +1145,7 @@ export default function AdminDashboard() {
       <tbody>${rows}</tbody></table>
       <script>window.print();</script></body></html>`);
     win.document.close();
-    setExportMenuOpen(false);
+    setExportPreviewFormat(null);
   };
 
   const today = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -1147,6 +1157,111 @@ export default function AdminDashboard() {
 
   return (
     <div className="dashboard admin-theme" style={{ backgroundImage: `url(${bg})` }}>
+      {exportPreviewFormat && (
+        <div className="admin-modal-overlay export-preview-overlay" onClick={() => setExportPreviewFormat(null)}>
+          <section
+            className="admin-modal export-preview-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-preview-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header-admin">
+              <div className="title-wrap">
+                <FileBarChart size={18} color="var(--accent-color)" />
+                <h3 id="export-preview-title">Preview {exportPreviewFormat}</h3>
+              </div>
+              <button
+                type="button"
+                className="close-modal-btn"
+                aria-label="Close export preview"
+                onClick={() => setExportPreviewFormat(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="admin-modal-content export-preview-content">
+              <div className="export-preview-summary">
+                <div>
+                  <strong>{exportFilteredIncidents.length} incident{exportFilteredIncidents.length === 1 ? "" : "s"}</strong>
+                  <span>will be included using the selected export filters.</span>
+                </div>
+                <span>{exportPreviewFormat}</span>
+              </div>
+              {exportFilteredIncidents.length === 0 ? (
+                <div className="export-preview-empty">
+                  No incidents match these filters. Adjust the export filters before exporting.
+                </div>
+              ) : (
+                <div className="export-preview-table-wrap">
+                  <table className="export-preview-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Submitted By</th>
+                        <th>Student ID</th>
+                        <th>Admin Notes</th>
+                        <th>Submitted At</th>
+                        <th>Updated At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exportFilteredIncidents.map((report) => (
+                        <tr key={report.id}>
+                          <td>#{report.id}</td>
+                          <td>{report.date || "—"}</td>
+                          <td>{report.type || "—"}</td>
+                          <td>{report.description || "—"}</td>
+                          <td>{report.location || "—"}</td>
+                          <td>{report.status || "—"}</td>
+                          <td>{report.priority || "—"}</td>
+                          <td>{report.isAnonymous ? "Anonymous" : report.submittedBy || "—"}</td>
+                          <td>{report.isAnonymous ? "—" : report.submittedId || "—"}</td>
+                          <td>{report.adminNotes || "—"}</td>
+                          <td>{report.submittedAt || "—"}</td>
+                          <td>{report.updatedAt || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer-bar">
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => {
+                  setExportPreviewFormat(null);
+                  setExportMenuOpen(true);
+                }}
+              >
+                Back to Filters
+              </button>
+              <button
+                type="button"
+                className="submit-btn"
+                onClick={
+                  exportPreviewFormat === "PDF Report"
+                    ? handleExportPDF
+                    : exportPreviewFormat === "CSV Spreadsheet"
+                      ? handleExportCSV
+                      : handleExportText
+                }
+                disabled={exportFilteredIncidents.length === 0}
+              >
+                <Download size={15} /> Export {exportPreviewFormat}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* ── SIDEBAR ── */}
       <div className="sidebar">
@@ -1775,9 +1890,9 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
                               <p className="analytics-export-label">Choose Format</p>
-                              <button onClick={handleExportPDF}><FileBarChart size={14} color="#ef4444" /><span><strong>PDF Report</strong><small>Formatted printable report</small></span></button>
-                              <button onClick={handleExportCSV}><FileDown size={14} color="#22c55e" /><span><strong>CSV Spreadsheet</strong><small>Excel / Google Sheets compatible</small></span></button>
-                              <button onClick={handleExportText}><FileText size={14} color="#3b82f6" /><span><strong>Text / DOCX</strong><small>Plain text for Word import</small></span></button>
+                              <button onClick={() => beginExportPreview("PDF Report")}><FileBarChart size={14} color="#ef4444" /><span><strong>PDF Report</strong><small>Formatted printable report</small></span></button>
+                              <button onClick={() => beginExportPreview("CSV Spreadsheet")}><FileDown size={14} color="#22c55e" /><span><strong>CSV Spreadsheet</strong><small>Excel / Google Sheets compatible</small></span></button>
+                              <button onClick={() => beginExportPreview("Text / DOCX")}><FileText size={14} color="#3b82f6" /><span><strong>Text / DOCX</strong><small>Plain text for Word import</small></span></button>
                             </div>
                           )}
                         </div>
