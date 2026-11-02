@@ -156,7 +156,6 @@ export default function StudentDashboard() {
   const [hubViewItem, setHubViewItem] = useState(null);
   const [caseViewItem, setCaseViewItem] = useState(null);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
-  const [conferenceHistoryFilter, setConferenceHistoryFilter] = useState("All");
   const [conferenceRequestType, setConferenceRequestType] = useState(null);
   const [conferenceRequestReason, setConferenceRequestReason] = useState("");
   const [conferenceRequestSaving, setConferenceRequestSaving] = useState(false);
@@ -370,10 +369,6 @@ export default function StudentDashboard() {
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
   const scheduledConferenceStatuses = ["Scheduled", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
   const scheduledConferenceList = conferenceList.filter((conference) => scheduledConferenceStatuses.includes(conference.status));
-  const conferenceHistoryList = conferenceList.filter((conference) => ["Completed", "Cancelled", "No-show"].includes(conference.status));
-  const filteredConferenceHistory = conferenceHistoryFilter === "All"
-    ? conferenceHistoryList
-    : conferenceHistoryList.filter((conference) => conference.status === conferenceHistoryFilter);
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
@@ -724,67 +719,6 @@ export default function StudentDashboard() {
                             </div>
                           )}
                           {conf.notes && <div className="s-conference-note">{conf.notes}</div>}
-                          <div className="s-conference-footer">
-                            <span>View details</span>
-                            <ArrowUpRight size={12} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="s-conference-card s-conference-history-card">
-                  <div className="s-conference-history-header">
-                    <div className="s-conference-header">
-                      <CheckCircle size={12} />
-                      <span>Conference History</span>
-                    </div>
-                    <select
-                      value={conferenceHistoryFilter}
-                      onChange={(event) => setConferenceHistoryFilter(event.target.value)}
-                      aria-label="Filter conference history by status"
-                    >
-                      {["All", "Completed", "Cancelled", "No-show"].map((status) => (
-                        <option key={status} value={status}>{status === "All" ? "All history" : status}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {conferenceHistoryList.length === 0 ? (
-                    <div className="s-conference-empty">Completed, cancelled, and no-show conferences will appear here.</div>
-                  ) : filteredConferenceHistory.length === 0 ? (
-                    <div className="s-conference-empty">
-                      {language === "fil"
-                        ? `Walang ${conferenceHistoryFilter === "All" ? "mga" : conferenceHistoryFilter.toLowerCase()} na kumperensya sa iyong kasaysayan.`
-                        : `No ${conferenceHistoryFilter.toLowerCase()} conferences in your history.`}
-                    </div>
-                  ) : (
-                    <div className="s-conference-list">
-                      {filteredConferenceHistory.map((conf) => (
-                        <div
-                          className="s-conference-item"
-                          key={conf.id}
-                          onClick={() => setConferenceViewItem(conf)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              setConferenceViewItem(conf);
-                            }
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`View conference history for case ${conf.id}`}
-                        >
-                          <div className="s-conference-top">
-                            <span className="s-conference-badge">Case #{conf.id}</span>
-                            <span className={`s-conference-status ${conf.status.toLowerCase().replace(/\s/g, "-")}`}>
-                              {conf.status === "Completed" ? "✓ Completed" : conf.status === "Cancelled" ? "✕ Cancelled" : "⚠ No-show"}
-                            </span>
-                          </div>
-                          <div className="s-conference-meta s-conference-type">
-                            <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
-                            <strong>{conf.type}</strong>
-                          </div>
-                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date, language)} • 🕐 {conf.time}</div>
                           <div className="s-conference-footer">
                             <span>View details</span>
                             <ArrowUpRight size={12} />
