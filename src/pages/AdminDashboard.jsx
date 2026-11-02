@@ -118,6 +118,10 @@ function formatConferenceDate(dateValue) {
 function formatGrade(grade) {
   return grade ? `Grade ${String(grade).replace(/^grade\s*/i, "").trim()}` : "";
 }
+function cleanDisplayValue(value) {
+  const cleaned = value == null ? "" : String(value).trim();
+  return cleaned && cleaned.toLowerCase() !== "none" ? cleaned : "";
+}
 function hexToRgba(hex, alpha = 1) {
   const h = hex.replace("#", "");
   const r = parseInt(h.length === 3 ? h[0] + h[0] : h.substring(0, 2), 16);
@@ -2788,32 +2792,42 @@ export default function AdminDashboard() {
                 <div className="involved-display">
                   {involvedGroups.length > 0 ? (
                     involvedGroups.map((group) => (
-                      <div key={group.label} style={{ marginBottom: 8 }}>
-                        <strong>{group.label}</strong>
-                        <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
-                          {group.people.map((person, index) => (
-                            <li key={`${group.label}-${index}`}>
-                              {person.name || "Name not provided"}
-                              {[
-                                person.age && `Age ${person.age}`,
-                                person.grade && formatGrade(person.grade),
-                                person.section && `Section ${person.section}`,
-                              ].filter(Boolean).length > 0 && (
-                                <span>
-                                  {" — "}
-                                  {[
-                                    person.age && `Age ${person.age}`,
-                                    person.grade && formatGrade(person.grade),
-                                    person.section && `Section ${person.section}`,
-                                  ].filter(Boolean).join(", ")}
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
+                      <div className="involved-group" key={group.label}>
+                        <h5>{group.label}</h5>
+                        <div className="involved-people-grid">
+                          {group.people.map((person, index) => {
+                            const details = [
+                              cleanDisplayValue(person.age) && { label: "Age", value: cleanDisplayValue(person.age) },
+                              cleanDisplayValue(person.grade) && { label: "Grade", value: formatGrade(cleanDisplayValue(person.grade)) },
+                              cleanDisplayValue(person.section) && { label: "Section", value: cleanDisplayValue(person.section) },
+                            ].filter(Boolean);
+                            const parentName = cleanDisplayValue(person.parentName);
+                            const parentContact = cleanDisplayValue(person.parentContact);
+
+                            return (
+                              <article className="involved-person-card" key={`${group.label}-${index}`}>
+                                <h6>{cleanDisplayValue(person.name) || "Name not provided"}</h6>
+                                {details.length > 0 && (
+                                  <div className="involved-person-details">
+                                    {details.map((detail) => (
+                                      <span key={detail.label}><b>{detail.label}</b>{detail.value}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {(parentName || parentContact) && (
+                                  <div className="involved-guardian-details">
+                                    <span className="involved-guardian-label">Parent / Guardian</span>
+                                    {parentName && <span>{parentName}</span>}
+                                    {parentContact && <span>{parentContact}</span>}
+                                  </div>
+                                )}
+                              </article>
+                            );
+                          })}
+                        </div>
                       </div>
                     ))
-                  ) : selectedReport.involved || "No people involved were specified."}
+                  ) : cleanDisplayValue(selectedReport.involved) || "No people involved were specified."}
                 </div>
               </div>
 
