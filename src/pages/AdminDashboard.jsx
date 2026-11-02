@@ -428,15 +428,13 @@ export default function AdminDashboard() {
         reporterName: r.isAnonymous ? "Anonymous" : (r.submittedBy || "Unknown reporter"),
       };
     })
+    .filter((conference) => ["Scheduled", "Rescheduled", "Reschedule Requested", "Cancellation Requested"].includes(conference.status))
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
   const filteredConferenceManagementList = conferenceManagementFilter === "All"
     ? conferenceManagementList
     : conferenceManagementList.filter((conference) => {
       if (conferenceManagementFilter === "Requests") {
         return ["Reschedule Requested", "Cancellation Requested"].includes(conference.status);
-      }
-      if (conferenceManagementFilter === "History") {
-        return ["Completed", "Cancelled", "No-show"].includes(conference.status);
       }
       return conference.status === conferenceManagementFilter;
     });
@@ -772,6 +770,7 @@ export default function AdminDashboard() {
     try {
       await updateConferenceOutcome(activeConferenceViewItem.id, status);
       await refreshConferenceReports();
+      if (["Completed", "No-show"].includes(status)) setConferenceViewItem(null);
       setConferenceNoShowConfirm(false);
       showToast(`Conference marked as ${status}.`);
     } catch (err) {
@@ -807,6 +806,9 @@ export default function AdminDashboard() {
           : undefined
       );
       await refreshConferenceReports();
+      if (decision === "approve" && activeConferenceViewItem.request?.type === "cancellation") {
+        setConferenceViewItem(null);
+      }
       showToast(`Conference request ${decision === "approve" ? "approved" : "rejected"}.`);
     } catch (err) {
       showToast(`Could not review conference request: ${err.message}`, "error");
@@ -879,6 +881,7 @@ export default function AdminDashboard() {
     try {
       const updatedReport = await updateConferenceOutcome(selectedReport.id, status);
       await refreshManagedIncident(updatedReport);
+      if (["Completed", "No-show"].includes(status)) setConferenceViewItem(null);
       showToast(`Conference marked as ${status}.`);
     } catch (err) {
       showToast(`Could not update conference: ${err.message}`, "error");
@@ -1464,17 +1467,13 @@ export default function AdminDashboard() {
                       <option value="Scheduled">Scheduled</option>
                       <option value="Rescheduled">Rescheduled</option>
                       <option value="Requests">Pending requests</option>
-                      <option value="History">Conference history</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                      <option value="No-show">No-show</option>
                     </select>
                   </label>
                 )}
 
                 {conferenceManagementList.length === 0 ? (
                   <div className="admin-conference-empty">
-                    No conference has been scheduled yet.
+                    No active conferences scheduled.
                   </div>
                 ) : filteredConferenceManagementList.length === 0 ? (
                   <div className="admin-conference-empty">
