@@ -116,7 +116,7 @@ function formatConferenceDate(dateValue) {
     : date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 function formatGrade(grade) {
-  return grade ? `Grade ${String(grade).replace(/^grade\s*/i, "").trim()}` : "";
+  return grade ? String(grade).replace(/^grade\s*/i, "").trim() : "";
 }
 function cleanDisplayValue(value) {
   const cleaned = value == null ? "" : String(value).trim();
@@ -2796,9 +2796,10 @@ export default function AdminDashboard() {
                         <h5>{group.label}</h5>
                         <div className="involved-people-grid">
                           {group.people.map((person, index) => {
+                            const grade = formatGrade(cleanDisplayValue(person.grade));
                             const details = [
                               cleanDisplayValue(person.age) && { label: "Age", value: cleanDisplayValue(person.age) },
-                              cleanDisplayValue(person.grade) && { label: "Grade", value: formatGrade(cleanDisplayValue(person.grade)) },
+                              grade && { label: "Grade", value: grade },
                               cleanDisplayValue(person.section) && { label: "Section", value: cleanDisplayValue(person.section) },
                             ].filter(Boolean);
                             const parentName = cleanDisplayValue(person.parentName);
