@@ -531,25 +531,6 @@ export async function markAllAdminNotifRead() {
   if (error) throw error;
 }
 
-// ─── STUDENT PROFILE API ────────────────────────────────────────────────────
-export async function updateStudentProfile(studentId, updates) {
-  const row = {};
-  if (updates.age     !== undefined) row.age     = updates.age;
-  if (updates.sex     !== undefined) row.sex     = updates.sex;
-  if (updates.grade   !== undefined) row.grade   = updates.grade;
-  if (updates.section !== undefined) row.section = updates.section;
-
-  const { data, error } = await supabase.from("students").update(row).eq("id", studentId).select().single();
-  if (error) return { success: false, error: error.message };
-
-  if (updates.age     !== undefined) localStorage.setItem("studentAge",     String(updates.age));
-  if (updates.sex     !== undefined) localStorage.setItem("studentSex",     updates.sex);
-  if (updates.grade   !== undefined) localStorage.setItem("studentGrade",   updates.grade);
-  if (updates.section !== undefined) localStorage.setItem("studentSection", updates.section);
-
-  return { success: true, student: data };
-}
-
 // ─── CUSTOM LOCATIONS API (admin-managed places for Location Breakdown) ────
 export async function getCustomLocations() {
   const { data, error } = await supabase.from("custom_locations").select("*");

@@ -201,8 +201,6 @@ create policy "students select own or admin" on students for select
   using (auth.uid() = id or is_admin());
 create policy "students insert own" on students for insert
   with check (auth.uid() = id);
-create policy "students update own" on students for update
-  using (auth.uid() = id) with check (auth.uid() = id);
 create policy "students update admin" on students for update
   using (is_admin());
 create policy "students delete admin" on students for delete

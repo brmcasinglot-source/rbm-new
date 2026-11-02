@@ -24,6 +24,10 @@ For an existing database, run [`conference_management.sql`](./conference_managem
 
 For an existing database where renaming a section fails, run [`grade_sections_update_policy.sql`](./grade_sections_update_policy.sql) in the Supabase SQL Editor. The `grade_sections` table needs this Admin-only update policy for the Save action; new databases created from `schema.sql` already include it.
 
+To make student personal information read-only after registration on an existing database, run [`student_profile_read_only.sql`](./student_profile_read_only.sql) in the Supabase SQL Editor. New databases created from `schema.sql` already enforce this.
+
+Password reset uses Supabase Auth email recovery. In **Authentication → URL Configuration**, add `https://your-app-domain/login?mode=reset` (and your local development URL, such as `http://localhost:5173/login?mode=reset`) to the allowed Redirect URLs. Keep the Supabase password recovery email template enabled and make its link use `{{ .ConfirmationURL }}` so the reset link verifies the account before allowing a new password.
+
 ## Optional local command
 
 If you prefer the terminal, the command below automates the same setup:

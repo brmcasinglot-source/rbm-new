@@ -6,8 +6,12 @@ import "../styles/Login.css";
 import {
   signIn,
   signUpStudent,
+  sendPasswordResetEmail,
+  updatePassword,
+  signOut as signOutUser,
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 function getPasswordStrength(password) {
   const checks = [
@@ -26,13 +30,18 @@ function getPasswordStrength(password) {
 export default function Login() {
   const navigate = useNavigate();
 
-  const [mode,     setMode]     = useState("login");   // "login" | "register"
+  const [mode,     setMode]     = useState(() => new URLSearchParams(window.location.search).get("mode") === "reset" ? "reset" : "login");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [error,    setError]    = useState("");
   const [success,  setSuccess]  = useState("");
   const [loading,  setLoading]  = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmNewPass, setShowConfirmNewPass] = useState(false);
+  const [recoverySessionReady, setRecoverySessionReady] = useState(false);
 
   // Registration fields
   const [regName,    setRegName]    = useState("");
@@ -46,6 +55,28 @@ export default function Login() {
   const [regSection, setRegSection] = useState("");
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
+  const resetPasswordStrength = getPasswordStrength(newPassword);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) {
+        setRecoverySessionReady(true);
+        setMode("reset");
+        setError("");
+        setSuccess("");
+      }
+    });
+
+    if (new URLSearchParams(window.location.search).get("mode") === "reset") {
+      supabase.auth.getSession().then(({ data, error: sessionError }) => {
+        if (sessionError) setError(sessionError.message);
+        setRecoverySessionReady(!!data.session);
+      });
+    }
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Used for the registration guidance below the submit button.
   const isRegisterFormComplete =
@@ -62,11 +93,17 @@ export default function Login() {
 
   const resetForm = () => {
     setEmail(""); setPassword(""); setError(""); setSuccess("");
+    setNewPassword(""); setConfirmNewPassword("");
     setRegName(""); setRegLRN(""); setRegEmail(""); setRegPass(""); setRegConfirm("");
     setRegAge(""); setRegSex(""); setRegGrade(""); setRegSection("");
   };
 
-  const switchMode = (m) => { setMode(m); resetForm(); };
+  const switchMode = (m) => {
+    setMode(m);
+    setRecoverySessionReady(false);
+    resetForm();
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
 
   // ── LOGIN ─────────────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
@@ -87,6 +124,65 @@ export default function Login() {
       return;
     }
     navigate(result.role === "admin" ? "/admindashboard" : "/studentdashboard");
+  };
+
+  const handlePasswordResetRequest = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Enter the Gmail address you used to register.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await sendPasswordResetEmail(email.trim());
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setSuccess("If an account exists for this email, a password reset link has been sent. Check your Gmail inbox and spam folder.");
+    } catch (err) {
+      setError(`Could not send the reset email: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (resetPasswordStrength.score < 5) {
+      setError("Choose a strong password that meets all the requirements.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError("The passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await updatePassword(newPassword);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      await signOutUser();
+      setRecoverySessionReady(false);
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setPassword("");
+      setSuccess("Your password has been reset. You can now sign in with your new password.");
+      setMode("login");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (err) {
+      setError(`Could not update your password: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── REGISTER ──────────────────────────────────────────────────────────────
@@ -173,24 +269,121 @@ export default function Login() {
         <div className="login-card">
 
           {/* SIGN IN / SIGN UP TOGGLE */}
-          <div className="role-toggle">
-            <button
-              type="button"
-              className={`role-btn ${mode === "login" ? "active" : ""}`}
-              onClick={() => switchMode("login")}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              className={`role-btn ${mode === "register" ? "active" : ""}`}
-              onClick={() => switchMode("register")}
-            >
-              Sign Up
-            </button>
-          </div>
+          {["login", "register"].includes(mode) && (
+            <div className="role-toggle">
+              <button
+                type="button"
+                className={`role-btn ${mode === "login" ? "active" : ""}`}
+                onClick={() => switchMode("login")}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                className={`role-btn ${mode === "register" ? "active" : ""}`}
+                onClick={() => switchMode("register")}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
-          {mode === "register" ? (
+          {mode === "reset" ? (
+            <>
+              <h2>Set a new password</h2>
+              <p className="login-sub">Choose a new password for your account.</p>
+              {!recoverySessionReady && (
+                <div className="login-error">
+                  <span>⚠</span> Your reset link is invalid or expired. Request a new reset email.
+                </div>
+              )}
+              <form onSubmit={handlePasswordUpdate} noValidate>
+                <div className="input-group">
+                  <label className="input-label">New Password</label>
+                  <div className="input-wrap">
+                    <input
+                      className={`input ${error ? "input-error" : ""}`}
+                      type={showNewPass ? "text" : "password"}
+                      placeholder="Choose a strong password"
+                      value={newPassword}
+                      onChange={(event) => { setNewPassword(event.target.value); setError(""); }}
+                      autoComplete="new-password"
+                    />
+                    <button type="button" className="show-pass-btn" onClick={() => setShowNewPass((show) => !show)}>
+                      {showNewPass ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  {newPassword && (
+                    <div className="password-strength" aria-live="polite">
+                      <div className="password-strength-header">
+                        <span>Password strength</span>
+                        <strong style={{ color: resetPasswordStrength.color }}>{resetPasswordStrength.label}</strong>
+                      </div>
+                      <div className="password-strength-bars">
+                        {[1, 2, 3, 4, 5].map((bar) => (
+                          <span key={bar} style={{ backgroundColor: bar <= resetPasswordStrength.score ? resetPasswordStrength.color : "#e2e8f0" }} />
+                        ))}
+                      </div>
+                      <ul className="password-requirements">
+                        <li className={resetPasswordStrength.checks[0] ? "met" : ""}>8 or more characters</li>
+                        <li className={resetPasswordStrength.checks[1] ? "met" : ""}>Lowercase letter</li>
+                        <li className={resetPasswordStrength.checks[2] ? "met" : ""}>Uppercase letter</li>
+                        <li className={resetPasswordStrength.checks[3] ? "met" : ""}>Number</li>
+                        <li className={resetPasswordStrength.checks[4] ? "met" : ""}>Special character</li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Confirm New Password</label>
+                  <div className="input-wrap">
+                    <input
+                      className={`input ${error && confirmNewPassword ? "input-error" : ""}`}
+                      type={showConfirmNewPass ? "text" : "password"}
+                      placeholder="Re-enter your new password"
+                      value={confirmNewPassword}
+                      onChange={(event) => { setConfirmNewPassword(event.target.value); setError(""); }}
+                      autoComplete="new-password"
+                    />
+                    <button type="button" className="show-pass-btn" onClick={() => setShowConfirmNewPass((show) => !show)}>
+                      {showConfirmNewPass ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+                {error && <div className="login-error"><span>⚠</span> {error}</div>}
+                {success && <div className="login-success"><span>✓</span> {success}</div>}
+                <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading || !recoverySessionReady}>
+                  {loading ? "Updating password…" : "Reset Password"}
+                </button>
+              </form>
+              <button className="back-btn" type="button" onClick={() => switchMode("login")}>← Back to Sign In</button>
+            </>
+          ) : mode === "forgot" ? (
+            <>
+              <h2>Forgot your password?</h2>
+              <p className="login-sub">Enter the Gmail address linked to your account. We’ll send you a secure password reset link.</p>
+              <form onSubmit={handlePasswordResetRequest} noValidate>
+                <div className="input-group">
+                  <label className="input-label">Email Address</label>
+                  <input
+                    className={`input ${error ? "input-error" : ""}`}
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(event) => { setEmail(event.target.value); setError(""); setSuccess(""); }}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+                {error && <div className="login-error"><span>⚠</span> {error}</div>}
+                {success && <div className="login-success"><span>✓</span> {success}</div>}
+                <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading}>
+                  {loading ? "Sending email…" : "Send Reset Link"}
+                </button>
+              </form>
+              <button className="back-btn" type="button" onClick={() => setMode("login")}>← Back to Sign In</button>
+            </>
+          ) : mode === "register" ? (
             <>
               <h2>Let's get you set up!</h2>
               <p className="login-sub">Just a few details to create your student account</p>
@@ -423,6 +616,12 @@ export default function Login() {
                       {showPass ? "Hide" : "Show"}
                     </button>
                   </div>
+                </div>
+
+                <div className="login-forgot-row">
+                  <button type="button" onClick={() => { setError(""); setSuccess(""); setMode("forgot"); }}>
+                    Forgot password?
+                  </button>
                 </div>
 
                 {error && (

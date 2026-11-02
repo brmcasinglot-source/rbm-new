@@ -17,7 +17,7 @@ import {
   getReports, submitReport,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
-  updateStudentProfile, requestConferenceChange,
+  requestConferenceChange,
   LOCATION_META, getCustomLocations,
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
@@ -121,15 +121,10 @@ export default function StudentDashboard() {
 
   const studentName = localStorage.getItem("studentName") || "";
   const languagePreferenceKey = `studentLanguage:${localStorage.getItem("studentId") || "default"}`;
-  const [profileEditing,    setProfileEditing]    = useState(false);
-  const [profileGrade,      setProfileGrade]      = useState(() => localStorage.getItem("studentGrade")   || "");
-  const [profileSection,    setProfileSection]    = useState(() => localStorage.getItem("studentSection") || "");
-  const [profileAge,        setProfileAge]        = useState(() => localStorage.getItem("studentAge")     || "");
-  const [profileGender,     setProfileGender]     = useState(() => localStorage.getItem("studentSex")     || "");
-  const [profileGradeEdit,  setProfileGradeEdit]  = useState(() => localStorage.getItem("studentGrade")   || "");
-  const [profileSectionEdit,setProfileSectionEdit]= useState(() => localStorage.getItem("studentSection") || "");
-  const [profileAgeEdit,    setProfileAgeEdit]    = useState(() => localStorage.getItem("studentAge")     || "");
-  const [profileGenderEdit, setProfileGenderEdit] = useState(() => localStorage.getItem("studentSex")     || "");
+  const profileGrade = localStorage.getItem("studentGrade") || "";
+  const profileSection = localStorage.getItem("studentSection") || "";
+  const profileAge = localStorage.getItem("studentAge") || "";
+  const profileGender = localStorage.getItem("studentSex") || "";
   const [activeTab,   setActiveTab]   = useState("dashboard");
   const [language, setLanguage] = useState(() => localStorage.getItem(languagePreferenceKey) || "en");
   const [hubSearchQuery, setHubSearchQuery] = useState("");
@@ -1155,66 +1150,13 @@ export default function StudentDashboard() {
                 <div className="s-profile-info-box">
                   <div className="s-profile-info-header">
                     <span className="s-profile-info-title">Personal Information</span>
-                    {!profileEditing
-                      ? <button className="s-edit-btn" onClick={() => setProfileEditing(true)}>✏️ Edit</button>
-                      : <div style={{ display: "flex", gap: 8 }}>
-                          <button className="s-cancel-btn" style={{ fontSize: 12, padding: "4px 12px" }} onClick={() => {
-                            setProfileEditing(false);
-                            setProfileAgeEdit(profileAge);
-                            setProfileGenderEdit(profileGender);
-                            setProfileGradeEdit(profileGrade);
-                            setProfileSectionEdit(profileSection);
-                          }}>Cancel</button>
-                          <button className="s-submit-btn" style={{ fontSize: 12, padding: "4px 14px" }} onClick={async () => {
-                            const id = localStorage.getItem("studentId");
-                            const result = await updateStudentProfile(id, {
-                              age:     profileAgeEdit,
-                              sex:     profileGenderEdit,
-                              grade:   profileGradeEdit,
-                              section: profileSectionEdit,
-                            });
-                            if (!result.success) { showToast("Could not update profile: " + result.error, "error"); return; }
-                            setProfileAge(profileAgeEdit);
-                            setProfileGender(profileGenderEdit);
-                            setProfileGrade(profileGradeEdit);
-                            setProfileSection(profileSectionEdit);
-                            setProfileEditing(false);
-                            showToast("Profile updated successfully!");
-                          }}>Save</button>
-                        </div>
-                    }
                   </div>
                   <div className="s-profile-fields">
                     <div className="s-profile-field"><label>Full Name</label><span>{studentName || "—"}</span></div>
-                    <div className="s-profile-field"><label>Age</label>
-                      {profileEditing
-                        ? <input className="s-profile-select" type="number" min="10" max="25" placeholder="e.g. 14" value={profileAgeEdit} onChange={e => setProfileAgeEdit(e.target.value)} style={{ width: 80 }} />
-                        : <span>{profileAge || "—"}</span>}
-                    </div>
-                    <div className="s-profile-field"><label>Gender</label>
-                      {profileEditing
-                        ? <select className="s-profile-select" value={profileGenderEdit} onChange={e => setProfileGenderEdit(e.target.value)}>
-                            <option value="">Select gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                          </select>
-                        : <span>{profileGender || "—"}</span>}
-                    </div>
-                    <div className="s-profile-field">
-                      <label>Grade Level</label>
-                      {profileEditing
-                        ? <select className="s-profile-select" value={profileGradeEdit} onChange={e => setProfileGradeEdit(e.target.value)}>
-                            <option value="">Select grade</option>
-                            {["Grade 7","Grade 8","Grade 9","Grade 10"].map(g => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                        : <span>{profileGrade || "—"}</span>}
-                    </div>
-                    <div className="s-profile-field">
-                      <label>Section</label>
-                      {profileEditing
-                        ? <input className="s-profile-select" type="text" placeholder="e.g. Rizal" value={profileSectionEdit} onChange={e => setProfileSectionEdit(e.target.value)} />
-                        : <span>{profileSection || "—"}</span>}
-                    </div>
+                    <div className="s-profile-field"><label>Age</label><span>{profileAge || "—"}</span></div>
+                    <div className="s-profile-field"><label>Gender</label><span>{profileGender || "—"}</span></div>
+                    <div className="s-profile-field"><label>Grade Level</label><span>{profileGrade || "—"}</span></div>
+                    <div className="s-profile-field"><label>Section</label><span>{profileSection || "—"}</span></div>
                     <div className="s-profile-field"><label>Total Reports Filed</label><span style={{ color: "#16a34a", fontWeight: 700 }}>{myReports.length}</span></div>
                   </div>
                 </div>

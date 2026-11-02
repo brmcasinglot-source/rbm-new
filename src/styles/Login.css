@@ -289,6 +289,25 @@ select.input:not(.placeholder-select) { color: #1e293b; }
   background: #f0fdf4;
 }
 
+.login-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -7px 0 16px;
+}
+
+.login-forgot-row button {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #15803d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.login-forgot-row button:hover { color: #166534; text-decoration: underline; }
+
 /* ── ERROR / SUCCESS ── */
 .login-error {
   background: #fee2e2;

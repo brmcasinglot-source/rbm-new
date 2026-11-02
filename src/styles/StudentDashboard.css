@@ -2922,19 +2922,6 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.s-edit-btn {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--s-accent, #16a34a);
-  background: none;
-  border: 1.5px solid var(--s-accent, #16a34a);
-  border-radius: 8px;
-  padding: 4px 12px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s;
-}
-.s-edit-btn:hover { background: #f0fdf4; }
 .s-profile-fields { display: flex; flex-direction: column; gap: 8px; }
 .s-profile-field {
   display: flex;

@@ -186,6 +186,43 @@ export async function signIn(email, password) {
   return { success: false, error: "No account profile found for this login. Please contact the administrator." };
 }
 
+export async function sendPasswordResetEmail(email) {
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Password reset is unavailable because Supabase is not configured.",
+    };
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/login?mode=reset`,
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function updatePassword(password) {
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Password reset is unavailable because Supabase is not configured.",
+    };
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) return { success: false, error: sessionError.message };
+  if (!sessionData.session) {
+    return {
+      success: false,
+      error: "Your password reset link is invalid or has expired. Request a new reset email.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
 export async function signOut() {
   if (supabase) await supabase.auth.signOut();
   ["studentName", "studentId", "studentLRN", "studentAge", "studentSex", "studentGrade", "studentSection", "email", "userRole"]
