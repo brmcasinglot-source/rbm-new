@@ -26,7 +26,7 @@ import {
 
 import {
   getReports, updateReportStatus, reviewConferenceRequest,
-  updateConferenceOutcome, deleteReport,
+  updateConferenceOutcome, updateConferenceSchedule, cancelConference, deleteReport,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
@@ -104,6 +104,16 @@ function to12Hour(timeStr) {
   const period = h >= 12 ? "PM" : "AM";
   const hour   = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
+function formatConferenceDate(dateValue) {
+  if (!dateValue) return "—";
+  const value = String(dateValue);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 function hexToRgba(hex, alpha = 1) {
   const h = hex.replace("#", "");
@@ -224,6 +234,9 @@ export default function AdminDashboard() {
   const [conferenceLocation,   setConferenceLocation]   = useState("");
   const [conferenceNotes,      setConferenceNotes]      = useState("");
   const [manageFieldErrors,    setManageFieldErrors]    = useState({});
+  const [conferenceEditing,    setConferenceEditing]    = useState(false);
+  const [conferenceCanceling,  setConferenceCanceling]  = useState(false);
+  const [conferenceCancelReason, setConferenceCancelReason] = useState("");
   const [toast,                setToast]                = useState(null);
 
   // Evidence lightbox
@@ -233,6 +246,8 @@ export default function AdminDashboard() {
   const [conferenceActionSaving, setConferenceActionSaving] = useState(false);
   const [conferenceRescheduleDate, setConferenceRescheduleDate] = useState("");
   const [conferenceRescheduleTime, setConferenceRescheduleTime] = useState("");
+  const [conferenceRescheduleLocation, setConferenceRescheduleLocation] = useState("");
+  const [conferenceRescheduleNotes, setConferenceRescheduleNotes] = useState("");
   const [conferenceNoShowConfirm, setConferenceNoShowConfirm] = useState(false);
   const [conferencePanelHidden, setConferencePanelHidden] = useState(false);
   const [conferencePanelPinned, setConferencePanelPinned] = useState(false);
@@ -428,6 +443,12 @@ export default function AdminDashboard() {
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceManagementList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
+  const selectedConference = selectedReport?.scheduledConference || {};
+  const selectedConferenceStatus = selectedConference.status || (selectedConference.completed ? "Completed" : "Scheduled");
+  const hasSelectedConference = !!(
+    selectedConference.date || selectedConference.time || selectedConference.location
+  );
+  const selectedConferenceRequest = selectedConference.request;
 
   const typeCounts  = getTypeCounts(incidents);
   const monthlyData = useMemo(() => getMonthlyTrend(incidents, 6), [incidents]);
@@ -765,9 +786,9 @@ export default function AdminDashboard() {
     if (
       decision === "approve" &&
       activeConferenceViewItem.request?.type === "reschedule" &&
-      (!conferenceRescheduleDate || !conferenceRescheduleTime)
+      (!conferenceRescheduleDate || !conferenceRescheduleTime || !conferenceRescheduleLocation.trim())
     ) {
-      showToast("Choose a new date and time before approving the reschedule.", "error");
+      showToast("Choose a new date, time, and location before approving the reschedule.", "error");
       return;
     }
 
@@ -777,7 +798,12 @@ export default function AdminDashboard() {
         activeConferenceViewItem.id,
         decision,
         decision === "approve"
-          ? { date: conferenceRescheduleDate, time: conferenceRescheduleTime }
+          ? {
+              date: conferenceRescheduleDate,
+              time: conferenceRescheduleTime,
+              location: conferenceRescheduleLocation,
+              notes: conferenceRescheduleNotes,
+            }
           : undefined
       );
       await refreshConferenceReports();
@@ -793,6 +819,8 @@ export default function AdminDashboard() {
     setConferenceViewItem(conference);
     setConferenceRescheduleDate(conference.date === "Date TBD" ? "" : conference.date);
     setConferenceRescheduleTime(conference.rawTime);
+    setConferenceRescheduleLocation(conference.location === "Location TBD" ? "" : conference.location);
+    setConferenceRescheduleNotes(conference.notes || "");
   };
 
   const handleOpenManage = (report) => {
@@ -805,31 +833,129 @@ export default function AdminDashboard() {
     setConferenceTime(report.scheduledConference?.time || "");
     setConferenceLocation(report.scheduledConference?.location || "");
     setConferenceNotes(report.scheduledConference?.notes || "");
+    setConferenceEditing(false);
+    setConferenceCanceling(false);
+    setConferenceCancelReason("");
     setManageFieldErrors({});
     setShowUpdateModal(true);
+  };
+
+  const refreshManagedIncident = async (updatedReport) => {
+    const refreshedReports = await getReports();
+    setIncidents(refreshedReports);
+    setSelectedReport(refreshedReports.find((report) => report.id === updatedReport.id) || updatedReport);
+  };
+
+  const handleSaveManagedConference = async () => {
+    if (!selectedReport || conferenceActionSaving) return;
+    if (!conferenceDate || !conferenceTime || !conferenceLocation.trim()) {
+      showToast("Choose a date, time, and location for the conference.", "error");
+      return;
+    }
+
+    setConferenceActionSaving(true);
+    try {
+      const updatedReport = await updateConferenceSchedule(selectedReport.id, {
+        date: conferenceDate,
+        time: conferenceTime,
+        location: conferenceLocation,
+        notes: conferenceNotes,
+      });
+      await refreshManagedIncident(updatedReport);
+      setConferenceEditing(false);
+      showToast(hasSelectedConference ? "Conference schedule updated." : "Conference scheduled.");
+    } catch (err) {
+      showToast(`Could not save conference schedule: ${err.message}`, "error");
+    } finally {
+      setConferenceActionSaving(false);
+    }
+  };
+
+  const handleManagedConferenceOutcome = async (status) => {
+    if (!selectedReport || conferenceActionSaving) return;
+    if (status === "No-show" && !window.confirm("Confirm that the student did not attend this conference?")) return;
+
+    setConferenceActionSaving(true);
+    try {
+      const updatedReport = await updateConferenceOutcome(selectedReport.id, status);
+      await refreshManagedIncident(updatedReport);
+      showToast(`Conference marked as ${status}.`);
+    } catch (err) {
+      showToast(`Could not update conference: ${err.message}`, "error");
+    } finally {
+      setConferenceActionSaving(false);
+    }
+  };
+
+  const handleCancelManagedConference = async () => {
+    if (!selectedReport || conferenceActionSaving) return;
+    if (!conferenceCancelReason.trim()) {
+      showToast("Enter a reason for cancelling the conference.", "error");
+      return;
+    }
+
+    setConferenceActionSaving(true);
+    try {
+      const updatedReport = await cancelConference(selectedReport.id, conferenceCancelReason);
+      await refreshManagedIncident(updatedReport);
+      setConferenceCancelReason("");
+      setConferenceCanceling(false);
+      showToast("Conference cancelled.");
+    } catch (err) {
+      showToast(`Could not cancel conference: ${err.message}`, "error");
+    } finally {
+      setConferenceActionSaving(false);
+    }
+  };
+
+  const handleReviewManagedConferenceRequest = async (decision) => {
+    if (!selectedReport || conferenceActionSaving) return;
+    const isReschedule = selectedConferenceRequest?.type === "reschedule";
+    if (
+      decision === "approve" &&
+      isReschedule &&
+      (!conferenceDate || !conferenceTime || !conferenceLocation.trim())
+    ) {
+      showToast("Choose the new date, time, and location before approving the reschedule.", "error");
+      return;
+    }
+
+    setConferenceActionSaving(true);
+    try {
+      const updatedReport = await reviewConferenceRequest(
+        selectedReport.id,
+        decision,
+        decision === "approve" && isReschedule
+          ? {
+              date: conferenceDate,
+              time: conferenceTime,
+              location: conferenceLocation,
+              notes: conferenceNotes,
+            }
+          : undefined
+      );
+      await refreshManagedIncident(updatedReport);
+      showToast(`Conference request ${decision === "approve" ? "approved" : "rejected"}.`);
+    } catch (err) {
+      showToast(`Could not review conference request: ${err.message}`, "error");
+    } finally {
+      setConferenceActionSaving(false);
+    }
   };
 
   const handleConfirmUpdate = async () => {
     if (!selectedReport) return;
 
-    const errors = {
-      adminNotes:         !adminNotes.trim(),
-      conferenceDate:     !conferenceDate.trim(),
-      conferenceTime:     !conferenceTime.trim(),
-      conferenceLocation: !conferenceLocation.trim(),
-      conferenceNotes:    !conferenceNotes.trim(),
-    };
+    const errors = { adminNotes: !adminNotes.trim() };
     if (Object.values(errors).some(Boolean)) {
       setManageFieldErrors(errors);
-      showToast("Please fill in all fields before updating the status.", "error");
+      showToast("Please add staff notes before updating the status.", "error");
       return;
     }
     setManageFieldErrors({});
 
-    const conference = { date: conferenceDate, time: conferenceTime, location: conferenceLocation, notes: conferenceNotes };
-
     try {
-      await updateReportStatus(selectedReport.id, newStatus, adminNotes, conference);
+      await updateReportStatus(selectedReport.id, newStatus, adminNotes);
     } catch (err) {
       showToast("Could not update incident: " + err.message, "error");
       return;
@@ -2455,6 +2581,191 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              <section className="manage-conference-section">
+                <div className="manage-conference-heading">
+                  <div>
+                    <Calendar size={17} />
+                    <h4>Conference Schedule</h4>
+                  </div>
+                  {hasSelectedConference && <span className="admin-conference-case">Case #{selectedReport.id}</span>}
+                </div>
+
+                {!hasSelectedConference ? (
+                  <div className="manage-conference-empty">
+                    <strong>No Conference Scheduled</strong>
+                    <p>Schedule a conference for this incident when needed.</p>
+                    {!conferenceEditing && (
+                      <button
+                        type="button"
+                        className="manage-conference-button primary"
+                        onClick={() => setConferenceEditing(true)}
+                      >
+                        <Plus size={15} /> Schedule Conference
+                      </button>
+                    )}
+                    {conferenceEditing && (
+                      <div className="manage-conference-editor">
+                        <div className="manage-conference-fields">
+                          <label>Date<input type="date" value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
+                          <label>Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
+                          <label className="wide">Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} placeholder="Prefect Office, Guidance Room, or virtual link" /></label>
+                          <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} placeholder="What the meeting will cover or who should attend" /></label>
+                        </div>
+                        <div className="manage-conference-actions">
+                          <button type="button" className="manage-conference-button" onClick={() => setConferenceEditing(false)} disabled={conferenceActionSaving}>Cancel</button>
+                          <button type="button" className="manage-conference-button primary" onClick={handleSaveManagedConference} disabled={conferenceActionSaving}>
+                            {conferenceActionSaving ? "Saving..." : "Schedule Conference"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={`manage-conference-card ${selectedConferenceStatus.toLowerCase().replace(/\s/g, "-")}`}>
+                    <div className="manage-conference-card-heading">
+                      <strong>Conference Schedule</strong>
+                      <span className={`manage-conference-badge ${selectedConferenceStatus.toLowerCase().replace(/\s/g, "-")}`}>
+                        {selectedConferenceStatus === "Completed" && <CheckCircle size={14} />}
+                        {selectedConferenceStatus === "No-show" && <AlertTriangle size={14} />}
+                        {selectedConferenceStatus}
+                      </span>
+                    </div>
+
+                    {selectedConferenceStatus === "Cancelled" ? (
+                      <>
+                        <div className="manage-conference-details">
+                          <div><span>Original Date</span><strong>{formatConferenceDate(selectedConference.cancellationSchedule?.date || selectedConference.date)}</strong></div>
+                          <div><span>Original Time</span><strong>{to12Hour(selectedConference.cancellationSchedule?.time || selectedConference.time)}</strong></div>
+                          <div><span>Location</span><strong>{selectedConference.cancellationSchedule?.location || selectedConference.location || "—"}</strong></div>
+                        </div>
+                        <p className="manage-conference-reason"><strong>Cancellation Reason:</strong> {selectedConference.cancellationReason || selectedConferenceRequest?.reason || "No reason provided."}</p>
+                      </>
+                    ) : (
+                      <>
+                        {selectedConferenceStatus === "Reschedule Requested" && (
+                          <p className="manage-conference-current-schedule">
+                            <strong>Current Schedule:</strong> {formatConferenceDate(selectedConference.date)} • {to12Hour(selectedConference.time)}
+                          </p>
+                        )}
+                        <div className="manage-conference-details">
+                          <div><span>Date</span><strong>{formatConferenceDate(selectedConference.date)}</strong></div>
+                          <div><span>Time</span><strong>{to12Hour(selectedConference.time)}</strong></div>
+                          <div><span>Location</span><strong>{selectedConference.location || "—"}</strong></div>
+                          {selectedConferenceStatus !== "No-show" && (
+                            <div className="manage-conference-notes"><span>Agenda / Notes</span><strong>{selectedConference.notes || "—"}</strong></div>
+                          )}
+                        </div>
+                        {selectedConferenceStatus === "Completed" && (
+                          <p className="manage-conference-completed-on">
+                            <strong>Completed on:</strong> {formatConferenceDate(selectedConference.completedAt)}
+                          </p>
+                        )}
+                        {selectedConferenceStatus === "Reschedule Requested" && (
+                          <p className="manage-conference-reason">
+                            <strong>Student's Reason:</strong> {selectedConferenceRequest?.reason || "No reason provided."}
+                          </p>
+                        )}
+                        {selectedConferenceStatus === "Cancellation Requested" && (
+                          <p className="manage-conference-reason">
+                            <strong>Student's Reason:</strong> {selectedConferenceRequest?.reason || "No reason provided."}
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {conferenceEditing && (
+                      <div className="manage-conference-editor">
+                        <div className="manage-conference-fields">
+                          <label>Date<input type="date" value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
+                          <label>Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
+                          <label className="wide">Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} placeholder="Prefect Office, Guidance Room, or virtual link" /></label>
+                          <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} placeholder="What the meeting will cover or who should attend" /></label>
+                        </div>
+                        <div className="manage-conference-actions">
+                          <button type="button" className="manage-conference-button" onClick={() => setConferenceEditing(false)} disabled={conferenceActionSaving}>Keep Current Schedule</button>
+                          <button type="button" className="manage-conference-button primary" onClick={handleSaveManagedConference} disabled={conferenceActionSaving}>
+                            {conferenceActionSaving ? "Saving..." : hasSelectedConference ? "Save Schedule" : "Schedule Conference"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedConferenceRequest?.state === "Pending" && selectedConferenceStatus === "Reschedule Requested" && (
+                      <div className="manage-conference-editor">
+                        <p className="manage-conference-request-title">Select the approved new schedule</p>
+                        <div className="manage-conference-fields">
+                          <label>New Date<input type="date" value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
+                          <label>New Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
+                          <label className="wide">New Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} /></label>
+                          <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} /></label>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedConferenceStatus === "Cancellation Requested" && selectedConferenceRequest?.state === "Pending" && (
+                      <div className="manage-conference-request-banner">
+                        Student cancellation request awaiting Prefect review.
+                      </div>
+                    )}
+
+                    {conferenceCanceling && ["Scheduled", "Rescheduled"].includes(selectedConferenceStatus) && (
+                      <div className="manage-conference-cancel-form">
+                        <label htmlFor="conference-cancel-reason">Cancellation reason</label>
+                        <textarea
+                          id="conference-cancel-reason"
+                          rows={2}
+                          value={conferenceCancelReason}
+                          onChange={(event) => setConferenceCancelReason(event.target.value)}
+                          placeholder="Explain why this conference is being cancelled"
+                        />
+                        <div className="manage-conference-actions">
+                          <button type="button" className="manage-conference-button" onClick={() => setConferenceCanceling(false)} disabled={conferenceActionSaving}>Keep Conference</button>
+                          <button type="button" className="manage-conference-button danger" onClick={handleCancelManagedConference} disabled={conferenceActionSaving}>
+                            {conferenceActionSaving ? "Saving..." : "Confirm Cancellation"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {!conferenceEditing && selectedConferenceRequest?.state === "Pending" && (
+                      <div className="manage-conference-actions">
+                        <button
+                          type="button"
+                          className="manage-conference-button"
+                          onClick={() => handleReviewManagedConferenceRequest("reject")}
+                          disabled={conferenceActionSaving}
+                        >
+                          Reject Request
+                        </button>
+                        <button
+                          type="button"
+                          className="manage-conference-button primary"
+                          onClick={() => handleReviewManagedConferenceRequest("approve")}
+                          disabled={conferenceActionSaving}
+                        >
+                          {conferenceActionSaving ? "Saving..." : selectedConferenceStatus === "Reschedule Requested" ? "Approve & Reschedule" : "Approve Cancellation"}
+                        </button>
+                      </div>
+                    )}
+
+                    {!conferenceEditing && selectedConferenceRequest?.state !== "Pending" && ["Scheduled", "Rescheduled"].includes(selectedConferenceStatus) && (
+                      <div className="manage-conference-actions">
+                        <button type="button" className="manage-conference-button" onClick={() => setConferenceEditing(true)}>Edit Schedule</button>
+                        <button type="button" className="manage-conference-button primary" onClick={() => handleManagedConferenceOutcome("Completed")} disabled={conferenceActionSaving}>
+                          Mark as Completed
+                        </button>
+                        <button type="button" className="manage-conference-button warning" onClick={() => handleManagedConferenceOutcome("No-show")} disabled={conferenceActionSaving}>
+                          Mark as No-show
+                        </button>
+                        {!conferenceCanceling && (
+                          <button type="button" className="manage-conference-button danger" onClick={() => setConferenceCanceling(true)}>Cancel Conference</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
               <div className="detail-group full-width" style={{ marginBottom: 14 }}>
                 <label>What Happened?</label>
                 <div className="description-display">{selectedReport.description || "No description provided."}</div>
@@ -2529,7 +2840,7 @@ export default function AdminDashboard() {
               <div className="admin-management-section">
                 <div className="title-stack">
                   <h4>Administrative Oversight</h4>
-                  <p>Update status and document notes. All fields below are required before the status can be updated.</p>
+                  <p>Update the incident status and document staff notes.</p>
                 </div>
                 <div className="form-group">
                   <label>Update Case Status</label>
@@ -2549,38 +2860,6 @@ export default function AdminDashboard() {
                   {manageFieldErrors.adminNotes && <span className="field-error-msg">Staff notes are required.</span>}
                 </div>
 
-                <div className="form-group" style={{ marginTop: 14 }}>
-                  <label>Scheduled Conference Date <span style={{ color: "#ef4444" }}>*</span></label>
-                  <input type="date" value={conferenceDate}
-                    className={manageFieldErrors.conferenceDate ? "field-error" : ""}
-                    onChange={(e) => { setConferenceDate(e.target.value); setManageFieldErrors((p) => ({ ...p, conferenceDate: false })); }}
-                    style={{ width: "100%" }} />
-                  {manageFieldErrors.conferenceDate && <span className="field-error-msg">Conference date is required.</span>}
-                </div>
-                <div className="form-group" style={{ marginTop: 14 }}>
-                  <label>Conference Time <span style={{ color: "#ef4444" }}>*</span></label>
-                  <input type="time" value={conferenceTime}
-                    className={manageFieldErrors.conferenceTime ? "field-error" : ""}
-                    onChange={(e) => { setConferenceTime(e.target.value); setManageFieldErrors((p) => ({ ...p, conferenceTime: false })); }}
-                    style={{ width: "100%" }} />
-                  {manageFieldErrors.conferenceTime && <span className="field-error-msg">Conference time is required.</span>}
-                </div>
-                <div className="form-group" style={{ marginTop: 14 }}>
-                  <label>Conference Location <span style={{ color: "#ef4444" }}>*</span></label>
-                  <input type="text" placeholder="Prefect Office, Guidance Room, or virtual link" value={conferenceLocation}
-                    className={manageFieldErrors.conferenceLocation ? "field-error" : ""}
-                    onChange={(e) => { setConferenceLocation(e.target.value); setManageFieldErrors((p) => ({ ...p, conferenceLocation: false })); }}
-                    style={{ width: "100%" }} />
-                  {manageFieldErrors.conferenceLocation && <span className="field-error-msg">Conference location is required.</span>}
-                </div>
-                <div className="form-group" style={{ marginTop: 14 }}>
-                  <label>Conference Agenda / Notes <span style={{ color: "#ef4444" }}>*</span></label>
-                  <textarea placeholder="Explain what the meeting will cover or who should attend…"
-                    className={manageFieldErrors.conferenceNotes ? "field-error" : ""}
-                    style={{ minHeight: 80, fontSize: 13 }} value={conferenceNotes}
-                    onChange={(e) => { setConferenceNotes(e.target.value); setManageFieldErrors((p) => ({ ...p, conferenceNotes: false })); }} />
-                  {manageFieldErrors.conferenceNotes && <span className="field-error-msg">Conference agenda/notes are required.</span>}
-                </div>
               </div>
             </div>
 
@@ -2655,6 +2934,22 @@ export default function AdminDashboard() {
                               type="time"
                               value={conferenceRescheduleTime}
                               onChange={(event) => setConferenceRescheduleTime(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            New location
+                            <input
+                              type="text"
+                              value={conferenceRescheduleLocation}
+                              onChange={(event) => setConferenceRescheduleLocation(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Agenda / Notes
+                            <input
+                              type="text"
+                              value={conferenceRescheduleNotes}
+                              onChange={(event) => setConferenceRescheduleNotes(event.target.value)}
                             />
                           </label>
                         </div>

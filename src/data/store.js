@@ -176,48 +176,12 @@ export async function submitReport(reportData, evidenceFiles = []) {
   return reportRowToObj(data);
 }
 
-export async function updateReportStatus(reportId, newStatus, adminNotes = "", conference = undefined) {
+export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
   const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
   const updates = { status: newStatus, updated_at: new Date().toISOString() };
   if (adminNotes !== undefined) updates.admin_notes = adminNotes;
-
-  if (conference !== undefined) {
-    const hasConferenceValues = conference && (conference.date || conference.time || conference.location || conference.notes);
-    const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
-      ? currentRow.scheduled_conference
-      : {};
-    if (hasConferenceValues) {
-      const currentStatus = existingConference.status || (existingConference.completed ? "Completed" : "Scheduled");
-      const nextDate = conference.date || existingConference.date || "";
-      const nextTime = conference.time || existingConference.time || "";
-      const scheduleChanged = existingConference.date &&
-        (nextDate !== existingConference.date || nextTime !== existingConference.time);
-      const isTerminal = ["Completed", "Cancelled", "No-show"].includes(currentStatus);
-      const isRequestPending = ["Reschedule Requested", "Cancellation Requested"].includes(currentStatus);
-      if (scheduleChanged && isRequestPending) {
-        throw new Error("Review the pending conference request before changing its schedule.");
-      }
-
-      updates.scheduled_conference = {
-        ...existingConference,
-        date: nextDate,
-        time: nextTime,
-        location: conference.location || existingConference.location || "",
-        notes: conference.notes || existingConference.notes || "",
-        createdAt: existingConference.createdAt || new Date().toISOString(),
-        status: scheduleChanged && !isTerminal && !isRequestPending ? "Rescheduled" : currentStatus,
-        previousSchedule: scheduleChanged && !isTerminal && !isRequestPending
-          ? { date: existingConference.date, time: existingConference.time }
-          : existingConference.previousSchedule || null,
-        completed: currentStatus === "Completed",
-        completedAt: existingConference.completedAt || null,
-      };
-    } else {
-      updates.scheduled_conference = null;
-    }
-  }
 
   const allReports = (await getReports()).filter((r) => r.id !== reportId);
   updates.priority = computePriority(reportRowToObj({ ...currentRow, ...updates }), allReports);
@@ -225,8 +189,10 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "", c
   const { data, error } = await supabase.from("reports").update(updates).eq("id", reportId).select().single();
   if (error) throw error;
 
-  const conferenceText = data.scheduled_conference
-    ? ` • Conference scheduled on ${data.scheduled_conference.date || "TBD"}${data.scheduled_conference.time ? ` at ${data.scheduled_conference.time}` : ""}`
+  const conference = data.scheduled_conference;
+  const conferenceStatus = conference?.status || (conference?.completed ? "Completed" : "Scheduled");
+  const conferenceText = conference
+    ? ` • Conference status: ${conferenceStatus}${conference.date ? ` (${conference.date}${conference.time ? ` at ${conference.time}` : ""})` : ""}`
     : "";
 
   await addStudentNotification(
@@ -234,6 +200,121 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "", c
     data.submitted_id
   );
 
+  return reportRowToObj(data);
+}
+
+export async function updateConferenceSchedule(reportId, schedule) {
+  if (!schedule?.date || !schedule?.time || !schedule?.location?.trim()) {
+    throw new Error("A conference date, time, and location are required.");
+  }
+
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  if (fetchError) throw fetchError;
+
+  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
+    ? currentRow.scheduled_conference
+    : {};
+  const currentStatus = existingConference.status || (existingConference.completed ? "Completed" : "Scheduled");
+  const hasExistingSchedule = !!(existingConference.date || existingConference.time || existingConference.location);
+
+  if (["Reschedule Requested", "Cancellation Requested"].includes(currentStatus)) {
+    throw new Error("Review the pending conference request before changing its schedule.");
+  }
+  if (
+    (hasExistingSchedule && !["Scheduled", "Rescheduled"].includes(currentStatus)) ||
+    (!hasExistingSchedule && existingConference.status && existingConference.status !== "Scheduled")
+  ) {
+    throw new Error("This conference schedule cannot be edited in its current status.");
+  }
+
+  const now = new Date().toISOString();
+  const scheduleChanged = hasExistingSchedule && (
+    schedule.date !== existingConference.date ||
+    schedule.time !== existingConference.time ||
+    schedule.location.trim() !== existingConference.location ||
+    (schedule.notes || "") !== (existingConference.notes || "")
+  );
+  const scheduleSnapshot = {
+    date: existingConference.date || "",
+    time: existingConference.time || "",
+    location: existingConference.location || "",
+    notes: existingConference.notes || "",
+  };
+  const updatedConference = {
+    ...existingConference,
+    date: schedule.date,
+    time: schedule.time,
+    location: schedule.location.trim(),
+    notes: (schedule.notes || "").trim(),
+    createdAt: existingConference.createdAt || now,
+    status: hasExistingSchedule && scheduleChanged ? "Rescheduled" : currentStatus,
+    originalSchedule: existingConference.originalSchedule || (hasExistingSchedule ? scheduleSnapshot : {
+      date: schedule.date,
+      time: schedule.time,
+      location: schedule.location.trim(),
+      notes: (schedule.notes || "").trim(),
+    }),
+    previousSchedule: scheduleChanged ? scheduleSnapshot : existingConference.previousSchedule || null,
+    completed: false,
+  };
+
+  const { data, error } = await supabase.from("reports")
+    .update({ scheduled_conference: updatedConference, updated_at: now })
+    .eq("id", reportId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  await addStudentNotification({
+    title: `A conference for Case #${reportId} is scheduled for ${updatedConference.date} at ${updatedConference.time}.`,
+    type: "status",
+  }, data.submitted_id);
+  return reportRowToObj(data);
+}
+
+export async function cancelConference(reportId, reason) {
+  if (!reason?.trim()) {
+    throw new Error("A cancellation reason is required.");
+  }
+
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  if (fetchError) throw fetchError;
+
+  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
+    ? currentRow.scheduled_conference
+    : {};
+  const currentStatus = existingConference.status || (existingConference.completed ? "Completed" : "Scheduled");
+  if (!existingConference.date && !existingConference.time && !existingConference.location) {
+    throw new Error("No scheduled conference exists for this report.");
+  }
+  if (!["Scheduled", "Rescheduled"].includes(currentStatus)) {
+    throw new Error("This conference cannot be cancelled in its current status.");
+  }
+
+  const now = new Date().toISOString();
+  const updatedConference = {
+    ...existingConference,
+    status: "Cancelled",
+    completed: false,
+    cancellationReason: reason.trim(),
+    cancelledAt: now,
+    cancellationSchedule: {
+      date: existingConference.date || "",
+      time: existingConference.time || "",
+      location: existingConference.location || "",
+    },
+  };
+  const { data, error } = await supabase.from("reports")
+    .update({ scheduled_conference: updatedConference, updated_at: now })
+    .eq("id", reportId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  await addStudentNotification({
+    title: `The conference for Case #${reportId} was cancelled.`,
+    type: "status",
+  }, data.submitted_id);
   return reportRowToObj(data);
 }
 
@@ -273,8 +354,8 @@ export async function reviewConferenceRequest(reportId, decision, reschedule = u
 
   const approved = decision === "approve";
   const requestIsReschedule = request.type === "reschedule";
-  if (approved && requestIsReschedule && (!reschedule?.date || !reschedule?.time)) {
-    throw new Error("A new date and time are required to approve a reschedule.");
+  if (approved && requestIsReschedule && (!reschedule?.date || !reschedule?.time || !reschedule?.location?.trim())) {
+    throw new Error("A new date, time, and location are required to approve a reschedule.");
   }
 
   const now = new Date().toISOString();
@@ -290,9 +371,21 @@ export async function reviewConferenceRequest(reportId, decision, reschedule = u
     updatedConference.previousSchedule = {
       date: existingConference.date,
       time: existingConference.time,
+      location: existingConference.location || "",
+      notes: existingConference.notes || "",
     };
     updatedConference.date = reschedule.date;
     updatedConference.time = reschedule.time;
+    updatedConference.location = reschedule.location.trim();
+    updatedConference.notes = (reschedule.notes || "").trim();
+  } else if (approved) {
+    updatedConference.cancellationReason = request.reason || "";
+    updatedConference.cancelledAt = now;
+    updatedConference.cancellationSchedule = {
+      date: existingConference.date || "",
+      time: existingConference.time || "",
+      location: existingConference.location || "",
+    };
   }
 
   const { data, error } = await supabase.from("reports")
@@ -339,7 +432,8 @@ export async function updateConferenceOutcome(reportId, status) {
     ...existingConference,
     status,
     completed: status === "Completed",
-    completedAt: status === "Completed" ? now : null,
+    completedAt: status === "Completed" ? now : existingConference.completedAt || null,
+    noShowAt: status === "No-show" ? now : existingConference.noShowAt || null,
   };
 
   const { data, error } = await supabase.from("reports")
