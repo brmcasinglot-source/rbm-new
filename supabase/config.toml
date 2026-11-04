@@ -1,0 +1,5 @@
+project_id = "brm-system"
+
+[functions.api]
+verify_jwt = false
+import_map = "./functions/import_map.json"

@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { hashPassword } from "../api/password.js";
+import { hashPassword } from "./functions/_shared/password.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const env = loadEnv("production", projectRoot, "");
@@ -46,7 +46,9 @@ if (existingCredential && existingCredential.role !== "admin") {
 }
 
 const id = existingCredential?.id || existingAdmin?.id || randomUUID();
-const passwordHash = existingCredential?.password_hash || await hashPassword(password);
+const passwordHash = existingCredential?.password_hash?.startsWith("pbkdf2-sha256$")
+  ? existingCredential.password_hash
+  : await hashPassword(password);
 const { error: profileWriteError } = await supabase.from("admins").upsert(
   { id, email, name },
   { onConflict: "id" },
@@ -70,6 +72,6 @@ if (credentialWriteError) {
 }
 
 console.log(`Admin access is ready for ${email}.`);
-console.log(existingCredential?.password_hash
+console.log(existingCredential?.password_hash?.startsWith("pbkdf2-sha256$")
   ? "The existing custom password was preserved."
-  : "Sign in with ADMIN_EMAIL and ADMIN_PASSWORD.");
+  : "Sign in with ADMIN_EMAIL and ADMIN_PASSWORD. Any previous scrypt password was replaced.");

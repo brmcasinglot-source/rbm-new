@@ -1,11 +1,25 @@
 async function post(action, data = {}) {
-  const response = await fetch("/api", {
+  const projectUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!projectUrl || !anonKey) {
+    throw new Error("Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the frontend environment.");
+  }
+  const sessionToken = localStorage.getItem("cnhsSessionToken");
+  const response = await fetch(`${projectUrl.replace(/\/$/, "")}/functions/v1/api`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      Authorization: `Bearer ${sessionToken || anonKey}`,
+    },
     body: JSON.stringify({ action, ...data }),
   });
-  const payload = await response.json().catch(() => ({}));
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error("Supabase returned an invalid response. Check the Edge Function deployment.");
+  }
   if (!response.ok) throw new Error(payload.error || "The server could not complete the request.");
   return payload;
 }

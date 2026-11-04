@@ -1243,7 +1243,6 @@
   color: var(--s-text-muted2);
   line-height: 1.55;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex: 1;
@@ -1980,7 +1979,6 @@
 
 .incident-desc {
   display: -webkit-box;
-  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

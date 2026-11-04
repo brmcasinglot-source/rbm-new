@@ -2,11 +2,11 @@
 
 ## Development
 
-1. Copy `.env.example` to `.env` and set the server-only Supabase service-role key, Brevo API key, verified sender address, and a random `AUTH_SESSION_SECRET` (at least 32 characters).
+1. Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from your Supabase project.
 2. Run `npm install`.
 3. Run `npm run dev`.
 
-The browser uses the `/api` backend for authentication and database access. Supabase is used only as the application's database; authentication is handled by the backend, with Brevo delivering email verification and password-reset codes. Never expose the service-role key, Brevo key, or session secret in a `VITE_` variable.
+Authentication and database access run in the Supabase Edge Function; Brevo delivers email verification and password-reset codes. The Vite server only serves the frontend. Never place the Supabase service-role key, Brevo key, or session secret in a `VITE_` variable.
 
 ## Existing Supabase project
 
@@ -16,4 +16,4 @@ For a new database, run [`supabase/schema.sql`](./supabase/schema.sql) instead. 
 
 ## Deployment
 
-Deploy to Vercel and configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_SESSION_SECRET`, `BREVO_API_KEY`, and `BREVO_SENDER_EMAIL` as server environment variables for every environment. Do not use the `VITE_` prefix. See [`supabase/ADMIN_SETUP.md`](./supabase/ADMIN_SETUP.md) for admin setup and account migration.
+Configure the Edge Function secrets in Supabase, link the Supabase CLI to your project, and deploy the `api` function. Deploy the frontend to Vercel or another static host with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. See [`supabase/ADMIN_SETUP.md`](./supabase/ADMIN_SETUP.md) for the exact steps, required secrets, and admin setup.

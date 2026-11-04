@@ -49,6 +49,10 @@ export async function verifyStudentEmail(email, code) {
 export async function signIn(email, password) {
   try {
     const result = await authRequest("signin", { email, password });
+    if (typeof result.token !== "string" || !result.token) {
+      throw new Error("The server did not create a session. Check the Supabase Edge Function deployment.");
+    }
+    localStorage.setItem("cnhsSessionToken", result.token);
     if (result.role === "admin") cacheAdminSession(result.profile);
     else cacheStudentSession(result.profile);
     return { success: true, role: result.role, [result.role]: result.profile };
@@ -79,6 +83,7 @@ export async function signOut() {
   try {
     await authRequest("signout");
   } finally {
+    localStorage.removeItem("cnhsSessionToken");
     ["studentName", "studentId", "studentLRN", "studentAge", "studentSex", "studentGrade", "studentSection", "email", "userRole"]
       .forEach((key) => localStorage.removeItem(key));
   }

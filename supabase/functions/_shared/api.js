@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { Buffer } from "node:buffer";
+import process from "node:process";
 import {
   createHmac,
   randomInt,
@@ -7,15 +9,18 @@ import {
 } from "node:crypto";
 import { hashPassword, verifyPassword } from "./password.js";
 
-const SESSION_COOKIE = "cnhs_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
 
 let database;
+function getEnvironmentVariable(name) {
+  return globalThis.Deno?.env.get(name) ?? process.env[name];
+}
+
 function getDatabase() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = getEnvironmentVariable("SUPABASE_URL") || getEnvironmentVariable("VITE_SUPABASE_URL");
+  const key = getEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY");
   if (!url) {
     throw Object.assign(new Error("Set SUPABASE_URL in the server environment."), { status: 503 });
   }
@@ -31,7 +36,7 @@ function getDatabase() {
 }
 
 function getSessionSecret() {
-  const secret = process.env.AUTH_SESSION_SECRET;
+  const secret = getEnvironmentVariable("AUTH_SESSION_SECRET");
   if (!secret || secret.length < 32) {
     throw Object.assign(new Error("Set AUTH_SESSION_SECRET to a random value of at least 32 characters in the server environment."), { status: 503 });
   }
@@ -43,22 +48,6 @@ function send(res, status, payload) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.end(JSON.stringify(payload));
-}
-
-function getCookie(req, name) {
-  const cookie = (req.headers.cookie || "").split(";").map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-  return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : "";
-}
-
-function setSessionCookie(res, token) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure}`);
-}
-
-function clearSessionCookie(res) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secure}`);
 }
 
 function signToken(payload) {
@@ -89,7 +78,8 @@ function verifyToken(token) {
 }
 
 async function getSession(req, { optional = false } = {}) {
-  const token = getCookie(req, SESSION_COOKIE);
+  const authorization = req.headers.authorization || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   const payload = token ? verifyToken(token) : null;
   if (!payload) {
     if (optional) return null;
@@ -136,8 +126,8 @@ function hashOtp(email, purpose, code) {
 }
 
 async function sendOtp(email, purpose, payload = null, req) {
-  const brevoKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  const brevoKey = getEnvironmentVariable("BREVO_API_KEY");
+  const senderEmail = getEnvironmentVariable("BREVO_SENDER_EMAIL");
   if (!brevoKey || !senderEmail) {
     throw Object.assign(new Error("Set BREVO_API_KEY and BREVO_SENDER_EMAIL in the server environment."), { status: 503 });
   }
@@ -194,7 +184,7 @@ async function sendOtp(email, purpose, payload = null, req) {
 
   const message = {
     sender: {
-      name: process.env.BREVO_SENDER_NAME || "CNHS Bullying Reporting System",
+      name: getEnvironmentVariable("BREVO_SENDER_NAME") || "CNHS Bullying Reporting System",
       email: senderEmail,
     },
     to: [{ email }],
@@ -255,7 +245,7 @@ async function getExistingAccount(email) {
   return admin ? { id: admin.id, email: admin.email, role: "admin", legacy: true, profile: admin } : null;
 }
 
-async function createSession(res, account) {
+async function createSession(account) {
   let profile;
   if (account.role === "admin") {
     const { data, error } = await getDatabase().from("admins").select("*").eq("id", account.id).single();
@@ -272,8 +262,7 @@ async function createSession(res, account) {
     ver: account.session_version || 0,
     exp: Date.now() + SESSION_TTL_SECONDS * 1000,
   });
-  setSessionCookie(res, token);
-  return { success: true, role: account.role, profile };
+  return { success: true, role: account.role, profile, token };
 }
 
 async function verifyOtp(email, purpose, code) {
@@ -311,7 +300,7 @@ function requireRole(session, role) {
   if (session.role !== role) throw Object.assign(new Error("You are not authorized to perform this action."), { status: 403 });
 }
 
-async function handleAuth(action, body, req, res) {
+async function handleAuth(action, body, req) {
   const db = getDatabase();
   const email = String(body.email || "").trim().toLowerCase();
 
@@ -403,6 +392,9 @@ async function handleAuth(action, body, req, res) {
     if (!credential?.password_hash) {
       throw Object.assign(new Error("Invalid email or password. If this is an existing account, use Forgot Password to set a new password."), { status: 401 });
     }
+    if (credential.password_hash.startsWith("scrypt$")) {
+      throw Object.assign(new Error("This account needs a one-time password reset. Use Forgot Password to set a new password."), { status: 401 });
+    }
     if (!await verifyPassword(String(body.password || ""), credential.password_hash)) {
       throw Object.assign(new Error("Invalid email or password."), { status: 401 });
     }
@@ -416,7 +408,7 @@ async function handleAuth(action, body, req, res) {
         throw Object.assign(new Error("Your account is waiting for admin confirmation. You'll be able to log in once an administrator approves your registration."), { status: 403 });
       }
     }
-    return createSession(res, credential);
+    return createSession(credential);
   }
 
   if (action === "request-password-reset") {
@@ -477,7 +469,6 @@ async function handleAuth(action, body, req, res) {
   }
 
   if (action === "signout") {
-    clearSessionCookie(res);
     return { success: true };
   }
 
@@ -488,7 +479,6 @@ async function handleAuth(action, body, req, res) {
     const { data: profile, error } = await db.from(table).select("*").eq("id", session.id).maybeSingle();
     if (error) throw error;
     if (!profile || (session.role === "student" && !profile.approved)) {
-      clearSessionCookie(res);
       return { success: true, user: null };
     }
     return { success: true, role: session.role, profile };
@@ -760,15 +750,10 @@ export default async function handler(req, res) {
       res.setHeader("Allow", "POST");
       return send(res, 405, { error: "Method not allowed." });
     }
-    const origin = req.headers.origin;
-    const host = req.headers.host;
-    if (origin && new URL(origin).host !== host) {
-      return send(res, 403, { error: "Cross-origin requests are not allowed." });
-    }
     const body = await readJson(req);
     const result = body.action === "rpc"
       ? await runRpc(body.functionName, body.args || {}, req)
-      : await handleAuth(body.action, body, req, res);
+      : await handleAuth(body.action, body, req);
     return send(res, 200, result);
   } catch (error) {
     const status = Number(error.status) || (error.code === "23505" ? 409 : 500);
