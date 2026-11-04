@@ -125,6 +125,7 @@ export default function StudentDashboard() {
   const profileSection = localStorage.getItem("studentSection") || "";
   const profileAge = localStorage.getItem("studentAge") || "";
   const profileGender = localStorage.getItem("studentSex") || "";
+  const profileLrn = localStorage.getItem("studentLRN") || "";
   const [activeTab,   setActiveTab]   = useState("dashboard");
   const [language, setLanguage] = useState(() => localStorage.getItem(languagePreferenceKey) || "en");
   const [hubSearchQuery, setHubSearchQuery] = useState("");
@@ -294,6 +295,38 @@ export default function StudentDashboard() {
     setter(prev => prev.map((p, i) => i === idx ? { ...p, [field]: val } : p));
   const addPerson    = (setter) => setter(prev => [...prev, emptyPerson()]);
   const removePerson = (setter, idx) => setter(prev => prev.filter((_, i) => i !== idx));
+  const handleReporterTypeChange = (nextType) => {
+    const normalizedGrade = GRADE_OPTIONS.find(
+      (grade) => grade.trim().toLowerCase() === profileGrade.trim().toLowerCase()
+    ) || profileGrade.trim();
+    const availableSections = gradeSectionsList.filter((section) => section.grade === normalizedGrade);
+    const matchingSection = availableSections.find(
+      (section) => section.section.trim().toLowerCase() === profileSection.trim().toLowerCase()
+    );
+    const profileVictim = {
+      name: studentName,
+      lrn: profileLrn,
+      age: profileAge,
+      grade: normalizedGrade,
+      section: matchingSection?.section || profileSection.trim(),
+    };
+
+    setReporterType(nextType);
+    setHasWitnesses(false);
+    setVictims((current) => {
+      const firstVictim = current[0] || emptyPerson();
+      if (nextType === "Victim") {
+        return [{ ...firstVictim, ...profileVictim }, ...current.slice(1)];
+      }
+      if (reporterType !== "Victim") return current;
+
+      const clearedVictim = { ...firstVictim };
+      Object.entries(profileVictim).forEach(([field, value]) => {
+        if (clearedVictim[field] === value) clearedVictim[field] = "";
+      });
+      return [clearedVictim, ...current.slice(1)];
+    });
+  };
 
   const handleReportSubmit = async (e) => {
     e.preventDefault();
@@ -801,7 +834,7 @@ export default function StudentDashboard() {
                     <div className="s-form-group">
                       <label>Reporter Role *</label>
                       <select value={reporterType} required
-                        onChange={(e) => { setReporterType(e.target.value); setHasWitnesses(false); }}>
+                        onChange={(e) => handleReporterTypeChange(e.target.value)}>
                         <option value="">Select role…</option>
                         <option value="Victim">Victim</option>
                         <option value="Witness">Witness</option>
@@ -901,6 +934,10 @@ export default function StudentDashboard() {
                             {gradeSectionsList.filter((s) => s.grade === v.grade).map((s) => (
                               <option key={s.id} value={s.section}>{s.section}</option>
                             ))}
+                            {v.section && !gradeSectionsList.some(
+                              (section) => section.grade === v.grade &&
+                                section.section.trim().toLowerCase() === v.section.trim().toLowerCase()
+                            ) && <option value={v.section}>{v.section}</option>}
                           </select></div>
                       </div>
                       <div className="s-form-row">
