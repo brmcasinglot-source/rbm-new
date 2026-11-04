@@ -14,9 +14,14 @@ const OTP_MAX_ATTEMPTS = 5;
 
 let database;
 function getDatabase() {
-  const url = process.env.SUPABASE_URL;
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Server database configuration is missing.");
+  if (!url) {
+    throw Object.assign(new Error("Set SUPABASE_URL in the server environment."), { status: 503 });
+  }
+  if (!key) {
+    throw Object.assign(new Error("Set SUPABASE_SERVICE_ROLE_KEY in the server environment. Keep it private; do not use a VITE_ variable."), { status: 503 });
+  }
   if (!database) {
     database = createClient(url, key, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -28,7 +33,7 @@ function getDatabase() {
 function getSessionSecret() {
   const secret = process.env.AUTH_SESSION_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error("AUTH_SESSION_SECRET must be configured with at least 32 characters.");
+    throw Object.assign(new Error("Set AUTH_SESSION_SECRET to a random value of at least 32 characters in the server environment."), { status: 503 });
   }
   return secret;
 }
@@ -134,7 +139,7 @@ async function sendOtp(email, purpose, payload = null, req) {
   const brevoKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
   if (!brevoKey || !senderEmail) {
-    throw new Error("Brevo email configuration is missing.");
+    throw Object.assign(new Error("Set BREVO_API_KEY and BREVO_SENDER_EMAIL in the server environment."), { status: 503 });
   }
 
   const db = getDatabase();
