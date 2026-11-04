@@ -30,7 +30,7 @@ import {
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
-  getGradeSections, addGradeSection, deleteGradeSection,
+  getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   getStudentAccounts, approveStudentAccount, declineStudentAccount,
   getUnconfirmedSignups, resendConfirmationEmail,
   downloadCSV, downloadTextReport, getAnalyticsData,
@@ -311,6 +311,8 @@ export default function AdminDashboard() {
   // Grade & Section management panel
   const [sectionMgmtGrade, setSectionMgmtGrade] = useState("Grade 7");
   const [newSectionName,   setNewSectionName]   = useState("");
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [editingSectionName, setEditingSectionName] = useState("");
 
   // Live data
   const [incidents,        setIncidents]        = useState([]);
@@ -1053,6 +1055,15 @@ export default function AdminDashboard() {
     if (!window.confirm(`Remove "${name}" from ${sectionMgmtGrade}?`)) return;
     await deleteGradeSection(id);
     setGradeSections(await getGradeSections());
+  };
+
+  const handleSaveSection = async (id, grade) => {
+    const result = await updateGradeSection(id, editingSectionName, grade);
+    if (!result.success) { showToast(result.error, "error"); return; }
+    setGradeSections(await getGradeSections());
+    setEditingSectionId(null);
+    setEditingSectionName("");
+    showToast(`Section renamed to "${result.section.section}".`);
   };
 
   const handleApproveAccount = async (id, name) => {
@@ -2554,12 +2565,45 @@ export default function AdminDashboard() {
                     <tbody>
                       {gradeSections.filter((s) => s.grade === sectionMgmtGrade).map((s) => (
                         <tr key={s.id}>
-                          <td>{s.section}</td>
+                          <td>
+                            {editingSectionId === s.id ? (
+                              <input
+                                className="grade-section-edit-input"
+                                aria-label={`New name for ${s.section}`}
+                                value={editingSectionName}
+                                onChange={(event) => setEditingSectionName(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") handleSaveSection(s.id, s.grade);
+                                  if (event.key === "Escape") {
+                                    setEditingSectionId(null);
+                                    setEditingSectionName("");
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            ) : s.section}
+                          </td>
                           <td>
                             <div className="grade-sections-actions">
-                              <button type="button" className="grade-section-action delete" aria-label={`Delete ${s.section}`} title="Delete" onClick={() => handleDeleteSection(s.id, s.section)}>
-                                <Trash2 size={14} /> <span>Delete</span>
-                              </button>
+                              {editingSectionId === s.id ? (
+                                <>
+                                  <button type="button" className="grade-section-action edit" aria-label={`Save ${s.section}`} title="Save" onClick={() => handleSaveSection(s.id, s.grade)}>
+                                    <CheckCircle size={14} /> <span>Save</span>
+                                  </button>
+                                  <button type="button" className="grade-section-action cancel" aria-label={`Cancel editing ${s.section}`} title="Cancel" onClick={() => { setEditingSectionId(null); setEditingSectionName(""); }}>
+                                    <X size={14} /> <span>Cancel</span>
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button type="button" className="grade-section-action edit" aria-label={`Edit ${s.section}`} title="Edit" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.section); }}>
+                                    <Edit size={14} /> <span>Edit</span>
+                                  </button>
+                                  <button type="button" className="grade-section-action delete" aria-label={`Delete ${s.section}`} title="Delete" onClick={() => handleDeleteSection(s.id, s.section)}>
+                                    <Trash2 size={14} /> <span>Delete</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
