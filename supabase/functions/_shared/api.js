@@ -189,8 +189,57 @@ async function sendOtp(email, purpose, payload = null, req) {
     },
     to: [{ email }],
     subject: purpose === "signup" ? "Verify your CNHS account" : "Reset your CNHS password",
-    textContent: `Your verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.`,
-    htmlContent: `<p>Your verification code is <strong>${code}</strong>.</p><p>It expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.</p>`,
+    textContent: `${purpose === "signup" ? "Verify your account" : "Reset your password"}\n\nUse this verification code: ${code}\n\nThis code expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.`,
+    htmlContent: `
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="color-scheme" content="light">
+          <title>${purpose === "signup" ? "Verify your account" : "Reset your password"}</title>
+        </head>
+        <body style="margin:0;padding:0;background-color:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1e2430;">
+          <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">Your CNHS verification code expires in ${OTP_TTL_MINUTES} minutes.</span>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f7f5;">
+            <tr>
+              <td align="center" style="padding:40px 16px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+                  <tr>
+                    <td align="center" style="padding:28px 24px;background-color:#15803d;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td align="center" valign="middle" width="44" height="44" style="width:44px;height:44px;border:1px solid rgba(255,255,255,.55);border-radius:12px;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:1px;">CNHS</td>
+                          <td style="padding-left:12px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;">Bullying Reporting<br>&amp; Management System</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:36px 32px 32px;">
+                      <p style="margin:0 0 8px;color:#15803d;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Account security</p>
+                      <h1 style="margin:0 0 12px;color:#1e2430;font-size:24px;line-height:32px;font-weight:700;">${purpose === "signup" ? "Verify your account" : "Reset your password"}</h1>
+                      <p style="margin:0 0 24px;color:#64748b;font-size:15px;line-height:24px;">${purpose === "signup" ? "Enter this one-time code to finish creating your account." : "Use this one-time code to securely reset your password."}</p>
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f0fdf4;border:1px solid #dcfce7;border-radius:12px;">
+                        <tr>
+                          <td align="center" style="padding:20px 12px;">
+                            <p style="margin:0 0 8px;color:#64748b;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Your verification code</p>
+                            <p style="margin:0;color:#166534;font-family:Arial,Helvetica,sans-serif;font-size:32px;line-height:40px;font-weight:700;letter-spacing:8px;">${code}</p>
+                          </td>
+                        </tr>
+                      </table>
+                      <p style="margin:20px 0 0;color:#475569;font-size:14px;line-height:22px;">This code expires in <strong style="color:#1e2430;">${OTP_TTL_MINUTES} minutes</strong>. For your security, do not share it with anyone.</p>
+                      <hr style="height:1px;margin:24px 0;border:0;background-color:#e5e7eb;">
+                      <p style="margin:0;color:#64748b;font-size:13px;line-height:21px;">If you did not request this code, you can safely ignore this email. Your account will remain unchanged.</p>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:18px 0 0;color:#94a3b8;font-size:12px;line-height:18px;">CNHS Bullying Reporting &amp; Management System</p>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>`,
   };
   let response;
   try {
