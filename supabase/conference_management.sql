@@ -87,3 +87,5 @@ $$;
 
 revoke all on function request_conference_change(bigint, text, text) from public;
 grant execute on function request_conference_change(bigint, text, text) to authenticated;
+
+notify pgrst, 'reload schema';

@@ -20,7 +20,7 @@ The app does not create administrator accounts automatically. An admin must exis
 
 The `admins` table must already exist; run `schema.sql` first if you have not created the tables. Use an account that is not already registered as a student.
 
-For an existing database, run [`conference_management.sql`](./conference_management.sql) in the Supabase SQL Editor to enable student reschedule/cancellation requests. New databases created from `schema.sql` already include this function.
+For an existing database, run the entire [`conference_management.sql`](./conference_management.sql) file in the Supabase SQL Editor for the same Supabase project used by the app. It installs the RPC used by both student reschedule and cancellation requests and asks PostgREST to refresh its schema cache. New databases created from `schema.sql` already include this function.
 
 For an existing database where renaming a section fails, run [`grade_sections_update_policy.sql`](./grade_sections_update_policy.sql) in the Supabase SQL Editor. The `grade_sections` table needs this Admin-only update policy for the Save action; new databases created from `schema.sql` already include it.
 

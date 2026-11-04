@@ -327,6 +327,11 @@ export async function requestConferenceChange(reportId, requestType, reason = ""
     request_type: requestType,
     request_reason: typeof reason === "string" ? reason.trim() : "",
   });
+  if (error?.code === "PGRST202") {
+    throw new Error(
+      "Conference requests are not enabled in this database. Ask the project administrator to run supabase/conference_management.sql in the Supabase SQL Editor."
+    );
+  }
   if (error) throw error;
 
   const { data, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
