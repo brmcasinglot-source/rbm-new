@@ -214,6 +214,15 @@ async function sendOtp(email, purpose, payload = null, req) {
     const { error: cleanupError } = await db.from("auth_otps").delete()
       .eq("email", email).eq("purpose", purpose).eq("code_hash", challenge.code_hash);
     if (cleanupError) throw cleanupError;
+    if (
+      response.status === 401 &&
+      responseText.toLowerCase().includes("unrecognised ip address")
+    ) {
+      throw Object.assign(
+        new Error("Brevo rejected the Supabase server IP. Add the Supabase Edge Function IP to Brevo's authorized IPs, or remove the Brevo API IP restriction."),
+        { status: 503 },
+      );
+    }
     throw new Error(`Brevo could not send the verification email (${response.status}): ${responseText.slice(0, 300)}`);
   }
 }
