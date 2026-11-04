@@ -5,7 +5,8 @@
  * All CRUD functions are async — callers must `await` them. Login,
  * registration, and session management live in src/lib/auth.js.
  */
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/apiClient";
+import { resendConfirmationEmail as resendOtp } from "../lib/auth";
 
 // ─── CURRENT-USER CACHE ────────────────────────────────────────────────────
 // Populated at login time by src/lib/auth.js. Kept as localStorage so the
@@ -167,11 +168,6 @@ export async function submitReport(reportData, evidenceFiles = []) {
 
   const { data, error } = await supabase.from("reports").insert(row).select().single();
   if (error) throw error;
-
-  await addAdminNotification({
-    title: `New report #${data.id} submitted — ${reportData.type} by ${isAnon ? "Anonymous" : submittedBy}`,
-    type: "report",
-  });
 
   return reportRowToObj(data);
 }
@@ -514,11 +510,6 @@ async function addStudentNotification(notif, studentId) {
   if (error) throw error;
 }
 
-async function addAdminNotification(notif) {
-  const { error } = await supabase.from("notifications").insert({ audience: "admin", student_id: null, title: notif.title, type: notif.type, read: false });
-  if (error) throw error;
-}
-
 export async function markStudentNotifRead(id) {
   const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
   if (error) throw error;
@@ -638,16 +629,15 @@ export async function approveStudentAccount(id) {
   return data;
 }
 
-// Deletes the student's Auth account entirely (not just their students-table
-// row), so a declined email/LRN is free to sign up again. See
-// decline_student_signup() in schema.sql.
+// Removes a declined student profile and its custom credentials, freeing
+// the email and LRN for registration again.
 export async function declineStudentAccount(id) {
   const { error } = await supabase.rpc("decline_student_signup", { target_id: id });
   if (error) throw error;
 }
 
-// Sign-ups that haven't clicked their Gmail confirmation link yet. Throws on
-// failure (e.g. the RPC/migration not applied yet, or the caller isn't
+// Sign-ups that haven't entered their email verification code yet. Throws on
+// failure (e.g. the auth migration is not applied or the caller isn't
 // recognized as an admin) — the caller is responsible for catching this
 // separately from the rest of the dashboard's data, so one broken query here
 // doesn't blank out everything else, and the admin can see *why* the list
@@ -659,9 +649,7 @@ export async function getUnconfirmedSignups() {
 }
 
 export async function resendConfirmationEmail(email) {
-  const { error } = await supabase.auth.resend({ type: "signup", email });
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  return resendOtp(email);
 }
 
 // ─── ADMIN: FULL RESET (deletes all reports + notifications) ───────────────

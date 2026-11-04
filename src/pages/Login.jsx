@@ -6,12 +6,13 @@ import "../styles/Login.css";
 import {
   signIn,
   signUpStudent,
+  verifyStudentEmail,
+  resendConfirmationEmail,
   sendPasswordResetEmail,
   updatePassword,
   signOut as signOutUser,
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
-import { supabase } from "../lib/supabaseClient.js";
 
 function getPasswordStrength(password) {
   const checks = [
@@ -30,8 +31,13 @@ function getPasswordStrength(password) {
 export default function Login() {
   const navigate = useNavigate();
 
-  const [mode,     setMode]     = useState(() => new URLSearchParams(window.location.search).get("mode") === "reset" ? "reset" : "login");
-  const [email,    setEmail]    = useState("");
+  const [mode,     setMode]     = useState(() => {
+    const requestedMode = new URLSearchParams(window.location.search).get("mode");
+    return ["reset", "verify"].includes(requestedMode) ? requestedMode : "login";
+  });
+  const [email,    setEmail]    = useState(() => new URLSearchParams(window.location.search).get("email") || "");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [resetCode, setResetCode] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -41,7 +47,6 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmNewPass, setShowConfirmNewPass] = useState(false);
-  const [recoverySessionReady, setRecoverySessionReady] = useState(false);
 
   // Registration fields
   const [regName,    setRegName]    = useState("");
@@ -56,27 +61,6 @@ export default function Login() {
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
   const resetPasswordStrength = getPasswordStrength(newPassword);
-
-  useEffect(() => {
-    if (!supabase) return undefined;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" && session) {
-        setRecoverySessionReady(true);
-        setMode("reset");
-        setError("");
-        setSuccess("");
-      }
-    });
-
-    if (new URLSearchParams(window.location.search).get("mode") === "reset") {
-      supabase.auth.getSession().then(({ data, error: sessionError }) => {
-        if (sessionError) setError(sessionError.message);
-        setRecoverySessionReady(!!data.session);
-      });
-    }
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Used for the registration guidance below the submit button.
   const isRegisterFormComplete =
@@ -93,6 +77,7 @@ export default function Login() {
 
   const resetForm = () => {
     setEmail(""); setPassword(""); setError(""); setSuccess("");
+    setVerifyCode(""); setResetCode("");
     setNewPassword(""); setConfirmNewPassword("");
     setRegName(""); setRegLRN(""); setRegEmail(""); setRegPass(""); setRegConfirm("");
     setRegAge(""); setRegSex(""); setRegGrade(""); setRegSection("");
@@ -100,7 +85,6 @@ export default function Login() {
 
   const switchMode = (m) => {
     setMode(m);
-    setRecoverySessionReady(false);
     resetForm();
     window.history.replaceState({}, document.title, window.location.pathname);
   };
@@ -131,7 +115,7 @@ export default function Login() {
     setError("");
     setSuccess("");
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Enter the Gmail address you used to register.");
+      setError("Enter the email address you used to register.");
       return;
     }
 
@@ -142,7 +126,9 @@ export default function Login() {
         setError(result.error);
         return;
       }
-      setSuccess("If an account exists for this email, a password reset link has been sent. Check your Gmail inbox and spam folder.");
+      setMode("reset");
+      setSuccess("If an account exists for this email, a 6-digit password reset code has been sent. Check your inbox and spam folder.");
+      window.history.replaceState({}, document.title, `${window.location.pathname}?mode=reset&email=${encodeURIComponent(email.trim())}`);
     } catch (err) {
       setError(`Could not send the reset email: ${err.message}`);
     } finally {
@@ -165,16 +151,16 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const result = await updatePassword(newPassword);
+      const result = await updatePassword(email.trim(), resetCode.trim(), newPassword);
       if (!result.success) {
         setError(result.error);
         return;
       }
       await signOutUser();
-      setRecoverySessionReady(false);
       setNewPassword("");
       setConfirmNewPassword("");
       setPassword("");
+      setResetCode("");
       setSuccess("Your password has been reset. You can now sign in with your new password.");
       setMode("login");
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -183,6 +169,42 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEmailVerification = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!/^\d{6}$/.test(verifyCode.trim())) {
+      setError("Enter the 6-digit code sent to your email.");
+      return;
+    }
+
+    setLoading(true);
+    const result = await verifyStudentEmail(email.trim(), verifyCode.trim());
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    setMode("login");
+    setPassword("");
+    setVerifyCode("");
+    setSuccess("Email verified. An admin still needs to approve your account before you can sign in.");
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
+  const handleResendSignupCode = async () => {
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    const result = await resendConfirmationEmail(email.trim());
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    setSuccess("A new verification code has been sent to your email.");
   };
 
   // ── REGISTER ──────────────────────────────────────────────────────────────
@@ -230,16 +252,15 @@ export default function Login() {
     setLoading(false);
 
     if (!result.success) {
-      setError(result.error);
+      setError(result.error)
       return;
     }
 
-    setSuccess(
-      result.needsConfirmation
-        ? "Account created! Check your email to confirm it, then log in — an admin will need to approve your account before you can access it."
-        : "Account created! An admin needs to confirm your account before you can log in."
-    );
-    setTimeout(() => switchMode("login"), 1800);
+    setEmail(regEmail.trim());
+    setVerifyCode("");
+    setMode("verify");
+    setSuccess("A 6-digit verification code was sent to your email. Enter it below to finish creating your account.");
+    window.history.replaceState({}, document.title, `${window.location.pathname}?mode=verify&email=${encodeURIComponent(regEmail.trim())}`);
   };
 
   return (
@@ -288,16 +309,51 @@ export default function Login() {
             </div>
           )}
 
-          {mode === "reset" ? (
+          {mode === "verify" ? (
+            <>
+              <h2>Verify your email</h2>
+              <p className="login-sub">Enter the 6-digit code sent to {email}.</p>
+              <form onSubmit={handleEmailVerification} noValidate>
+                <div className="input-group">
+                  <label className="input-label">Verification Code</label>
+                  <input
+                    className={`input ${error ? "input-error" : ""}`}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={verifyCode}
+                    onChange={(event) => { setVerifyCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                  />
+                </div>
+                {error && <div className="login-error"><span>⚠</span> {error}</div>}
+                {success && <div className="login-success"><span>✓</span> {success}</div>}
+                <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading}>
+                  {loading ? "Verifying…" : "Verify Email"}
+                </button>
+              </form>
+              <button className="back-btn" type="button" onClick={handleResendSignupCode} disabled={loading}>
+                {loading ? "Sending…" : "Resend code"}
+              </button>
+              <button className="back-btn" type="button" onClick={() => switchMode("login")}>← Back to Sign In</button>
+            </>
+          ) : mode === "reset" ? (
             <>
               <h2>Set a new password</h2>
-              <p className="login-sub">Choose a new password for your account.</p>
-              {!recoverySessionReady && (
-                <div className="login-error">
-                  <span>⚠</span> Your reset link is invalid or expired. Request a new reset email.
-                </div>
-              )}
+              <p className="login-sub">Enter the code sent to {email} and choose a new password.</p>
               <form onSubmit={handlePasswordUpdate} noValidate>
+                <div className="input-group">
+                  <label className="input-label">6-digit Reset Code</label>
+                  <input
+                    className={`input ${error ? "input-error" : ""}`}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={resetCode}
+                    onChange={(event) => { setResetCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                  />
+                </div>
                 <div className="input-group">
                   <label className="input-label">New Password</label>
                   <div className="input-wrap">
@@ -352,7 +408,7 @@ export default function Login() {
                 </div>
                 {error && <div className="login-error"><span>⚠</span> {error}</div>}
                 {success && <div className="login-success"><span>✓</span> {success}</div>}
-                <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading || !recoverySessionReady}>
+                <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading}>
                   {loading ? "Updating password…" : "Reset Password"}
                 </button>
               </form>
@@ -361,7 +417,7 @@ export default function Login() {
           ) : mode === "forgot" ? (
             <>
               <h2>Forgot your password?</h2>
-              <p className="login-sub">Enter the Gmail address linked to your account. We’ll send you a secure password reset link.</p>
+              <p className="login-sub">Enter the email address linked to your account. We’ll send you a 6-digit password reset code.</p>
               <form onSubmit={handlePasswordResetRequest} noValidate>
                 <div className="input-group">
                   <label className="input-label">Email Address</label>
@@ -378,7 +434,7 @@ export default function Login() {
                 {error && <div className="login-error"><span>⚠</span> {error}</div>}
                 {success && <div className="login-success"><span>✓</span> {success}</div>}
                 <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading}>
-                  {loading ? "Sending email…" : "Send Reset Link"}
+                  {loading ? "Sending code…" : "Send Reset Code"}
                 </button>
               </form>
               <button className="back-btn" type="button" onClick={() => setMode("login")}>← Back to Sign In</button>

@@ -1086,7 +1086,7 @@ export default function AdminDashboard() {
   const handleResendConfirmation = async (email) => {
     const result = await resendConfirmationEmail(email);
     if (!result.success) { showToast(result.error, "error"); return; }
-    showToast(`Confirmation email resent to ${email}.`);
+    showToast(`Verification code sent to ${email}.`);
   };
 
   /* Export helpers */
@@ -2344,7 +2344,7 @@ export default function AdminDashboard() {
               <div className="title-group" style={{ marginBottom: 20 }}>
                 <h3>Awaiting Email Confirmation</h3>
                 <p className="panel-subtitle">
-                  Signed up but haven't clicked the confirmation link in their Gmail yet — they'll move to the queue below once they do.
+                  Signed up but haven't entered their Brevo verification code yet — they'll move to the queue below once verified.
                 </p>
               </div>
 
@@ -2354,7 +2354,7 @@ export default function AdminDashboard() {
                 </p>
               ) : unconfirmedSignups.length === 0 ? (
                 <p style={{ color: "#94a3b8", fontSize: 13, padding: "8px 0 4px" }}>
-                  No sign-ups waiting on email confirmation right now.
+                  No sign-ups waiting for email verification right now.
                 </p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2371,7 +2371,7 @@ export default function AdminDashboard() {
                             fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase",
                             color: "#1d4ed8", background: "#dbeafe", border: "1px solid #bfdbfe",
                             padding: "2px 8px", borderRadius: 10,
-                          }}>Confirming Email</span>
+                          }}>Verifying Email</span>
                         </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 18px", fontSize: 12.5, color: "#57534e" }}>
                           <span>{s.email}</span>
@@ -2388,7 +2388,7 @@ export default function AdminDashboard() {
                           color: "#1d4ed8", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
                           fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap", flexShrink: 0,
                         }}
-                      >Resend Email</button>
+                      >Resend Code</button>
                     </div>
                   ))}
                 </div>
@@ -2399,13 +2399,13 @@ export default function AdminDashboard() {
               <div className="title-group" style={{ marginBottom: 20 }}>
                 <h3>Account Confirmations</h3>
                 <p className="panel-subtitle">
-                  New student sign-ups land here after they confirm their email — approve or decline before they can log in.
+                  New student sign-ups land here after email verification — approve or decline before they can log in.
                 </p>
               </div>
 
               {pendingAccounts.length === 0 ? (
                 <p style={{ color: "#94a3b8", fontSize: 13, padding: "8px 0 4px" }}>
-                  No accounts waiting for confirmation right now.
+                  No accounts waiting for admin approval right now.
                 </p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

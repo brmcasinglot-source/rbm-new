@@ -1,8 +1,7 @@
 -- CNHS Bullying & Incident Reporting System — Supabase schema + RLS
 -- Run this ONCE in Supabase Dashboard → SQL Editor → New query → Run.
--- Safe to run even though students/reports/etc. already exist: they're
--- currently empty, so this drops and recreates them cleanly with the
--- correct auth-aware shape.
+-- Safe to run only when creating a new database. This drops and recreates
+-- the application tables.
 
 drop table if exists notifications cascade;
 drop table if exists reports cascade;
@@ -10,11 +9,13 @@ drop table if exists custom_locations cascade;
 drop table if exists awareness_content cascade;
 drop table if exists students cascade;
 drop table if exists admins cascade;
+drop table if exists auth_otps cascade;
+drop table if exists auth_rate_limits cascade;
+drop table if exists auth_credentials cascade;
 
 -- ─── STUDENTS ──────────────────────────────────────────────────────────────
--- id matches the Supabase Auth user's UUID (auth.users.id) 1:1.
 create table students (
-  id         uuid primary key references auth.users(id) on delete cascade,
+  id         uuid primary key,
   name       text not null,
   email      text unique not null,
   lrn        text unique,
@@ -27,11 +28,39 @@ create table students (
 );
 
 -- ─── ADMINS ────────────────────────────────────────────────────────────────
--- Allowlist of who counts as an admin. Same idea: id = auth.users.id.
 create table admins (
-  id    uuid primary key references auth.users(id) on delete cascade,
+  id    uuid primary key,
   email text unique not null,
   name  text
+);
+
+-- Custom credentials and short-lived OTP challenges. Access is server-only.
+create table auth_credentials (
+  id              uuid primary key,
+  email           text unique not null,
+  password_hash   text,
+  role            text not null check (role in ('student', 'admin')),
+  email_verified  boolean not null default false,
+  session_version integer not null default 0,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+create table auth_otps (
+  email      text not null,
+  purpose    text not null check (purpose in ('signup', 'reset')),
+  code_hash  text not null,
+  payload    jsonb,
+  attempts   integer not null default 0,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  primary key (email, purpose)
+);
+
+create table auth_rate_limits (
+  ip_hash           text primary key,
+  window_started_at timestamptz not null,
+  request_count     integer not null default 0
 );
 
 -- ─── REPORTS ───────────────────────────────────────────────────────────────
@@ -116,6 +145,11 @@ alter table awareness_content  enable row level security;
 alter table notifications      enable row level security;
 alter table custom_locations   enable row level security;
 alter table grade_sections     enable row level security;
+alter table auth_credentials  enable row level security;
+alter table auth_otps         enable row level security;
+alter table auth_rate_limits  enable row level security;
+
+revoke all on auth_credentials, auth_otps, auth_rate_limits from anon, authenticated;
 
 -- Helper: is the currently logged-in user an admin?
 -- security definer so it can read the admins table even though the caller
@@ -125,10 +159,7 @@ language sql security definer stable as $$
   select exists (select 1 from admins where id = auth.uid());
 $$;
 
--- Lets an admin see student sign-ups still waiting on their Gmail
--- confirmation link. auth.users isn't exposed to normal clients at all —
--- this is security definer so it can read it, but it self-checks is_admin()
--- so only an actual admin caller gets real rows back.
+-- Lets an admin see student sign-ups still waiting on their email OTP.
 create or replace function get_unconfirmed_signups()
 returns table (
   id uuid, email text, name text, lrn text, grade text, section text, created_at timestamptz
@@ -141,56 +172,51 @@ begin
 
   return query
     select
-      u.id, u.email::text,
-      (u.raw_user_meta_data->>'name')::text    as name,
-      (u.raw_user_meta_data->>'lrn')::text     as lrn,
-      (u.raw_user_meta_data->>'grade')::text   as grade,
-      (u.raw_user_meta_data->>'section')::text as section,
-      u.created_at
-    from auth.users u
-    where u.email_confirmed_at is null
-      and not exists (select 1 from students s where s.id = u.id)
-      and not exists (select 1 from admins   a where a.id = u.id)
-    order by u.created_at desc;
+      (o.payload->>'id')::uuid,
+      o.email,
+      o.payload->>'name',
+      o.payload->>'lrn',
+      o.payload->>'grade',
+      o.payload->>'section',
+      o.created_at
+    from auth_otps o
+    where o.purpose = 'signup'
+      and o.expires_at > now()
+    order by o.created_at desc;
 end;
 $$;
 
 grant execute on function get_unconfirmed_signups() to authenticated;
 
 -- Lets the Sign Up form check LRN uniqueness before creating an account.
--- students.lrn is already `unique`, but RLS blocks an anonymous visitor
--- from querying the students table directly — this only ever returns a
--- boolean, so it's safe to expose to anon. security definer so it can also
--- see auth.users metadata for pending (not yet email-confirmed) sign-ups,
--- not just already-confirmed students.
+-- Check uniqueness for existing students and registrations waiting on email OTP.
 create or replace function is_lrn_taken(check_lrn text) returns boolean
 language plpgsql security definer stable as $$
 begin
   return exists (select 1 from students where lrn = check_lrn)
       or exists (
-        select 1 from auth.users
-        where raw_user_meta_data->>'lrn' = check_lrn and email_confirmed_at is null
+        select 1 from auth_otps
+        where purpose = 'signup' and expires_at > now() and payload->>'lrn' = check_lrn
       );
 end;
 $$;
 
 grant execute on function is_lrn_taken(text) to anon, authenticated;
 
--- Fully removes a declined student sign-up — including the underlying Auth
--- account, not just the students-table row (a plain `delete from students`
--- leaves auth.users behind, which then blocks the same email/LRN from ever
--- signing up again). security definer so it can reach auth.users, which
--- normal clients can't touch at all; self-checks is_admin() so only an
--- actual admin caller can invoke it. `students` cascades automatically via
--- its `references auth.users(id) on delete cascade` foreign key.
+-- Removes a declined student account and its custom credentials.
 create or replace function decline_student_signup(target_id uuid) returns void
 language plpgsql security definer as $$
+declare
+  target_email text;
 begin
   if not is_admin() then
     raise exception 'Not authorized';
   end if;
 
-  delete from auth.users where id = target_id;
+  select email into target_email from students where id = target_id;
+  delete from students where id = target_id;
+  delete from auth_credentials where id = target_id;
+  delete from auth_otps where email = target_email;
 end;
 $$;
 
@@ -361,3 +387,29 @@ create policy "grade_sections delete admin" on grade_sections for delete
 -- Seed the built-in location metadata that used to live only in the frontend
 -- (LOCATION_META) as regular rows too? No — LOCATION_META stays a frontend
 -- constant (it's not admin-editable), only admin-added extra places go here.
+
+-- The browser has no direct database grants; all access is mediated by the
+-- authenticated server API using the server-only service-role key.
+revoke all on table
+  students, admins, reports, awareness_content, notifications,
+  custom_locations, grade_sections, auth_credentials, auth_otps, auth_rate_limits
+from public, anon, authenticated;
+
+revoke all on sequence
+  reports_id_seq, awareness_content_id_seq, notifications_id_seq, grade_sections_id_seq
+from public, anon, authenticated;
+
+grant all on table
+  students, admins, reports, awareness_content, notifications,
+  custom_locations, grade_sections, auth_credentials, auth_otps, auth_rate_limits
+to service_role;
+
+grant usage, select, update on sequence
+  reports_id_seq, awareness_content_id_seq, notifications_id_seq, grade_sections_id_seq
+to service_role;
+
+revoke execute on function is_admin() from public, anon, authenticated;
+revoke execute on function get_unconfirmed_signups() from public, anon, authenticated;
+revoke execute on function is_lrn_taken(text) from public, anon, authenticated;
+revoke execute on function decline_student_signup(uuid) from public, anon, authenticated;
+revoke execute on function request_conference_change(bigint, text, text) from public, anon, authenticated;

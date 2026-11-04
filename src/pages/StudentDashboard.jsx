@@ -997,7 +997,11 @@ export default function StudentDashboard() {
                     <div className="s-form-row">
                       <div className="s-form-group">
                         <label>Does the victim have witnesses?</label>
-                        <select value={hasWitnesses ? "yes" : "no"} onChange={(e) => setHasWitnesses(e.target.value === "yes")}>
+                        <select value={hasWitnesses ? "yes" : "no"} onChange={(e) => {
+                          const wantsWitnesses = e.target.value === "yes";
+                          setHasWitnesses(wantsWitnesses);
+                          if (!wantsWitnesses) setWitnesses([emptyPerson()]);
+                        }}>
                           <option value="no">No witnesses</option>
                           <option value="yes">Yes, add witness information</option>
                         </select>
@@ -1006,7 +1010,23 @@ export default function StudentDashboard() {
                   )}
                   {(reporterType === "Witness" || (reporterType === "Victim" && hasWitnesses)) && (
                     <>
-                      <div className="s-form-section-title" style={{ marginTop: 20 }}>Witness Information</div>
+                      <div className="s-person-card-header" style={{ marginTop: 20 }}>
+                        <span className="s-form-section-title" style={{ margin: 0 }}>Witness Information</span>
+                        {reporterType === "Victim" && (
+                          <button
+                            type="button"
+                            className="s-remove-person-btn"
+                            onClick={() => {
+                              setHasWitnesses(false);
+                              setWitnesses([emptyPerson()]);
+                            }}
+                            aria-label="Remove witness information"
+                            title="Remove witness information"
+                          >
+                            <X size={13} /> Remove
+                          </button>
+                        )}
+                      </div>
                       {witnesses.map((w, idx) => (
                         <div key={idx} className="s-person-card s-person-card-witness">
                           {witnesses.length > 1 && (

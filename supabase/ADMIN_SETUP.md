@@ -1,52 +1,48 @@
-# Provision a deployed admin account
+# Backend auth and admin setup
 
-The app does not create administrator accounts automatically. An admin must exist in both Supabase Auth and the `admins` table.
+## Required server environment
 
-## Supabase Dashboard (no terminal)
+Set these variables in the local `.env` and in Vercel's server environment settings:
 
-1. In the Supabase project used by the deployed app, open **Authentication → Users** and choose **Add user**.
-2. Enter the admin's email and a unique password. Confirm the user's email if the dashboard offers that option, then create the user.
-3. Open the new user and copy their **UID**.
-4. Open **SQL Editor → New query** and run the following, replacing the example values with the new user's UID, email, and display name:
+```env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+AUTH_SESSION_SECRET=a-random-secret-of-at-least-32-characters
+BREVO_API_KEY=your-brevo-api-key
+BREVO_SENDER_EMAIL=verified-sender@example.com
+BREVO_SENDER_NAME=CNHS Bullying Reporting System
+```
 
-   ```sql
-   insert into public.admins (id, email, name)
-   values ('PASTE-USER-UID-HERE', 'admin@example.com', 'Administrator')
-   on conflict (id) do update
-     set email = excluded.email, name = excluded.name;
-   ```
+Use an email address verified as a sender in Brevo. Keep these values server-only: never add the `VITE_` prefix, commit them, or place them in frontend code. The service-role key is required by the serverless API to access the database; it must never be exposed to the browser.
 
-5. Sign in to the deployed app with that email and password.
+For local development, copy `.env.example` to `.env`. Generate a session secret with a password manager or a cryptographically secure random generator; it must contain at least 32 characters.
 
-The `admins` table must already exist; run `schema.sql` first if you have not created the tables. Use an account that is not already registered as a student.
+## Existing Supabase database
 
-For an existing database, run the entire [`conference_management.sql`](./conference_management.sql) file in the Supabase SQL Editor for the same Supabase project used by the app. It installs the RPC used by both student reschedule and cancellation requests and asks PostgREST to refresh its schema cache. New databases created from `schema.sql` already include this function.
+1. Back up the database.
+2. Run [`custom_auth.sql`](./custom_auth.sql) in the Supabase SQL Editor. It retains existing student/admin profiles and their IDs while removing their dependency on `auth.users`.
+3. Configure the server environment above and deploy the app.
+4. Existing student/admin profiles should select **Forgot Password**, request a Brevo code, and set a new password. Pending legacy sign-ups without a student profile must register again. Supabase Auth does not expose existing password hashes for migration.
+5. Create or update an admin using the one-time local command below. Existing administrators can also establish custom credentials through **Forgot Password**.
 
-For an existing database where renaming a section fails, run [`grade_sections_update_policy.sql`](./grade_sections_update_policy.sql) in the Supabase SQL Editor. The `grade_sections` table needs this Admin-only update policy for the Save action; new databases created from `schema.sql` already include it.
+Do not run `schema.sql` on an existing database; it drops and recreates the application tables.
 
-To make student personal information read-only after registration on an existing database, run [`student_profile_read_only.sql`](./student_profile_read_only.sql) in the Supabase SQL Editor. New databases created from `schema.sql` already enforce this.
+## New database
 
-Password reset uses Supabase Auth email recovery. In **Authentication → URL Configuration**, add `https://your-app-domain/login?mode=reset` (and your local development URL, such as `http://localhost:5173/login?mode=reset`) to the allowed Redirect URLs. Keep the Supabase password recovery email template enabled and make its link use `{{ .ConfirmationURL }}` so the reset link verifies the account before allowing a new password.
+Run [`schema.sql`](./schema.sql) once in the Supabase SQL Editor, then configure the server environment and create an admin using the command below.
 
-## Optional local command
+## Create an admin account
 
-If you prefer the terminal, the command below automates the same setup:
+Add these values temporarily to the local, git-ignored `.env`:
 
-1. Make sure `schema.sql` has been run on the Supabase project used by the deployed app.
-2. In your local, git-ignored `.env`, set the deployed project's URL, anon key, and these admin-provisioning values:
+```env
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=use-a-unique-password-of-at-least-12-characters
+ADMIN_NAME=Administrator
+```
 
-   ```env
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-or-secret-key
-   ADMIN_EMAIL=admin@example.com
-   ADMIN_PASSWORD=use-a-unique-password-of-at-least-12-characters
-   ADMIN_NAME=Administrator
-   ```
+Run `npm run create-admin`. The command creates the `admins` row and a custom password credential. Existing custom credentials are preserved. Remove the three `ADMIN_` variables from `.env` after provisioning.
 
-3. Run `npm run create-admin`.
-4. For a newly created account, sign in to the deployed app using `ADMIN_EMAIL` and `ADMIN_PASSWORD`. If the Auth user already existed, keep using its existing password.
+## Authentication behavior
 
-The command creates and confirms the Supabase Auth user, then adds its admin profile. If the email already belongs to a student, use a different email. If the Auth user already exists, the command links it as an admin without changing its password; sign in using that account's existing password.
-
-**Keep the service-role/secret key private.** Never prefix it with `VITE_`, put it in frontend code, or add it to Vercel environment variables. The command should only be run locally against the intended Supabase project. Use a unique password and keep it out of source control.
+Registration and password recovery send a 6-digit code through Brevo. Codes expire after 10 minutes and allow up to five verification attempts. User sessions are signed, seven-day, HttpOnly cookies. Database reads and writes go through the server API, which enforces student/admin access before using the Supabase service-role key.

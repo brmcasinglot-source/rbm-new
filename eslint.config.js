@@ -24,4 +24,10 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
     },
   },
+  {
+    files: ['api/**/*.js', 'vite.config.js', 'supabase/**/*.mjs'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])
