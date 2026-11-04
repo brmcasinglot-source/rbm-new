@@ -125,7 +125,7 @@ function hashOtp(email, purpose, code) {
     .digest("hex");
 }
 
-async function sendOtp(email, purpose, payload = null, req) {
+async function sendOtp(email, purpose, payload = null) {
   const brevoKey = getEnvironmentVariable("BREVO_API_KEY");
   const senderEmail = getEnvironmentVariable("BREVO_SENDER_EMAIL");
   if (!brevoKey || !senderEmail) {
@@ -136,27 +136,6 @@ async function sendOtp(email, purpose, payload = null, req) {
   const { error: expiredOtpError } = await db.from("auth_otps")
     .delete().lt("expires_at", new Date().toISOString());
   if (expiredOtpError) throw expiredOtpError;
-
-  const forwardedIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim();
-  const ip = forwardedIp || req.socket?.remoteAddress || "unknown";
-  const ipHash = createHmac("sha256", getSessionSecret()).update(ip).digest("hex");
-  const { data: rateLimit, error: rateLimitError } = await db
-    .from("auth_rate_limits")
-    .select("window_started_at, request_count")
-    .eq("ip_hash", ipHash)
-    .maybeSingle();
-  if (rateLimitError) throw rateLimitError;
-  const withinWindow = rateLimit &&
-    Date.now() - new Date(rateLimit.window_started_at).getTime() < 60 * 60_000;
-  if (withinWindow && rateLimit.request_count >= 5) {
-    throw Object.assign(new Error("Too many email-code requests. Please try again in an hour."), { status: 429 });
-  }
-  const { error: rateWriteError } = await db.from("auth_rate_limits").upsert({
-    ip_hash: ipHash,
-    window_started_at: withinWindow ? rateLimit.window_started_at : new Date().toISOString(),
-    request_count: withinWindow ? rateLimit.request_count + 1 : 1,
-  }, { onConflict: "ip_hash" });
-  if (rateWriteError) throw rateWriteError;
 
   const { data: existing, error: existingError } = await db
     .from("auth_otps")
@@ -399,7 +378,7 @@ async function handleAuth(action, body, req) {
       section: section.trim(),
       password_hash: await hashPassword(password),
     };
-    await sendOtp(email, "signup", payload, req);
+    await sendOtp(email, "signup", payload);
     return { success: true, needsConfirmation: true };
   }
 
@@ -475,7 +454,7 @@ async function handleAuth(action, body, req) {
       if (account) {
         const payload = { id: account.id, role: account.role };
         try {
-          await sendOtp(email, "reset", payload, req);
+          await sendOtp(email, "reset", payload);
         } catch (error) {
           if (error.status !== 429) throw error;
         }
@@ -547,7 +526,7 @@ async function handleAuth(action, body, req) {
       const { data: challenge, error } = await db.from("auth_otps")
         .select("payload").eq("email", email).eq("purpose", "signup").maybeSingle();
       if (error) throw error;
-      if (challenge) await sendOtp(email, "signup", challenge.payload, req);
+      if (challenge) await sendOtp(email, "signup", challenge.payload);
     }
     return { success: true };
   }
