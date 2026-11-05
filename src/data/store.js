@@ -125,14 +125,23 @@ function locationRowToObj(row) {
 }
 
 // ─── REPORTS API ────────────────────────────────────────────────────────────
-export async function getReports() {
-  const { data, error } = await supabase.from("reports").select("*").order("submitted_at", { ascending: false });
+const REPORT_COLUMNS_WITHOUT_EVIDENCE = [
+  "id", "type", "date", "time", "location", "description", "description_lead_up",
+  "description_impact", "description_actions", "reporter_type", "victims", "offenders",
+  "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
+  "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
+  "scheduled_conference", "submitted_at", "updated_at",
+].join(",");
+
+export async function getReports({ includeEvidence = true } = {}) {
+  const columns = includeEvidence ? "*" : REPORT_COLUMNS_WITHOUT_EVIDENCE;
+  const { data, error } = await supabase.from("reports").select(columns).order("submitted_at", { ascending: false });
   if (error) throw error;
   return (data || []).map(reportRowToObj);
 }
 
 export async function submitReport(reportData, evidenceFiles = []) {
-  const existingReports = await getReports();
+  const existingReports = await getReports({ includeEvidence: false });
   const isAnon = !!reportData.isAnonymous;
   const submittedBy = getCurrentUserName();
 
@@ -179,7 +188,7 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
   const updates = { status: newStatus, updated_at: new Date().toISOString() };
   if (adminNotes !== undefined) updates.admin_notes = adminNotes;
 
-  const allReports = (await getReports()).filter((r) => r.id !== reportId);
+  const allReports = (await getReports({ includeEvidence: false })).filter((r) => r.id !== reportId);
   updates.priority = computePriority(reportRowToObj({ ...currentRow, ...updates }), allReports);
 
   const { data, error } = await supabase.from("reports").update(updates).eq("id", reportId).select().single();
@@ -610,6 +619,12 @@ export async function getStudentAccounts() {
   const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+export async function getPendingStudentAccountCount() {
+  const { data, error } = await supabase.from("students").select("id").eq("approved", false);
+  if (error) throw error;
+  return (data || []).length;
 }
 
 export async function approveStudentAccount(id) {

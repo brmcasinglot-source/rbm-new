@@ -175,18 +175,27 @@ export default function StudentDashboard() {
   const [submitSuccess,  setSubmitSuccess]  = useState(false);
   const [formError,      setFormError]      = useState("");
 
-  // Admin-managed sections per grade (Grade & Sections page) — same source
-  // the Sign Up form uses, so Victim/Offender/Witness grade+section pickers
-  // in the report form stay in sync with what admins actually manage.
+  // Load report-form options only when the student opens that form.
   const [gradeSectionsList, setGradeSectionsList] = useState([]);
   useEffect(() => {
-    getGradeSections().then(setGradeSectionsList).catch(() => setGradeSectionsList([]));
-  }, []);
+    if (activeTab !== "report") return undefined;
+    let cancelled = false;
+    getGradeSections()
+      .then((sections) => { if (!cancelled) setGradeSectionsList(sections); })
+      .catch(() => { if (!cancelled) setGradeSectionsList([]); });
+    return () => { cancelled = true; };
+  }, [activeTab]);
 
   const profileRef = useRef();
   const notifRef   = useRef();
+  const welcomeNotificationChecked = useRef(false);
 
-  // ── Poll Supabase every 2 s — only update state when data actually changed ─
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ── Refresh visible dashboard data without overlapping requests ────────────
   useEffect(() => {
     const setIfChanged = (setter) => (next) =>
       setter((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
@@ -195,59 +204,57 @@ export default function StudentDashboard() {
     const setNotificationsIfChanged    = setIfChanged(setNotifications);
     const setCustomLocationsIfChanged  = setIfChanged(setCustomLocations);
     let cancelled = false;
+    let timeoutId;
 
     async function refresh() {
       try {
         const [reportsData, awarenessData, notifData] = await Promise.all([
-          getReports(), getAwarenessContent(), getStudentNotifications(),
+          activeTab === "profile"
+            ? Promise.resolve(null)
+            : getReports({ includeEvidence: activeTab === "cases" }),
+          activeTab === "dashboard" ? getAwarenessContent() : Promise.resolve(null),
+          getStudentNotifications(),
         ]);
         if (cancelled) return;
-        setReportsIfChanged(reportsData);
-        setAwarenessContentIfChanged(awarenessData);
-        setNotificationsIfChanged(notifData);
+        if (reportsData) setReportsIfChanged(reportsData);
+        if (awarenessData) setAwarenessContentIfChanged(awarenessData);
+
+        let nextNotifications = notifData;
+        if (!welcomeNotificationChecked.current) {
+          welcomeNotificationChecked.current = true;
+          const welcomeNotif = notifData.find((n) => n.type === "success" && !n.read);
+          if (welcomeNotif) {
+            showToast(welcomeNotif.title);
+            try {
+              await markStudentNotifRead(welcomeNotif.id);
+              nextNotifications = notifData.map((notification) =>
+                notification.id === welcomeNotif.id ? { ...notification, read: true } : notification
+              );
+            } catch (err) {
+              console.error("Welcome notification could not be marked as read:", err);
+            }
+          }
+        }
+        setNotificationsIfChanged(nextNotifications);
       } catch (err) {
         console.error("Dashboard refresh failed:", err);
       }
 
-      // Fetched separately: a failure in any of the calls above (or here)
-      // shouldn't be able to block the other from refreshing — previously
-      // one broken query silently stalled everything, including locations.
-      try {
-        const locationsData = await getCustomLocations();
-        if (cancelled) return;
-        setCustomLocationsIfChanged(locationsData);
-      } catch (err) {
-        console.error("getCustomLocations failed:", err);
+      if (activeTab === "report") {
+        try {
+          const locationsData = await getCustomLocations();
+          if (cancelled) return;
+          setCustomLocationsIfChanged(locationsData);
+        } catch (err) {
+          console.error("getCustomLocations failed:", err);
+        }
       }
+
+      if (!cancelled) timeoutId = setTimeout(refresh, 30_000);
     }
     refresh();
-    const id = setInterval(refresh, 2000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
-
-  // One-time check on load: if admin just approved this account, there's an
-  // unread "success" notification waiting — surface it as a toast (not just
-  // buried in the bell), then mark it read so it doesn't repeat next login.
-  useEffect(() => {
-    (async () => {
-      try {
-        const notifs = await getStudentNotifications();
-        const welcomeNotif = notifs.find((n) => n.type === "success" && !n.read);
-        if (welcomeNotif) {
-          showToast(welcomeNotif.title);
-          await markStudentNotifRead(welcomeNotif.id);
-          setNotifications(await getStudentNotifications());
-        }
-      } catch (err) {
-        console.error("Welcome notification check failed:", err);
-      }
-    })();
-  }, []);
+    return () => { cancelled = true; clearTimeout(timeoutId); };
+  }, [activeTab]);
 
   useEffect(() => {
     const close = (e) => {
@@ -347,7 +354,7 @@ export default function StudentDashboard() {
       setFormError("Could not submit report: " + err.message);
       return;
     }
-    setReports(await getReports());
+    setReports(await getReports({ includeEvidence: false }));
     setNotifications(await getStudentNotifications());
     setReportForm({ type: "", date: "", time: "", location: "", description: "", descriptionLeadUp: "", descriptionImpact: "", involved: "" });
     setLocationChoice("");

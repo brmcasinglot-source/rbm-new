@@ -31,7 +31,7 @@ import {
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
-  getStudentAccounts, approveStudentAccount, declineStudentAccount,
+  getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getUnconfirmedSignups, resendConfirmationEmail,
   downloadCSV, downloadTextReport, getAnalyticsData,
 } from "../data/store";
@@ -321,6 +321,7 @@ export default function AdminDashboard() {
   const [customLocations,  setCustomLocations]  = useState([]);
   const [gradeSections,    setGradeSections]    = useState([]);
   const [studentAccounts,    setStudentAccounts]    = useState([]);
+  const [pendingAccountCount, setPendingAccountCount] = useState(0);
   const [unconfirmedSignups, setUnconfirmedSignups] = useState([]);
   const [unconfirmedError,   setUnconfirmedError]   = useState("");
   const pendingAccounts = studentAccounts.filter((s) => !s.approved);
@@ -356,8 +357,7 @@ export default function AdminDashboard() {
     };
   }, [activeTab, conferencePanelPinned]);
 
-  // Poll every 2 s — only update state (and trigger a re-render) when the
-  // underlying data actually changed, so charts don't reset/re-animate every tick.
+  // Refresh only the data used by the active admin tab, without overlapping requests.
   useEffect(() => {
     const setIfChanged = (setter) => (next) =>
       setter((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
@@ -369,41 +369,81 @@ export default function AdminDashboard() {
     const setStudentAccountsIfChanged    = setIfChanged(setStudentAccounts);
     const setUnconfirmedSignupsIfChanged = setIfChanged(setUnconfirmedSignups);
     let cancelled = false;
+    let timeoutId;
 
     async function refresh() {
       try {
-        const [incidentsData, locationsData, awarenessData, notifData, gradeSectionsData, studentAccountsData] = await Promise.all([
-          getReports(), getCustomLocations(), getAwarenessContent(), getAdminNotifications(), getGradeSections(), getStudentAccounts(),
+        const [incidentsData, notifData] = await Promise.all([
+          ["dashboard", "incidents", "analytics"].includes(activeTab)
+            ? getReports({ includeEvidence: activeTab === "incidents" })
+            : Promise.resolve(null),
+          getAdminNotifications(),
         ]);
         if (cancelled) return;
-        setIncidentsIfChanged(incidentsData);
-        setCustomLocationsIfChanged(locationsData);
-        setAwarenessListIfChanged(awarenessData);
+        if (incidentsData) setIncidentsIfChanged(incidentsData);
         setNotificationsIfChanged(notifData);
-        setGradeSectionsIfChanged(gradeSectionsData);
-        setStudentAccountsIfChanged(studentAccountsData);
       } catch (err) {
         console.error("Dashboard refresh failed:", err);
       }
 
-      // Fetched separately: a broken/missing RPC here shouldn't blank out
-      // the rest of the dashboard, but its failure must stay visible rather
-      // than silently rendering as "no sign-ups waiting".
-      try {
-        const unconfirmedData = await getUnconfirmedSignups();
-        if (cancelled) return;
-        setUnconfirmedSignupsIfChanged(unconfirmedData);
-        setUnconfirmedError("");
-      } catch (err) {
-        if (cancelled) return;
-        console.error("getUnconfirmedSignups failed:", err.message);
-        setUnconfirmedError(err.message);
+      if (["dashboard", "analytics"].includes(activeTab)) {
+        try {
+          const locationsData = await getCustomLocations();
+          if (cancelled) return;
+          setCustomLocationsIfChanged(locationsData);
+        } catch (err) {
+          console.error("getCustomLocations failed:", err);
+        }
+      } else if (activeTab === "awareness") {
+        try {
+          const awarenessData = await getAwarenessContent();
+          if (cancelled) return;
+          setAwarenessListIfChanged(awarenessData);
+        } catch (err) {
+          console.error("getAwarenessContent failed:", err);
+        }
+      } else if (activeTab === "sections") {
+        try {
+          const gradeSectionsData = await getGradeSections();
+          if (cancelled) return;
+          setGradeSectionsIfChanged(gradeSectionsData);
+        } catch (err) {
+          console.error("getGradeSections failed:", err);
+        }
+      } else if (activeTab === "confirmations") {
+        try {
+          const studentAccountsData = await getStudentAccounts();
+          if (cancelled) return;
+          setStudentAccountsIfChanged(studentAccountsData);
+          setPendingAccountCount(studentAccountsData.filter((student) => !student.approved).length);
+        } catch (err) {
+          console.error("getStudentAccounts failed:", err);
+        }
+        try {
+          const unconfirmedData = await getUnconfirmedSignups();
+          if (cancelled) return;
+          setUnconfirmedSignupsIfChanged(unconfirmedData);
+          setUnconfirmedError("");
+        } catch (err) {
+          if (cancelled) return;
+          console.error("getUnconfirmedSignups failed:", err.message);
+          setUnconfirmedError(err.message);
+        }
+      } else if (activeTab === "dashboard") {
+        try {
+          const count = await getPendingStudentAccountCount();
+          if (cancelled) return;
+          setPendingAccountCount(count);
+        } catch (err) {
+          console.error("getPendingStudentAccountCount failed:", err);
+        }
       }
+
+      if (!cancelled) timeoutId = setTimeout(refresh, 30_000);
     }
     refresh();
-    const id = setInterval(refresh, 2000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
+    return () => { cancelled = true; clearTimeout(timeoutId); };
+  }, [activeTab]);
 
   useEffect(() => {
     const close = (e) => {
@@ -1069,7 +1109,9 @@ export default function AdminDashboard() {
   const handleApproveAccount = async (id, name) => {
     try {
       await approveStudentAccount(id);
-      setStudentAccounts(await getStudentAccounts());
+      const accounts = await getStudentAccounts();
+      setStudentAccounts(accounts);
+      setPendingAccountCount(accounts.filter((student) => !student.approved).length);
       showToast(`${name}'s account has been confirmed. They can now log in.`);
     } catch (err) {
       showToast(`Could not approve ${name}: ${err.message}`, "error");
@@ -1079,7 +1121,9 @@ export default function AdminDashboard() {
   const handleDeclineAccount = async (id, name) => {
     if (!window.confirm(`Decline and remove "${name}"'s registration? This cannot be undone.`)) return;
     await declineStudentAccount(id);
-    setStudentAccounts(await getStudentAccounts());
+    const accounts = await getStudentAccounts();
+    setStudentAccounts(accounts);
+    setPendingAccountCount(accounts.filter((student) => !student.approved).length);
     showToast(`${name}'s registration was declined.`);
   };
 
@@ -1293,11 +1337,11 @@ export default function AdminDashboard() {
           ].map(({ tab, icon, label }) => (
             <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
               {icon} {label}
-              {tab === "confirmations" && pendingAccounts.length > 0 && (
+              {tab === "confirmations" && pendingAccountCount > 0 && (
                 <span style={{
                   marginLeft: "auto", background: "#ef4444", color: "#fff",
                   fontSize: 10, fontWeight: 800, padding: "1px 7px", borderRadius: 10,
-                }}>{pendingAccounts.length}</span>
+                }}>{pendingAccountCount}</span>
               )}
             </button>
           ))}
