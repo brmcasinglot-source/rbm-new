@@ -32,6 +32,7 @@ import {
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
+  getStudentIdImagesForAdmin,
   getUnconfirmedSignups, resendConfirmationEmail,
   downloadCSV, downloadTextReport, getAnalyticsData,
 } from "../data/store";
@@ -321,6 +322,7 @@ export default function AdminDashboard() {
   const [customLocations,  setCustomLocations]  = useState([]);
   const [gradeSections,    setGradeSections]    = useState([]);
   const [studentAccounts,    setStudentAccounts]    = useState([]);
+  const [studentIdViewer, setStudentIdViewer] = useState(null);
   const [pendingAccountCount, setPendingAccountCount] = useState(0);
   const [unconfirmedSignups, setUnconfirmedSignups] = useState([]);
   const [unconfirmedError,   setUnconfirmedError]   = useState("");
@@ -1115,6 +1117,20 @@ export default function AdminDashboard() {
       showToast(`${name}'s account has been confirmed. They can now log in.`);
     } catch (err) {
       showToast(`Could not approve ${name}: ${err.message}`, "error");
+    }
+  };
+
+  const handleViewStudentId = async (student) => {
+    setStudentIdViewer({ id: student.id, name: student.name, loading: true, error: "", images: null });
+    try {
+      const images = await getStudentIdImagesForAdmin(student.id);
+      setStudentIdViewer((current) => current?.id === student.id
+        ? { ...current, loading: false, images }
+        : current);
+    } catch (err) {
+      setStudentIdViewer((current) => current?.id === student.id
+        ? { ...current, loading: false, error: err.message }
+        : current);
     }
   };
 
@@ -2480,9 +2496,21 @@ export default function AdminDashboard() {
                           <span>{s.grade || "—"} · {s.section || "—"}</span>
                           <span>{s.age || "—"} yrs old{s.sex ? ` · ${s.sex}` : ""}</span>
                           <span>Registered {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
+                          <span style={{ color: s.hasStudentIdFront && s.hasStudentIdBack ? "#15803d" : "#b91c1c", fontWeight: 700 }}>
+                            ID photos: {s.hasStudentIdFront && s.hasStudentIdBack ? "front and back uploaded" : "missing"}
+                          </span>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => handleViewStudentId(s)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6, padding: "8px 12px",
+                            background: "#fff", border: "1.5px solid #93c5fd", borderRadius: 8,
+                            color: "#1d4ed8", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
+                            fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap",
+                          }}
+                        ><Image size={14} /> View ID Photos</button>
                         <button
                           onClick={() => handleApproveAccount(s.id, s.name)}
                           style={{
@@ -3431,6 +3459,53 @@ export default function AdminDashboard() {
             style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 12, boxShadow: "0 0 40px rgba(0,0,0,0.4)" }} />
           <X size={28} style={{ position: "absolute", top: 20, right: 24, color: "white", cursor: "pointer" }}
             onClick={() => setLightboxSrc(null)} />
+        </div>
+      )}
+
+      {studentIdViewer && (
+        <div className="admin-modal-overlay" onClick={() => setStudentIdViewer(null)}>
+          <div className="admin-modal" style={{ maxWidth: 760 }} onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header-admin">
+              <div className="title-wrap">
+                <Image size={18} color="var(--accent-color)" />
+                <h3>Student ID Photos — {studentIdViewer.name}</h3>
+              </div>
+              <X size={20} className="close-modal-btn" onClick={() => setStudentIdViewer(null)} />
+            </div>
+            <div className="admin-modal-content">
+              {studentIdViewer.loading ? (
+                <p>Loading private ID photos…</p>
+              ) : studentIdViewer.error ? (
+                <p role="alert" style={{ color: "#b91c1c" }}>Could not load ID photos: {studentIdViewer.error}</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+                  {[
+                    { label: "Front", url: studentIdViewer.images?.front },
+                    { label: "Back", url: studentIdViewer.images?.back },
+                  ].map(({ label, url }) => (
+                    <div key={label}>
+                      <strong style={{ display: "block", marginBottom: 8 }}>{label} of Student ID</strong>
+                      {url ? (
+                        <a href={url} target="_blank" rel="noreferrer" aria-label={`Open full-size ${label.toLowerCase()} of student ID`}>
+                          <img
+                            src={url}
+                            alt={`${label} of ${studentIdViewer.name}'s student ID`}
+                            style={{ width: "100%", maxHeight: "55vh", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}
+                          />
+                          <span style={{ display: "block", marginTop: 6, color: "#2563eb", fontSize: 12 }}>Open full size</span>
+                        </a>
+                      ) : (
+                        <p style={{ color: "#64748b" }}>No photo on file.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer-bar">
+              <button className="cancel-btn" onClick={() => setStudentIdViewer(null)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -189,6 +189,43 @@
 .input-group { margin-bottom: 16px; }
 .input-group.half { flex: 1; }
 
+.student-id-upload-help {
+  margin: -2px 0 10px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.student-id-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.student-id-upload {
+  display: flex;
+  min-height: 126px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px;
+  border: 1.5px dashed #86efac;
+  border-radius: 12px;
+  background: #f0fdf4;
+  color: #166534;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.student-id-upload input { display: none; }
+.student-id-upload > span:not(.student-id-upload-icon) { font-size: 11px; font-weight: 800; }
+.student-id-upload small { color: #64748b; font-size: 10px; line-height: 1.3; }
+.student-id-upload-icon { font-size: 25px; line-height: 1; font-weight: 500; }
+.student-id-upload img { width: 100%; height: 76px; object-fit: contain; border-radius: 6px; }
+.student-id-upload.has-image { border-style: solid; }
+
 .input-label {
   display: block;
   font-size: 12px;

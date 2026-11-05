@@ -6,7 +6,7 @@
  * registration, and session management live in src/lib/auth.js.
  */
 import { supabase } from "../lib/apiClient";
-import { resendConfirmationEmail as resendOtp } from "../lib/auth";
+import { getStudentIdImages, resendConfirmationEmail as resendOtp } from "../lib/auth";
 
 // ─── CURRENT-USER CACHE ────────────────────────────────────────────────────
 // Populated at login time by src/lib/auth.js. Kept as localStorage so the
@@ -616,15 +616,34 @@ export async function deleteGradeSection(id) {
 
 // ─── ACCOUNT CONFIRMATION API (admin approves new student registrations) ───
 export async function getStudentAccounts() {
-  const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("students")
+    .select("id,name,email,lrn,age,sex,grade,section,approved,created_at,student_id_front_path,student_id_back_path")
+    .order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map((student) => ({
+    id: student.id,
+    name: student.name,
+    email: student.email,
+    lrn: student.lrn,
+    age: student.age,
+    sex: student.sex,
+    grade: student.grade,
+    section: student.section,
+    approved: student.approved,
+    created_at: student.created_at,
+    hasStudentIdFront: !!student.student_id_front_path,
+    hasStudentIdBack: !!student.student_id_back_path,
+  }));
 }
 
 export async function getPendingStudentAccountCount() {
   const { data, error } = await supabase.from("students").select("id").eq("approved", false);
   if (error) throw error;
   return (data || []).length;
+}
+
+export async function getStudentIdImagesForAdmin(studentId) {
+  return getStudentIdImages(studentId);
 }
 
 export async function approveStudentAccount(id) {

@@ -41,15 +41,16 @@ The function is configured with `verify_jwt = false` because it uses its own sig
 
 1. Back up the database.
 2. Run [`custom_auth.sql`](./custom_auth.sql) in the Supabase SQL Editor. It retains existing student/admin profiles and their IDs while removing their dependency on `auth.users`.
-3. Configure the Edge Function secrets above and deploy the function.
-4. Existing student/admin profiles should select **Forgot Password**, request a Brevo code, and set a new password. Pending legacy sign-ups without a student profile must register again. Supabase Auth does not expose existing password hashes for migration.
-5. Create or update an admin using the one-time local command below. Existing administrators can also establish custom credentials through **Forgot Password**.
+3. Run [`student_id_images.sql`](./student_id_images.sql) to add the private student-ID image bucket and profile fields.
+4. Configure the Edge Function secrets above and deploy the function.
+5. Existing student/admin profiles should select **Forgot Password**, request a Brevo code, and set a new password. Pending legacy sign-ups without a student profile must register again. Supabase Auth does not expose existing password hashes for migration.
+6. Create or update an admin using the one-time local command below. Existing administrators can also establish custom credentials through **Forgot Password**.
 
 Do not run `schema.sql` on an existing database; it drops and recreates the application tables.
 
 ## New database
 
-Run [`schema.sql`](./schema.sql) once in the Supabase SQL Editor, then configure the Edge Function and create an admin using the command below.
+Run [`schema.sql`](./schema.sql) once in the Supabase SQL Editor, then configure the Edge Function and create an admin using the command below. The schema also creates the private student-ID image bucket.
 
 ## Create an admin account
 

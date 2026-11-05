@@ -14,6 +14,59 @@ import {
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
 
+const MAX_STUDENT_ID_IMAGE_SIZE = 1_000_000;
+
+async function prepareStudentIdImage(file) {
+  if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Choose a JPG, PNG, or WebP image.");
+  }
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("This browser cannot prepare the image. Please use a recent browser.");
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const maxDimension = 1400;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare the image. Please try another photo.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    let blob;
+    for (const quality of [0.78, 0.65, 0.52]) {
+      blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (result) => result ? resolve(result) : reject(new Error("Could not prepare the image. Please try another photo.")),
+          "image/webp",
+          quality
+        );
+      });
+      if (blob.type !== "image/webp") {
+        throw new Error("This browser cannot prepare ID photos securely. Please use a recent browser.");
+      }
+      if (blob.size <= MAX_STUDENT_ID_IMAGE_SIZE) break;
+    }
+    if (blob.size > MAX_STUDENT_ID_IMAGE_SIZE) {
+      throw new Error("Each ID photo must be under 1 MB after compression. Please take a clearer, closer photo.");
+    }
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Could not read the image. Please try again."));
+      reader.readAsDataURL(blob);
+    });
+    return { dataUrl, name: file.name };
+  } finally {
+    bitmap.close();
+  }
+}
+
 function getPasswordStrength(password) {
   const checks = [
     password.length >= 8,
@@ -58,6 +111,8 @@ export default function Login() {
   const [regSex,     setRegSex]     = useState("");
   const [regGrade,   setRegGrade]   = useState("");
   const [regSection, setRegSection] = useState("");
+  const [regStudentIdImages, setRegStudentIdImages] = useState({ front: null, back: null });
+  const [processingIdImage, setProcessingIdImage] = useState(false);
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
   const resetPasswordStrength = getPasswordStrength(newPassword);
@@ -65,7 +120,8 @@ export default function Login() {
   // Used for the registration guidance below the submit button.
   const isRegisterFormComplete =
     regName.trim() && regLRN.length === 12 && regEmail.trim() && regAge &&
-    regSex && regGrade && regSection && regPass && regConfirm;
+    regSex && regGrade && regSection && regPass && regConfirm &&
+    regStudentIdImages.front && regStudentIdImages.back;
 
   // Admin-managed sections per grade (Grade & Sections page)
   const [gradeSectionsList, setGradeSectionsList] = useState([]);
@@ -81,6 +137,8 @@ export default function Login() {
     setNewPassword(""); setConfirmNewPassword("");
     setRegName(""); setRegLRN(""); setRegEmail(""); setRegPass(""); setRegConfirm("");
     setRegAge(""); setRegSex(""); setRegGrade(""); setRegSection("");
+    setRegStudentIdImages({ front: null, back: null });
+    setProcessingIdImage(false);
   };
 
   const switchMode = (m) => {
@@ -207,6 +265,20 @@ export default function Login() {
     setSuccess("A new verification code has been sent to your email.");
   };
 
+  const handleStudentIdImage = async (side, file) => {
+    if (!file) return;
+    setError("");
+    setProcessingIdImage(true);
+    try {
+      const image = await prepareStudentIdImage(file);
+      setRegStudentIdImages((current) => ({ ...current, [side]: image }));
+    } catch (imageError) {
+      setError(imageError.message);
+    } finally {
+      setProcessingIdImage(false);
+    }
+  };
+
   // ── REGISTER ──────────────────────────────────────────────────────────────
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -215,6 +287,10 @@ export default function Login() {
     if (!regName.trim() || !regLRN || !regEmail.trim() || !regPass || !regConfirm ||
         !regAge || !regSex || !regGrade || !regSection.trim()) {
       setError("Please fill in all required fields.");
+      return;
+    }
+    if (!regStudentIdImages.front || !regStudentIdImages.back) {
+      setError("Upload both the front and back photos of your student ID.");
       return;
     }
     if (regLRN.length !== 12) {
@@ -248,6 +324,8 @@ export default function Login() {
       sex:      regSex,
       grade:    regGrade,
       section:  regSection.trim(),
+      studentIdFront: regStudentIdImages.front.dataUrl,
+      studentIdBack: regStudentIdImages.back.dataUrl,
     });
     setLoading(false);
 
@@ -550,6 +628,48 @@ export default function Login() {
                   </div>
                 </div>
                 <div className="input-group">
+                  <label className="input-label">Student ID Photos * (front and back required)</label>
+                  <p className="student-id-upload-help">
+                    Take a clear photo of both sides. Photos are kept private and shown only to an administrator for account validation.
+                  </p>
+                  <div className="student-id-upload-grid">
+                    {[
+                      { side: "front", label: "Front of Student ID" },
+                      { side: "back", label: "Back of Student ID" },
+                    ].map(({ side, label }) => {
+                      const image = regStudentIdImages[side];
+                      return (
+                        <label className={`student-id-upload ${image ? "has-image" : ""}`} key={side}>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            capture="environment"
+                            disabled={processingIdImage || loading}
+                            onChange={(event) => {
+                              handleStudentIdImage(side, event.target.files?.[0]);
+                              event.target.value = "";
+                            }}
+                          />
+                          {image ? (
+                            <>
+                              <img src={image.dataUrl} alt={`${label} preview`} />
+                              <span>{label} — ready</span>
+                              <small>Tap to retake or choose another photo</small>
+                            </>
+                          ) : (
+                            <>
+                              <span className="student-id-upload-icon">+</span>
+                              <span>{label}</span>
+                              <small>Take a photo or choose an image</small>
+                            </>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {processingIdImage && <p className="student-id-upload-help">Preparing photo…</p>}
+                </div>
+                <div className="input-group">
                   <label className="input-label">Password * (strong password required)</label>
                   <div className="input-wrap">
                     <input
@@ -617,7 +737,7 @@ export default function Login() {
                 <button
                   className={`login-btn ${loading ? "loading" : ""}`}
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || processingIdImage || !regStudentIdImages.front || !regStudentIdImages.back}
                 >
                   {loading ? "Creating account…" : "Create Account"}
                 </button>

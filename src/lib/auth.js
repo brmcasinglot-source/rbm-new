@@ -43,6 +43,10 @@ export async function signUpStudent(details) {
   }
 }
 
+export async function getStudentIdImages(studentId) {
+  return authRequest("student-id-images", { studentId });
+}
+
 export async function verifyStudentEmail(email, code) {
   try {
     await authRequest("verify-signup", { email, code });

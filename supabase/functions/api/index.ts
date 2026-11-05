@@ -29,14 +29,14 @@ Deno.serve(async (request) => {
   }
 
   const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > 1_000_000) {
+  if (contentLength > 3_000_000) {
     return Response.json({ error: "Request is too large." }, { status: 413, headers: corsHeaders });
   }
 
   let body: unknown;
   try {
     const raw = await request.text();
-    if (raw.length > 1_000_000) {
+    if (raw.length > 3_000_000) {
       return Response.json({ error: "Request is too large." }, { status: 413, headers: corsHeaders });
     }
     body = raw ? JSON.parse(raw) : {};

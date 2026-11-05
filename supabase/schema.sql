@@ -23,6 +23,8 @@ create table students (
   sex        text,
   grade      text,
   section    text,
+  student_id_front_path text,
+  student_id_back_path  text,
   approved   boolean not null default false,
   created_at timestamptz default now()
 );
@@ -413,3 +415,17 @@ revoke execute on function get_unconfirmed_signups() from public, anon, authenti
 revoke execute on function is_lrn_taken(text) from public, anon, authenticated;
 revoke execute on function decline_student_signup(uuid) from public, anon, authenticated;
 revoke execute on function request_conference_change(bigint, text, text) from public, anon, authenticated;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'student-ids',
+  'student-ids',
+  false,
+  1000000,
+  array['image/webp']
+)
+on conflict (id) do update
+set name = excluded.name,
+    public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;

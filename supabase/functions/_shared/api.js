@@ -12,6 +12,8 @@ import { hashPassword, verifyPassword } from "./password.js";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
+const STUDENT_ID_BUCKET = "student-ids";
+const MAX_STUDENT_ID_IMAGE_BYTES = 1_000_000;
 
 let database;
 function getEnvironmentVariable(name) {
@@ -134,13 +136,68 @@ async function readJson(req) {
   let raw = "";
   for await (const chunk of req) {
     raw += chunk;
-    if (raw.length > 1_000_000) throw Object.assign(new Error("Request is too large."), { status: 413 });
+    if (raw.length > 3_000_000) throw Object.assign(new Error("Request is too large."), { status: 413 });
   }
   if (!raw) return {};
   try {
     return JSON.parse(raw);
   } catch {
     throw Object.assign(new Error("Request body must be valid JSON."), { status: 400 });
+  }
+}
+
+function decodeStudentIdImage(dataUrl, label) {
+  const match = /^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl || "");
+  if (!match) {
+    throw Object.assign(new Error(`Upload a valid WebP image for the ${label} of the student ID.`), { status: 400 });
+  }
+  const bytes = Buffer.from(match[1], "base64");
+  if (
+    bytes.length === 0 ||
+    bytes.length > MAX_STUDENT_ID_IMAGE_BYTES ||
+    bytes.subarray(0, 4).toString("ascii") !== "RIFF" ||
+    bytes.subarray(8, 12).toString("ascii") !== "WEBP"
+  ) {
+    throw Object.assign(new Error(`The ${label} photo is invalid or exceeds the 1 MB limit. Please take another photo.`), { status: 400 });
+  }
+  return bytes;
+}
+
+async function removeStudentIdImages(paths) {
+  const existingPaths = paths.filter(Boolean);
+  if (!existingPaths.length) return;
+  const { error } = await getDatabase().storage.from(STUDENT_ID_BUCKET).remove(existingPaths);
+  if (error) throw error;
+}
+
+async function uploadStudentIdImages(studentId, frontDataUrl, backDataUrl) {
+  const images = [
+    { path: `${studentId}/front.webp`, bytes: decodeStudentIdImage(frontDataUrl, "front") },
+    { path: `${studentId}/back.webp`, bytes: decodeStudentIdImage(backDataUrl, "back") },
+  ];
+  const uploadedPaths = [];
+  try {
+    for (const image of images) {
+      const { error } = await getDatabase().storage.from(STUDENT_ID_BUCKET).upload(image.path, image.bytes, {
+        contentType: "image/webp",
+        upsert: false,
+      });
+      if (error) {
+        throw Object.assign(
+          new Error(`Could not securely save the student ID photos. Run supabase/student_id_images.sql and deploy the API again. (${error.message})`),
+          { status: 503 },
+        );
+      }
+      uploadedPaths.push(image.path);
+    }
+    return { frontPath: images[0].path, backPath: images[1].path };
+  } catch (error) {
+    try {
+      await removeStudentIdImages(uploadedPaths);
+    } catch (cleanupError) {
+      console.error("Could not clean up incomplete student ID uploads:", cleanupError.message);
+    }
+    throw error;
   }
 }
 
@@ -158,8 +215,17 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
   }
 
   const db = getDatabase();
+  const now = new Date().toISOString();
+  const { data: expiredSignups, error: expiredSignupsError } = await db.from("auth_otps")
+    .select("email,payload").eq("purpose", "signup").lt("expires_at", now);
+  if (expiredSignupsError) throw expiredSignupsError;
+  const expiredImagePaths = (expiredSignups || []).flatMap(({ payload: expiredPayload }) => [
+    expiredPayload?.frontPath,
+    expiredPayload?.backPath,
+  ]);
+  await removeStudentIdImages(expiredImagePaths);
   const { error: expiredOtpError } = await db.from("auth_otps")
-    .delete().lt("expires_at", new Date().toISOString());
+    .delete().lt("expires_at", now);
   if (expiredOtpError) throw expiredOtpError;
 
   const { data: existing, error: existingError } = await db
@@ -475,7 +541,10 @@ async function handleAuth(action, body, req) {
   const email = String(body.email || "").trim().toLowerCase();
 
   if (action === "signup") {
-    const { name, password, lrn, age, sex, grade, section } = body;
+    const { name, password, lrn, age, sex, grade, section, studentIdFront, studentIdBack } = body;
+    if (!studentIdFront || !studentIdBack) {
+      throw Object.assign(new Error("Upload both the front and back photos of your student ID before signing up."), { status: 400 });
+    }
     const strongPassword = typeof password === "string" && password.length >= 8 &&
       /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) &&
       /[^A-Za-z0-9]/.test(password);
@@ -500,8 +569,10 @@ async function handleAuth(action, body, req) {
       throw Object.assign(new Error("This LRN is already registered to another account."), { status: 409 });
     }
 
+    const id = randomUUID();
+    const imagePaths = await uploadStudentIdImages(id, studentIdFront, studentIdBack);
     const payload = {
-      id: randomUUID(),
+      id,
       name: name.trim(),
       email,
       lrn: String(lrn),
@@ -509,10 +580,46 @@ async function handleAuth(action, body, req) {
       sex,
       grade,
       section: section.trim(),
+      ...imagePaths,
       password_hash: await hashPassword(password),
     };
-    await sendOtp(email, "signup", payload, req.headers.origin);
+    try {
+      await sendOtp(email, "signup", payload, req.headers.origin);
+    } catch (error) {
+      try {
+        await removeStudentIdImages(Object.values(imagePaths));
+      } catch (cleanupError) {
+        console.error("Could not clean up student ID photos after signup failed:", cleanupError.message);
+      }
+      throw error;
+    }
     return { success: true, needsConfirmation: true };
+  }
+
+  if (action === "student-id-images") {
+    const session = await getSession(req);
+    requireRole(session, "admin");
+    const studentId = String(body.studentId || "");
+    if (!/^[\da-f-]{36}$/i.test(studentId)) {
+      throw Object.assign(new Error("Invalid student account."), { status: 400 });
+    }
+    const { data: student, error } = await db.from("students")
+      .select("student_id_front_path, student_id_back_path").eq("id", studentId).maybeSingle();
+    if (error) throw error;
+    if (!student) throw Object.assign(new Error("Student account not found."), { status: 404 });
+
+    const createSignedUrl = async (path) => {
+      if (!path) return null;
+      const { data, error: signedUrlError } = await db.storage
+        .from(STUDENT_ID_BUCKET).createSignedUrl(path, 10 * 60);
+      if (signedUrlError) throw signedUrlError;
+      return data.signedUrl;
+    };
+    const [front, back] = await Promise.all([
+      createSignedUrl(student.student_id_front_path),
+      createSignedUrl(student.student_id_back_path),
+    ]);
+    return { front, back };
   }
 
   if (action === "verify-signup") {
@@ -546,6 +653,8 @@ async function handleAuth(action, body, req) {
       sex: registration.sex,
       grade: registration.grade,
       section: registration.section,
+      student_id_front_path: registration.frontPath,
+      student_id_back_path: registration.backPath,
     });
     if (profileError) {
       const { error: cleanupError } = await db.from("auth_credentials").delete().eq("id", registration.id);
@@ -577,7 +686,9 @@ async function handleAuth(action, body, req) {
       throw Object.assign(new Error("Please verify your email before signing in."), { status: 403 });
     }
     if (credential.role === "student") {
-      const { data: student, error } = await db.from("students").select("*").eq("id", credential.id).single();
+      const { data: student, error } = await db.from("students")
+        .select("id,name,email,lrn,age,sex,grade,section,approved,created_at")
+        .eq("id", credential.id).single();
       if (error) throw error;
       if (!student.approved) {
         throw Object.assign(new Error("Your account is waiting for admin confirmation. You'll be able to log in once an administrator approves your registration."), { status: 403 });
@@ -651,7 +762,10 @@ async function handleAuth(action, body, req) {
     const session = await getSession(req, { optional: true });
     if (!session) return { success: true, user: null };
     const table = session.role === "admin" ? "admins" : "students";
-    const { data: profile, error } = await db.from(table).select("*").eq("id", session.id).maybeSingle();
+    const profileColumns = session.role === "student"
+      ? "id,name,email,lrn,age,sex,grade,section,approved,created_at"
+      : "*";
+    const { data: profile, error } = await db.from(table).select(profileColumns).eq("id", session.id).maybeSingle();
     if (error) throw error;
     if (!profile || (session.role === "student" && !profile.approved)) {
       return { success: true, user: null };
@@ -859,7 +973,7 @@ async function runRpc(functionName, args, req) {
       requireRole(session, "admin");
       const id = args.target_id;
       const { data: student, error: fetchError } = await db.from("students")
-        .select("email").eq("id", id).maybeSingle();
+        .select("email,student_id_front_path,student_id_back_path").eq("id", id).maybeSingle();
       if (fetchError) throw fetchError;
       if (!student) throw Object.assign(new Error("Student account not found."), { status: 404 });
       const { error: deleteStudentError } = await db.from("students").delete().eq("id", id);
@@ -868,6 +982,7 @@ async function runRpc(functionName, args, req) {
       if (deleteCredentialError) throw deleteCredentialError;
       const { error: deleteOtpError } = await db.from("auth_otps").delete().eq("email", student.email);
       if (deleteOtpError) throw deleteOtpError;
+      await removeStudentIdImages([student.student_id_front_path, student.student_id_back_path]);
       return null;
     }
     if (functionName === "request_conference_change") {
