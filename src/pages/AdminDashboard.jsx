@@ -3490,6 +3490,8 @@ export default function AdminDashboard() {
                           <img
                             src={url}
                             alt={`${label} of ${studentIdViewer.name}'s student ID`}
+                            loading="lazy"
+                            decoding="async"
                             style={{ width: "100%", maxHeight: "55vh", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}
                           />
                           <span style={{ display: "block", marginTop: 6, color: "#2563eb", fontSize: 12 }}>Open full size</span>

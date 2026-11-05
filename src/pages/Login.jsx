@@ -14,7 +14,7 @@ import {
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
 
-const MAX_STUDENT_ID_IMAGE_SIZE = 1_000_000;
+const MAX_STUDENT_ID_IMAGE_SIZE = 350_000;
 
 async function prepareStudentIdImage(file) {
   if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -26,7 +26,7 @@ async function prepareStudentIdImage(file) {
 
   const bitmap = await createImageBitmap(file);
   try {
-    const maxDimension = 1400;
+    const maxDimension = 1200;
     const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
@@ -38,7 +38,7 @@ async function prepareStudentIdImage(file) {
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
     let blob;
-    for (const quality of [0.78, 0.65, 0.52]) {
+    for (const quality of [0.68, 0.56, 0.46, 0.36]) {
       blob = await new Promise((resolve, reject) => {
         canvas.toBlob(
           (result) => result ? resolve(result) : reject(new Error("Could not prepare the image. Please try another photo.")),
@@ -52,7 +52,7 @@ async function prepareStudentIdImage(file) {
       if (blob.size <= MAX_STUDENT_ID_IMAGE_SIZE) break;
     }
     if (blob.size > MAX_STUDENT_ID_IMAGE_SIZE) {
-      throw new Error("Each ID photo must be under 1 MB after compression. Please take a clearer, closer photo.");
+      throw new Error("Each ID photo must be under 350 KB after compression. Please take a closer, clearer photo with less background.");
     }
 
     const dataUrl = await new Promise((resolve, reject) => {

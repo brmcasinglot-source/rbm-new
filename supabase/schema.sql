@@ -421,7 +421,7 @@ values (
   'student-ids',
   'student-ids',
   false,
-  1000000,
+  350000,
   array['image/webp']
 )
 on conflict (id) do update

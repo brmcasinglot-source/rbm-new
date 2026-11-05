@@ -13,7 +13,7 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
 const STUDENT_ID_BUCKET = "student-ids";
-const MAX_STUDENT_ID_IMAGE_BYTES = 1_000_000;
+const MAX_STUDENT_ID_IMAGE_BYTES = 350_000;
 
 let database;
 function getEnvironmentVariable(name) {
@@ -158,7 +158,7 @@ function decodeStudentIdImage(dataUrl, label) {
     bytes.subarray(0, 4).toString("ascii") !== "RIFF" ||
     bytes.subarray(8, 12).toString("ascii") !== "WEBP"
   ) {
-    throw Object.assign(new Error(`The ${label} photo is invalid or exceeds the 1 MB limit. Please take another photo.`), { status: 400 });
+    throw Object.assign(new Error(`The ${label} photo is invalid or exceeds the 350 KB limit. Please take another photo.`), { status: 400 });
   }
   return bytes;
 }

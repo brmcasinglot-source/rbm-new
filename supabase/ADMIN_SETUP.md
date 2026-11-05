@@ -52,6 +52,8 @@ Do not run `schema.sql` on an existing database; it drops and recreates the appl
 
 Run [`schema.sql`](./schema.sql) once in the Supabase SQL Editor, then configure the Edge Function and create an admin using the command below. The schema also creates the private student-ID image bucket.
 
+New ID photos are resized to at most 1200 pixels and compressed to 350 KB each before upload, reducing storage and image-view egress. If an existing `student-ids` bucket is already present, rerun [`student_id_images.sql`](./student_id_images.sql) to apply the updated upload size limit.
+
 ## Create an admin account
 
 This is a one-time local provisioning command, not a local API server. Add these values temporarily to the git-ignored `.env`:
