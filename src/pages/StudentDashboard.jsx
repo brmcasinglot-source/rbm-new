@@ -7,9 +7,9 @@ import bg   from "../assets/cnhs.jpg";
 
 import {
   LayoutDashboard, FileText, Shield, BookOpen, User, Image,
-  ExternalLink, Upload, HelpCircle, Lock, Camera, Trash2, Bell,
+  ExternalLink, Upload, HelpCircle, Lock, Bell,
   CheckCircle, Clock, AlertTriangle, ArrowUpRight, X, Paperclip,
-  Eye, EyeOff, Play, AlertCircle, Calendar,
+  Eye, Play, AlertCircle, Calendar,
   Menu, ChevronDown, LogOut,
 } from "lucide-react";
 
@@ -133,13 +133,7 @@ export default function StudentDashboard() {
   const [hubFilter,   setHubFilter]   = useState("all");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen,   setNotifOpen]   = useState(false);
-  const [profilePic,  setProfilePic]  = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  // Password visibility
-  const [showCurrentPass, setShowCurrentPass] = useState(false);
-  const [showNewPass,      setShowNewPass]      = useState(false);
-  const [showConfirmPass,  setShowConfirmPass]  = useState(false);
 
   // Toast notification
   const [toast, setToast] = useState(null); // { msg, type }
@@ -263,14 +257,6 @@ export default function StudentDashboard() {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-
-  const handleProfilePicChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setProfilePic(ev.target.result);
-    reader.readAsDataURL(file);
-  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -547,9 +533,7 @@ export default function StudentDashboard() {
                 aria-expanded={profileOpen}
               >
                 <div className="s-ava" style={{ width: 32, height: 32, fontSize: 11 }}>
-                  {profilePic
-                    ? <img src={profilePic} alt="avatar" />
-                    : <span>{(studentName || "S")[0].toUpperCase()}</span>}
+                  <span>{(studentName || "S")[0].toUpperCase()}</span>
                 </div>
                 <div className="s-ava-info">
                   <span className="s-ava-name">{studentName || "Student"}</span>
@@ -1190,23 +1174,12 @@ export default function StudentDashboard() {
             <div className="s-profile-layout">
               <div className="s-panel s-profile-card">
                 <div className="s-profile-hero">
-                  <div className="s-avatar-wrap">
-                    <div className="s-avatar" onClick={() => document.getElementById("s-profile-upload").click()} title="Click to change">
-                      {profilePic ? <img src={profilePic} alt="Profile" /> : <User size={36} />}
-                    </div>
-                    <div className="s-camera-badge" onClick={() => document.getElementById("s-profile-upload").click()}>
-                      <Camera size={12} />
-                    </div>
-                    <input id="s-profile-upload" type="file" hidden accept="image/*" onChange={handleProfilePicChange} />
+                  <div className="s-profile-user-icon" aria-hidden="true">
+                    <User size={26} />
                   </div>
                   <div className="s-profile-meta">
                     <h3>{studentName || "Student Name"}</h3>
                     <p>Email Address: {localStorage.getItem("email") || "mariacruz@gmail.com"}</p>
-                    {profilePic && (
-                      <button className="s-remove-photo" onClick={() => setProfilePic(null)}>
-                        <Trash2 size={11} /> Remove Photo
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -1226,53 +1199,6 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div className="s-panel s-security-card">
-                  <div className="s-help-header" style={{ marginBottom: 20 }}>
-                    <Lock size={16} color="var(--s-accent)" />
-                    <h3 style={{ margin: 0 }}>Security &amp; Privacy</h3>
-                  </div>
-                  <div className="s-privacy-banner">
-                    <Shield size={14} color="#16a34a" />
-                    <span>Your reports and personal information are kept strictly confidential. Only authorized school personnel can view your submissions.</span>
-                  </div>
-                  <form onSubmit={(e) => { e.preventDefault(); showToast("Password updated successfully!"); }} style={{ marginTop: 18 }}>
-                    <div className="s-security-section-label">Change Password</div>
-                    <div className="s-form-group">
-                      <label>Current Password</label>
-                      <div className="s-pass-wrap">
-                        <input type={showCurrentPass ? "text" : "password"} placeholder="••••••••" className="s-pass-input" />
-                        <button type="button" className="s-eye-btn" onClick={() => setShowCurrentPass(!showCurrentPass)}>
-                          {showCurrentPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="s-form-row">
-                      <div className="s-form-group">
-                        <label>New Password</label>
-                        <div className="s-pass-wrap">
-                          <input type={showNewPass ? "text" : "password"} placeholder="Min. 8 characters" className="s-pass-input" />
-                          <button type="button" className="s-eye-btn" onClick={() => setShowNewPass(!showNewPass)}>
-                            {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="s-form-group">
-                        <label>Confirm New Password</label>
-                        <div className="s-pass-wrap">
-                          <input type={showConfirmPass ? "text" : "password"} placeholder="Re-type new password" className="s-pass-input" />
-                          <button type="button" className="s-eye-btn" onClick={() => setShowConfirmPass(!showConfirmPass)}>
-                            {showConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <button type="submit" className="s-submit-btn">Update Password</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
             </div>
             <div className="s-panel" style={{ maxWidth: 720, padding: 24, marginTop: 16 }}>
               <div className="s-help-header">

@@ -1548,60 +1548,29 @@
 ========================= */
 .s-profile-layout {
   display: grid;
-  grid-template-columns: 1fr 490px;
-  gap: 20px;
+  grid-template-columns: 1fr;
 }
 
 .s-profile-hero {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   padding-bottom: 20px;
   margin-bottom: 20px;
   border-bottom: 1.5px solid #e5e7eb;
 }
 
-.s-avatar-wrap {
-  position: relative;
-}
-
-.s-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
+.s-profile-user-icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
   background: #dcfce7;
-  border: 3px solid #86efac;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  border: 2px solid #86efac;
   color: var(--s-accent);
-  overflow: hidden;
-  transition: all 0.2s;
-}
-
-.s-avatar:hover { border-color: #22c55e; }
-
-.s-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.s-camera-badge {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
-  background: #22c55e;
-  border: 2px solid #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: white;
 }
 
 .s-profile-meta h3 {
@@ -1617,25 +1586,6 @@
   margin-top: 3px;
   font-weight: 500;
 }
-
-.s-remove-photo {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: #fee2e2;
-  border: 1.5px solid #fca5a5;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #dc2626;
-  cursor: pointer;
-  margin-top: 6px;
-  font-family: "Nunito", sans-serif;
-  transition: background 0.2s;
-}
-
-.s-remove-photo:hover { background: #fecaca; }
 
 .s-active-badge {
   margin-left: auto;
@@ -1675,31 +1625,6 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--s-text-main);
-}
-
-.s-security-card .s-form-group {
-  margin-bottom: 16px;
-}
-
-.s-security-card .s-pass-wrap {
-  background: #f8fafc;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 12px;
-  transition: all 0.2s;
-  overflow: hidden;
-}
-
-.s-security-card .s-pass-wrap:focus-within {
-  border-color: var(--s-accent);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(34,197,94,0.1);
-}
-
-.s-security-card .s-pass-input {
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 11px 14px;
 }
 
 /* =========================
@@ -2349,91 +2274,6 @@
   box-shadow: 0 0 0 3px rgba(34,197,94,0.1);
 }
 
-.s-eye-btn {
-  position: absolute;
-  right: 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #94a3b8;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-.s-eye-btn:hover { color: var(--s-accent); }
-/* =========================
-   SECURITY & PRIVACY CARD
-========================= */
-.s-security-card {
-  flex: 1;
-}
-
-.s-privacy-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #dcfce7;
-  border: 1.5px solid #86efac;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 13px;
-  color: #15803d;
-  font-weight: 500;
-  line-height: 1.55;
-}
-
-.s-security-section-label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: #94a3b8;
-  margin-bottom: 14px;
-}
-
-.s-security-divider {
-  height: 1.5px;
-  background: #f1f5f9;
-  margin: 20px 0 16px;
-}
-
-.s-privacy-items {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.s-privacy-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 12px;
-}
-
-.s-privacy-item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.s-privacy-item-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--s-text-main);
-}
-
-.s-privacy-item-desc {
-  font-size: 11px;
-  color: var(--s-text-muted);
-  font-weight: 500;
-  line-height: 1.4;
-}
 /* ══════════════════════════════════════════════════════════════════
    HERO BANNER
 ══════════════════════════════════════════════════════════════════ */
