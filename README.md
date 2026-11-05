@@ -14,6 +14,8 @@ Run [`supabase/custom_auth.sql`](./supabase/custom_auth.sql) once in the Supabas
 
 For a new database, run [`supabase/schema.sql`](./supabase/schema.sql) instead. It recreates the application tables and must not be run on a database containing data you want to keep.
 
+For media storage, run [`supabase/media_storage.sql`](./supabase/media_storage.sql) once in the SQL Editor. Back up the project first, then set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in your local environment and run `npm run migrate:media` to move existing inline report evidence and awareness images into Storage. The service-role key is required only for this local migration command; never expose it in the frontend or commit it. The migration keeps evidence private and creates optimized awareness thumbnails where possible.
+
 ## Deployment
 
-Configure the Edge Function secrets in Supabase, link the Supabase CLI to your project, and deploy the `api` function. Deploy the frontend to Vercel or another static host with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. See [`supabase/ADMIN_SETUP.md`](./supabase/ADMIN_SETUP.md) for the exact steps, required secrets, and admin setup.
+After applying the media SQL and migrating existing files, configure the Edge Function secrets in Supabase, link the Supabase CLI to your project, and deploy the `api` function. Deploy the frontend to Vercel or another static host with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. See [`supabase/ADMIN_SETUP.md`](./supabase/ADMIN_SETUP.md) for the exact steps, required secrets, and admin setup.

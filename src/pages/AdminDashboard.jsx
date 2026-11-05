@@ -32,10 +32,39 @@ import {
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
-  getStudentIdImagesForAdmin,
+  getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
   getUnconfirmedSignups, resendConfirmationEmail,
   downloadCSV, downloadTextReport, getAnalyticsData,
 } from "../data/store";
+import { optimizeImageFile } from "../lib/imageOptimization";
+
+const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const REPORT_PAGE_SIZE = 30;
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read the selected file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareAwarenessMedia(file) {
+  const full = file.type.startsWith("image/")
+    ? await optimizeImageFile(file, { maxDimension: 1600, maxSizeBytes: 1_000_000, forceWebp: true })
+    : file;
+  const thumbnail = file.type.startsWith("image/")
+    ? await optimizeImageFile(full, { maxDimension: 400, maxSizeBytes: 120_000, forceWebp: true })
+    : full;
+  if (full.size + thumbnail.size > 1_800_000) {
+    throw new Error("The selected file is too large. Choose a smaller image or document.");
+  }
+  return {
+    thumbnail: await fileToDataUrl(thumbnail),
+    fullImage: await fileToDataUrl(full),
+  };
+}
 
 // ─── Analytics helpers ────────────────────────────────────────────────────────
 
@@ -302,7 +331,10 @@ export default function AdminDashboard() {
   // Awareness modal
   const [showAwarenessModal, setShowAwarenessModal] = useState(false);
   const [editingAwareness,   setEditingAwareness]   = useState(null);
-  const [aForm, setAForm] = useState({ type: "article", title: "", desc: "", link: "#", videoUrl: "", thumbnail: "" });
+  const [aForm, setAForm] = useState({
+    type: "article", title: "", desc: "", link: "#", videoUrl: "",
+    thumbnailData: "", fullImageData: "", thumbnailPath: "", fullImagePath: "",
+  });
   const [aFilePreview, setAFilePreview] = useState(null);
 
   // Location Breakdown customization panel
@@ -317,8 +349,13 @@ export default function AdminDashboard() {
 
   // Live data
   const [incidents,        setIncidents]        = useState([]);
+  const [hasMoreIncidents, setHasMoreIncidents] = useState(false);
+  const [loadingMoreIncidents, setLoadingMoreIncidents] = useState(false);
   const [awarenessList,    setAwarenessList]    = useState([]);
   const [notifications,    setNotifications]    = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
   const [customLocations,  setCustomLocations]  = useState([]);
   const [gradeSections,    setGradeSections]    = useState([]);
   const [studentAccounts,    setStudentAccounts]    = useState([]);
@@ -371,80 +408,108 @@ export default function AdminDashboard() {
     const setStudentAccountsIfChanged    = setIfChanged(setStudentAccounts);
     const setUnconfirmedSignupsIfChanged = setIfChanged(setUnconfirmedSignups);
     let cancelled = false;
+    let refreshing = false;
     let timeoutId;
 
     async function refresh() {
+      if (cancelled || document.hidden || refreshing) return;
+      refreshing = true;
       try {
-        const [incidentsData, notifData] = await Promise.all([
-          ["dashboard", "incidents", "analytics"].includes(activeTab)
-            ? getReports({ includeEvidence: activeTab === "incidents" })
-            : Promise.resolve(null),
-          getAdminNotifications(),
-        ]);
-        if (cancelled) return;
-        if (incidentsData) setIncidentsIfChanged(incidentsData);
-        setNotificationsIfChanged(notifData);
-      } catch (err) {
-        console.error("Dashboard refresh failed:", err);
-      }
+        try {
+          const [incidentsData, notifData, unreadNotifications] = await Promise.all([
+            ["dashboard", "incidents", "analytics"].includes(activeTab)
+              ? getReports({
+                  includeEvidence: false,
+                  summaryOnly: true,
+                  ...(activeTab === "incidents" ? { limit: REPORT_PAGE_SIZE } : {}),
+                })
+              : Promise.resolve(null),
+            getAdminNotifications(),
+            getUnreadNotificationCount(),
+          ]);
+          if (cancelled) return;
+          if (incidentsData) {
+            setIncidentsIfChanged(incidentsData);
+            if (activeTab === "incidents") setHasMoreIncidents(incidentsData.length === REPORT_PAGE_SIZE);
+          }
+          setNotificationsIfChanged(notifData);
+          setHasMoreNotifications(notifData.length === 30);
+          setUnreadCount(unreadNotifications);
+        } catch (err) {
+          console.error("Dashboard refresh failed:", err);
+        }
 
-      if (["dashboard", "analytics"].includes(activeTab)) {
-        try {
-          const locationsData = await getCustomLocations();
-          if (cancelled) return;
-          setCustomLocationsIfChanged(locationsData);
-        } catch (err) {
-          console.error("getCustomLocations failed:", err);
+        if (["dashboard", "analytics"].includes(activeTab)) {
+          try {
+            const locationsData = await getCustomLocations();
+            if (cancelled) return;
+            setCustomLocationsIfChanged(locationsData);
+          } catch (err) {
+            console.error("getCustomLocations failed:", err);
+          }
+        } else if (activeTab === "awareness") {
+          try {
+            const awarenessData = await getAwarenessContent();
+            if (cancelled) return;
+            setAwarenessListIfChanged(awarenessData);
+          } catch (err) {
+            console.error("getAwarenessContent failed:", err);
+          }
+        } else if (activeTab === "sections") {
+          try {
+            const gradeSectionsData = await getGradeSections();
+            if (cancelled) return;
+            setGradeSectionsIfChanged(gradeSectionsData);
+          } catch (err) {
+            console.error("getGradeSections failed:", err);
+          }
+        } else if (activeTab === "confirmations") {
+          try {
+            const studentAccountsData = await getStudentAccounts();
+            if (cancelled) return;
+            setStudentAccountsIfChanged(studentAccountsData);
+            setPendingAccountCount(studentAccountsData.filter((student) => !student.approved).length);
+          } catch (err) {
+            console.error("getStudentAccounts failed:", err);
+          }
+          try {
+            const unconfirmedData = await getUnconfirmedSignups();
+            if (cancelled) return;
+            setUnconfirmedSignupsIfChanged(unconfirmedData);
+            setUnconfirmedError("");
+          } catch (err) {
+            if (cancelled) return;
+            console.error("getUnconfirmedSignups failed:", err.message);
+            setUnconfirmedError(err.message);
+          }
+        } else if (activeTab === "dashboard") {
+          try {
+            const count = await getPendingStudentAccountCount();
+            if (cancelled) return;
+            setPendingAccountCount(count);
+          } catch (err) {
+            console.error("getPendingStudentAccountCount failed:", err);
+          }
         }
-      } else if (activeTab === "awareness") {
-        try {
-          const awarenessData = await getAwarenessContent();
-          if (cancelled) return;
-          setAwarenessListIfChanged(awarenessData);
-        } catch (err) {
-          console.error("getAwarenessContent failed:", err);
-        }
-      } else if (activeTab === "sections") {
-        try {
-          const gradeSectionsData = await getGradeSections();
-          if (cancelled) return;
-          setGradeSectionsIfChanged(gradeSectionsData);
-        } catch (err) {
-          console.error("getGradeSections failed:", err);
-        }
-      } else if (activeTab === "confirmations") {
-        try {
-          const studentAccountsData = await getStudentAccounts();
-          if (cancelled) return;
-          setStudentAccountsIfChanged(studentAccountsData);
-          setPendingAccountCount(studentAccountsData.filter((student) => !student.approved).length);
-        } catch (err) {
-          console.error("getStudentAccounts failed:", err);
-        }
-        try {
-          const unconfirmedData = await getUnconfirmedSignups();
-          if (cancelled) return;
-          setUnconfirmedSignupsIfChanged(unconfirmedData);
-          setUnconfirmedError("");
-        } catch (err) {
-          if (cancelled) return;
-          console.error("getUnconfirmedSignups failed:", err.message);
-          setUnconfirmedError(err.message);
-        }
-      } else if (activeTab === "dashboard") {
-        try {
-          const count = await getPendingStudentAccountCount();
-          if (cancelled) return;
-          setPendingAccountCount(count);
-        } catch (err) {
-          console.error("getPendingStudentAccountCount failed:", err);
+      } finally {
+        refreshing = false;
+        if (!cancelled && !document.hidden) {
+          timeoutId = setTimeout(refresh, DASHBOARD_REFRESH_INTERVAL_MS);
         }
       }
-
-      if (!cancelled) timeoutId = setTimeout(refresh, 30_000);
     }
-    refresh();
-    return () => { cancelled = true; clearTimeout(timeoutId); };
+
+    const handleVisibilityChange = () => {
+      clearTimeout(timeoutId);
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (!document.hidden) refresh();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [activeTab]);
 
   useEffect(() => {
@@ -460,7 +525,6 @@ export default function AdminDashboard() {
   const pendingCases    = incidents.filter((c) => c.status === "Pending");
   const inProgressCases = incidents.filter((c) => c.status === "Under Investigation");
   const resolvedCases   = incidents.filter((c) => c.status === "Resolved");
-  const unreadCount     = notifications.filter((n) => !n.read).length;
 
   const conferenceManagementList = incidents
     .filter((r) => r.scheduledConference && (r.scheduledConference.date || r.scheduledConference.time || r.scheduledConference.location))
@@ -877,7 +941,7 @@ export default function AdminDashboard() {
     setConferenceRescheduleNotes(conference.notes || "");
   };
 
-  const handleOpenManage = (report) => {
+  const handleOpenManage = async (report) => {
     setSelectedReport(report);
     // Skip the redundant "Pending" step — managing a pending report means it's
     // already being acted on, so jump straight to "Under Investigation".
@@ -892,12 +956,50 @@ export default function AdminDashboard() {
     setConferenceCancelReason("");
     setManageFieldErrors({});
     setShowUpdateModal(true);
+    try {
+      const [details, evidence] = await Promise.all([
+        getReportDetails(report.id),
+        getReportEvidence(report.id),
+      ]);
+      setSelectedReport((current) => current?.id === report.id ? { ...details, evidence } : current);
+    } catch (err) {
+      showToast(`Could not load report evidence: ${err.message}`, "error");
+    }
   };
 
   const refreshManagedIncident = async (updatedReport) => {
-    const refreshedReports = await getReports();
-    setIncidents(refreshedReports);
-    setSelectedReport(refreshedReports.find((report) => report.id === updatedReport.id) || updatedReport);
+    const evidence = await getReportEvidence(updatedReport.id);
+    const report = { ...updatedReport, evidence };
+    setIncidents((current) => current.map((item) => item.id === report.id ? report : item));
+    setSelectedReport(report);
+  };
+
+  const handleLoadMoreIncidents = async () => {
+    if (loadingMoreIncidents || !hasMoreIncidents) return;
+    setLoadingMoreIncidents(true);
+    try {
+      const next = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE, offset: incidents.length });
+      setIncidents((current) => [...current, ...next]);
+      setHasMoreIncidents(next.length === REPORT_PAGE_SIZE);
+    } catch (err) {
+      showToast(`Could not load more incidents: ${err.message}`, "error");
+    } finally {
+      setLoadingMoreIncidents(false);
+    }
+  };
+
+  const handleLoadMoreNotifications = async () => {
+    if (loadingMoreNotifications || !hasMoreNotifications) return;
+    setLoadingMoreNotifications(true);
+    try {
+      const next = await getAdminNotifications({ offset: notifications.length });
+      setNotifications((current) => [...current, ...next]);
+      setHasMoreNotifications(next.length === 30);
+    } catch (err) {
+      showToast(`Could not load more notifications: ${err.message}`, "error");
+    } finally {
+      setLoadingMoreNotifications(false);
+    }
   };
 
   const handleSaveManagedConference = async () => {
@@ -1010,13 +1112,17 @@ export default function AdminDashboard() {
     setManageFieldErrors({});
 
     try {
-      await updateReportStatus(selectedReport.id, newStatus, adminNotes);
+      const updatedReport = await updateReportStatus(selectedReport.id, newStatus, adminNotes);
+      setIncidents((current) => current.map((item) => item.id === updatedReport.id ? updatedReport : item));
     } catch (err) {
       showToast("Could not update incident: " + err.message, "error");
       return;
     }
     setIncidents(await getReports());
-    setNotifications(await getAdminNotifications());
+    const refreshedNotifications = await getAdminNotifications();
+    setNotifications(refreshedNotifications);
+    setHasMoreNotifications(refreshedNotifications.length === 30);
+    setUnreadCount(await getUnreadNotificationCount());
     setShowUpdateModal(false);
     showToast("Incident updated successfully.");
   };
@@ -1024,19 +1130,33 @@ export default function AdminDashboard() {
   const handleDeleteReport = async (id) => {
     if (!window.confirm("Delete this report? This cannot be undone.")) return;
     await deleteReport(id);
-    setIncidents(await getReports());
+    const loadedCount = Math.max(REPORT_PAGE_SIZE, incidents.length);
+    const refreshed = await getReports({ summaryOnly: true, limit: loadedCount });
+    setIncidents(refreshed);
+    setHasMoreIncidents(refreshed.length === loadedCount);
   };
 
   const openNewAwareness = () => {
     setEditingAwareness(null);
-    setAForm({ type: "article", title: "", desc: "", link: "#", videoUrl: "", thumbnail: "" });
+    setAForm({
+      type: "article", title: "", desc: "", link: "#", videoUrl: "",
+      thumbnailData: "", fullImageData: "", thumbnailPath: "", fullImagePath: "",
+    });
     setAFilePreview(null);
     setShowAwarenessModal(true);
   };
 
   const openEditAwareness = (item) => {
     setEditingAwareness(item.id);
-    setAForm({ type: item.type, title: item.title, desc: item.desc || "", link: item.link || "#", videoUrl: item.videoUrl || "", thumbnail: item.thumbnail || "" });
+    setAForm({
+      type: item.type,
+      title: item.title,
+      desc: item.desc || "",
+      link: item.link || "#",
+      videoUrl: item.videoUrl || "",
+      thumbnailPath: item.thumbnailPath || "",
+      fullImagePath: item.fullImagePath || "",
+    });
     setAFilePreview(item.thumbnail || null);
     setShowAwarenessModal(true);
   };
@@ -1399,7 +1519,13 @@ export default function AdminDashboard() {
                 <div className="s-notif-dropdown" style={{ right: 0 }}>
                   <div className="s-notif-header">
                     <span>Notifications</span>
-                    <button onClick={async () => { await markAllAdminNotifRead(); setNotifications(await getAdminNotifications()); }}>
+                    <button onClick={async () => {
+                      await markAllAdminNotifRead();
+                      const refreshed = await getAdminNotifications();
+                      setNotifications(refreshed);
+                      setHasMoreNotifications(refreshed.length === 30);
+                      setUnreadCount(0);
+                    }}>
                       Mark all read
                     </button>
                   </div>
@@ -1411,7 +1537,10 @@ export default function AdminDashboard() {
                       className={`s-notif-item ${!n.read ? "unread" : ""}`}
                       onClick={async () => {
                         await markAdminNotifRead(n.id);
-                        setNotifications(await getAdminNotifications());
+                        const refreshed = await getAdminNotifications();
+                        setNotifications(refreshed);
+                        setHasMoreNotifications(refreshed.length === 30);
+                        setUnreadCount(await getUnreadNotificationCount());
                         setNotifOpen(false);
                         if (n.type === "report") setActiveTab("incidents");
                         else if (n.type === "hub") setActiveTab("awareness");
@@ -1420,6 +1549,11 @@ export default function AdminDashboard() {
                       <div><p>{n.title}</p><span>{n.time}</span></div>
                     </div>
                   ))}
+                  {hasMoreNotifications && (
+                    <button type="button" className="back-btn" onClick={handleLoadMoreNotifications} disabled={loadingMoreNotifications}>
+                      {loadingMoreNotifications ? "Loading…" : "Load older notifications"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1745,11 +1879,24 @@ export default function AdminDashboard() {
             </div>
 
             {filteredIncidents.length === 0 ? (
-              <div className="card-panel" style={{ textAlign: "center", padding: "60px 24px", color: "#94a3b8" }}>
-                <FileText size={48} color="#e2e8f0" style={{ margin: "0 auto 12px" }} />
-                <h3 style={{ color: "#64748b", fontWeight: 800, marginBottom: 8 }}>No incidents yet</h3>
-                <p style={{ fontSize: 14 }}>Incidents submitted by students will appear here in real time.</p>
-              </div>
+              <>
+                <div className="card-panel" style={{ textAlign: "center", padding: "60px 24px", color: "#94a3b8" }}>
+                  <FileText size={48} color="#e2e8f0" style={{ margin: "0 auto 12px" }} />
+                  <h3 style={{ color: "#64748b", fontWeight: 800, marginBottom: 8 }}>
+                    {incidents.length === 0 ? "No incidents yet" : "No matching incidents loaded"}
+                  </h3>
+                  <p style={{ fontSize: 14 }}>
+                    {incidents.length === 0 ? "Incidents submitted by students will appear here in real time." : "Load older incidents to search more records."}
+                  </p>
+                </div>
+                {hasMoreIncidents && (
+                  <div style={{ textAlign: "center", marginTop: 14 }}>
+                    <button className="read-btn" onClick={handleLoadMoreIncidents} disabled={loadingMoreIncidents}>
+                      {loadingMoreIncidents ? "Loading incidents…" : "Load older incidents"}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (() => {
               const incidentsTotalPages = Math.max(1, Math.ceil(filteredIncidents.length / INCIDENTS_PAGE_SIZE));
               const page = Math.min(incidentsPage, incidentsTotalPages - 1);
@@ -1774,9 +1921,9 @@ export default function AdminDashboard() {
                             {r.priority && (
                               <span className={`priority-badge ${r.priority}`}>{r.priority}</span>
                             )}
-                            {r.evidence && r.evidence.length > 0 && (
+                            {r.evidenceCount > 0 && (
                               <span className="evidence-chip-small">
-                                <Paperclip size={11} /> {r.evidence.length} file{r.evidence.length > 1 ? "s" : ""}
+                                <Paperclip size={11} /> {r.evidenceCount} file{r.evidenceCount > 1 ? "s" : ""}
                               </span>
                             )}
                           </div>
@@ -1806,22 +1953,6 @@ export default function AdminDashboard() {
                             </span>
                           )}
                         </div>
-                        {/* Evidence thumbnails */}
-                        {r.evidence && r.evidence.length > 0 && (
-                          <div className="s-evidence-row" style={{ marginTop: 6 }}>
-                            {r.evidence.map((ev, idx) =>
-                              ev.type && ev.type.startsWith("image/") ? (
-                                <img key={idx} src={ev.data} alt={ev.name}
-                                  style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 7, border: "2px solid #d1fae5", cursor: "zoom-in" }}
-                                  onClick={() => setLightboxSrc(ev.data)} />
-                              ) : (
-                                <div key={idx} className="s-file-chip">
-                                  <Paperclip size={11} /> {ev.name}
-                                </div>
-                              )
-                            )}
-                          </div>
-                        )}
                         {r.adminNotes && (
                           <div style={{ marginTop: 6, fontSize: 11.5, background: "#dcfce7", border: "1.5px solid #86efac",
                             borderRadius: 7, padding: "6px 10px", color: "#16a34a" }}>
@@ -1856,6 +1987,13 @@ export default function AdminDashboard() {
                           cursor: page === incidentsTotalPages - 1 ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif",
                         }}
                       >Next <ChevronRight size={14} /></button>
+                    </div>
+                  )}
+                  {hasMoreIncidents && (
+                    <div style={{ textAlign: "center", marginTop: 14 }}>
+                      <button className="read-btn" onClick={handleLoadMoreIncidents} disabled={loadingMoreIncidents}>
+                        {loadingMoreIncidents ? "Loading incidents…" : "Load older incidents"}
+                      </button>
                     </div>
                   )}
                 </>
@@ -3344,20 +3482,38 @@ export default function AdminDashboard() {
                       )}
                       <input id="a-file-input" type="file" style={{ display: "none" }}
                         accept="image/*,.pdf,.doc,.docx"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files[0];
                           if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            setAFilePreview(ev.target.result);
-                            setAForm((f) => ({ ...f, thumbnail: ev.target.result }));
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            const media = await prepareAwarenessMedia(file);
+                            setAFilePreview(media.thumbnail);
+                            setAForm((form) => ({
+                              ...form,
+                              thumbnailData: media.thumbnail,
+                              fullImageData: media.fullImage,
+                              thumbnailPath: "",
+                              fullImagePath: "",
+                            }));
+                          } catch (error) {
+                            showToast(`Could not prepare the image: ${error.message}`, "error");
+                          } finally {
+                            e.target.value = "";
+                          }
                         }} />
                     </div>
                     {aFilePreview && (
                       <button type="button" style={{ marginTop: 6, fontSize: 12, color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}
-                        onClick={() => { setAFilePreview(null); setAForm((f) => ({ ...f, thumbnail: "" })); }}>
+                        onClick={() => {
+                          setAFilePreview(null);
+                          setAForm((f) => ({
+                            ...f,
+                            thumbnailData: "",
+                            fullImageData: "",
+                            thumbnailPath: "",
+                            fullImagePath: "",
+                          }));
+                        }}>
                         Remove file
                       </button>
                     )}

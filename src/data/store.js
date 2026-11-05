@@ -5,7 +5,7 @@
  * All CRUD functions are async — callers must `await` them. Login,
  * registration, and session management live in src/lib/auth.js.
  */
-import { supabase } from "../lib/apiClient";
+import { authRequest, supabase } from "../lib/apiClient";
 import { getStudentIdImages, resendConfirmationEmail as resendOtp } from "../lib/auth";
 
 // ─── CURRENT-USER CACHE ────────────────────────────────────────────────────
@@ -94,6 +94,7 @@ function reportRowToObj(row) {
     reporterSection:    row.reporter_section,
     isAnonymous:        !!row.is_anonymous,
     adminNotes:         row.admin_notes,
+    evidenceCount:      row.evidence_count ?? (row.evidence || []).length,
     evidence:           row.evidence || [],
     scheduledConference: row.scheduled_conference || null,
     submittedAt:        row.submitted_at,
@@ -102,9 +103,19 @@ function reportRowToObj(row) {
 }
 
 function awarenessRowToObj(row) {
+  const mediaUrl = (value) => {
+    if (!value || value.startsWith("data:") || /^https?:\/\//i.test(value)) return value || "";
+    const projectUrl = import.meta.env.VITE_SUPABASE_URL;
+    return projectUrl
+      ? `${projectUrl.replace(/\/$/, "")}/storage/v1/object/public/awareness-media/${value.split("/").map(encodeURIComponent).join("/")}`
+      : "";
+  };
+  const thumbnail = mediaUrl(row.thumbnail_path);
+  const fullImage = mediaUrl(row.full_image_path);
   return {
     id: row.id, type: row.type, title: row.title, desc: row.desc,
-    link: row.link, thumbnail: row.thumbnail, videoUrl: row.video_url,
+    link: row.link, thumbnail, thumbnailPath: row.thumbnail_path,
+    fullImage, fullImagePath: row.full_image_path, fileData: "", videoUrl: row.video_url,
   };
 }
 
@@ -130,18 +141,62 @@ const REPORT_COLUMNS_WITHOUT_EVIDENCE = [
   "description_impact", "description_actions", "reporter_type", "victims", "offenders",
   "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
   "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
+  "evidence_count", "scheduled_conference", "submitted_at", "updated_at",
+].join(",");
+
+const REPORT_LIST_COLUMNS = [
+  "id", "type", "date", "time", "location", "description", "status", "priority",
+  "submitted_by", "submitted_id", "reporter_age", "reporter_sex", "reporter_grade",
+  "reporter_section", "is_anonymous", "admin_notes", "evidence_count",
   "scheduled_conference", "submitted_at", "updated_at",
 ].join(",");
 
-export async function getReports({ includeEvidence = true } = {}) {
-  const columns = includeEvidence ? "*" : REPORT_COLUMNS_WITHOUT_EVIDENCE;
-  const { data, error } = await supabase.from("reports").select(columns).order("submitted_at", { ascending: false });
+export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0 } = {}) {
+  const baseColumns = summaryOnly ? REPORT_LIST_COLUMNS : REPORT_COLUMNS_WITHOUT_EVIDENCE;
+  const columns = includeEvidence ? `${REPORT_COLUMNS_WITHOUT_EVIDENCE},evidence` : baseColumns;
+  let query = supabase.from("reports").select(columns)
+    .order("submitted_at", { ascending: false }).order("id", { ascending: false });
+  if (Number.isInteger(limit)) query = query.range(offset, offset + limit - 1);
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []).map(reportRowToObj);
 }
 
+async function getReportPriorityContext() {
+  const { data, error } = await supabase.from("reports")
+    .select("id,type,date,status,submitted_by");
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    type: row.type,
+    date: row.date,
+    status: row.status,
+    submittedBy: row.submitted_by,
+  }));
+}
+
+export async function getReportDetails(reportId) {
+  const row = await authRequest("report-details", { reportId });
+  return reportRowToObj(row);
+}
+
+export async function getReportEvidence(reportId) {
+  const result = await authRequest("report-evidence", { reportId });
+  return result.evidence || [];
+}
+
+export async function getUnreadNotificationCount() {
+  const result = await authRequest("notification-unread-count");
+  return result.count || 0;
+}
+
+export async function getAwarenessImage(id) {
+  const result = await authRequest("awareness-image", { id });
+  return result.url || "";
+}
+
 export async function submitReport(reportData, evidenceFiles = []) {
-  const existingReports = await getReports({ includeEvidence: false });
+  const existingReports = await getReportPriorityContext();
   const isAnon = !!reportData.isAnonymous;
   const submittedBy = getCurrentUserName();
 
@@ -175,23 +230,23 @@ export async function submitReport(reportData, evidenceFiles = []) {
     existingReports
   );
 
-  const { data, error } = await supabase.from("reports").insert(row).select().single();
+  const { data, error } = await supabase.from("reports").insert(row).select(REPORT_COLUMNS_WITHOUT_EVIDENCE).single();
   if (error) throw error;
 
   return reportRowToObj(data);
 }
 
 export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
   const updates = { status: newStatus, updated_at: new Date().toISOString() };
   if (adminNotes !== undefined) updates.admin_notes = adminNotes;
 
-  const allReports = (await getReports({ includeEvidence: false })).filter((r) => r.id !== reportId);
+  const allReports = (await getReportPriorityContext()).filter((r) => r.id !== reportId);
   updates.priority = computePriority(reportRowToObj({ ...currentRow, ...updates }), allReports);
 
-  const { data, error } = await supabase.from("reports").update(updates).eq("id", reportId).select().single();
+  const { data, error } = await supabase.from("reports").update(updates).eq("id", reportId).select(REPORT_COLUMNS_WITHOUT_EVIDENCE).single();
   if (error) throw error;
 
   const conference = data.scheduled_conference;
@@ -213,7 +268,7 @@ export async function updateConferenceSchedule(reportId, schedule) {
     throw new Error("A conference date, time, and location are required.");
   }
 
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
   const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
@@ -266,7 +321,7 @@ export async function updateConferenceSchedule(reportId, schedule) {
   const { data, error } = await supabase.from("reports")
     .update({ scheduled_conference: updatedConference, updated_at: now })
     .eq("id", reportId)
-    .select()
+    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
     .single();
   if (error) throw error;
 
@@ -282,7 +337,7 @@ export async function cancelConference(reportId, reason) {
     throw new Error("A cancellation reason is required.");
   }
 
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
   const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
@@ -312,7 +367,7 @@ export async function cancelConference(reportId, reason) {
   const { data, error } = await supabase.from("reports")
     .update({ scheduled_conference: updatedConference, updated_at: now })
     .eq("id", reportId)
-    .select()
+    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
     .single();
   if (error) throw error;
 
@@ -339,13 +394,13 @@ export async function requestConferenceChange(reportId, requestType, reason = ""
   }
   if (error) throw error;
 
-  const { data, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  const { data, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
   return reportRowToObj(data);
 }
 
 export async function reviewConferenceRequest(reportId, decision, reschedule = undefined) {
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
   const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
@@ -401,7 +456,7 @@ export async function reviewConferenceRequest(reportId, decision, reschedule = u
   const { data, error } = await supabase.from("reports")
     .update({ scheduled_conference: updatedConference, updated_at: now })
     .eq("id", reportId)
-    .select()
+    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
     .single();
   if (error) throw error;
 
@@ -423,7 +478,7 @@ export async function updateConferenceOutcome(reportId, status) {
     throw new Error("Invalid conference outcome.");
   }
 
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select("*").eq("id", reportId).single();
+  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
   const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
@@ -449,7 +504,7 @@ export async function updateConferenceOutcome(reportId, status) {
   const { data, error } = await supabase.from("reports")
     .update({ scheduled_conference: updatedConference, updated_at: now })
     .eq("id", reportId)
-    .select()
+    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
     .single();
 
   if (error) throw error;
@@ -469,13 +524,21 @@ export async function deleteReport(reportId) {
 
 // ─── AWARENESS API ──────────────────────────────────────────────────────────
 export async function getAwarenessContent() {
-  const { data, error } = await supabase.from("awareness_content").select("*").order("id", { ascending: false });
+  const { data, error } = await supabase.from("awareness_content")
+    .select("id,type,title,desc,link,thumbnail_path,full_image_path,video_url").order("id", { ascending: false });
   if (error) throw error;
   return (data || []).map(awarenessRowToObj);
 }
 
 export async function addAwarenessContent(item) {
-  const row = { type: item.type, title: item.title, desc: item.desc, link: item.link, thumbnail: item.thumbnail, video_url: item.videoUrl };
+  const row = {
+    type: item.type, title: item.title, desc: item.desc, link: item.link,
+    thumbnailData: item.thumbnailData,
+    fullImageData: item.fullImageData,
+    thumbnail_path: item.thumbnailPath || null,
+    full_image_path: item.fullImagePath || null,
+    video_url: item.videoUrl,
+  };
   const { data, error } = await supabase.from("awareness_content").insert(row).select().single();
   if (error) throw error;
 
@@ -489,7 +552,10 @@ export async function updateAwarenessContent(id, updates) {
   if (updates.title     !== undefined) row.title     = updates.title;
   if (updates.desc      !== undefined) row.desc      = updates.desc;
   if (updates.link      !== undefined) row.link      = updates.link;
-  if (updates.thumbnail !== undefined) row.thumbnail = updates.thumbnail;
+  if (updates.thumbnailData !== undefined) row.thumbnailData = updates.thumbnailData;
+  if (updates.fullImageData !== undefined) row.fullImageData = updates.fullImageData;
+  if (updates.thumbnailPath !== undefined) row.thumbnail_path = updates.thumbnailPath;
+  if (updates.fullImagePath !== undefined) row.full_image_path = updates.fullImagePath;
   if (updates.videoUrl  !== undefined) row.video_url = updates.videoUrl;
 
   const { error } = await supabase.from("awareness_content").update(row).eq("id", id);
@@ -502,14 +568,20 @@ export async function deleteAwarenessContent(id) {
 }
 
 // ─── NOTIFICATIONS API ──────────────────────────────────────────────────────
-export async function getStudentNotifications() {
-  const { data, error } = await supabase.from("notifications").select("*").eq("audience", "student").order("created_at", { ascending: false });
+export async function getStudentNotifications({ limit = 30, offset = 0 } = {}) {
+  const { data, error } = await supabase.from("notifications")
+    .select("id,title,type,read,created_at").eq("audience", "student")
+    .order("created_at", { ascending: false }).order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
   if (error) throw error;
   return (data || []).map(notifRowToObj);
 }
 
-export async function getAdminNotifications() {
-  const { data, error } = await supabase.from("notifications").select("*").eq("audience", "admin").order("created_at", { ascending: false });
+export async function getAdminNotifications({ limit = 30, offset = 0 } = {}) {
+  const { data, error } = await supabase.from("notifications")
+    .select("id,title,type,read,created_at").eq("audience", "admin")
+    .order("created_at", { ascending: false }).order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
   if (error) throw error;
   return (data || []).map(notifRowToObj);
 }

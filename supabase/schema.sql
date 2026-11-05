@@ -91,6 +91,9 @@ create table reports (
   is_anonymous          boolean default false,
   admin_notes           text,
   evidence              jsonb default '[]',
+  evidence_count        integer generated always as (
+    jsonb_array_length(case when jsonb_typeof(evidence) = 'array' then evidence else '[]'::jsonb end)
+  ) stored,
   scheduled_conference  jsonb,
   submitted_at          timestamptz default now(),
   updated_at            timestamptz

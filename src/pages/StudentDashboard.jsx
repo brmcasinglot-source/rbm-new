@@ -18,12 +18,17 @@ import {
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
   requestConferenceChange,
-  LOCATION_META, getCustomLocations,
+  LOCATION_META, getCustomLocations, getReportDetails, getReportEvidence, getAwarenessImage, getUnreadNotificationCount,
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
 import { translateStudentUI } from "../lib/studentLocale";
 import { signOut } from "../lib/auth";
 import { optimizeImageFile } from "../lib/imageOptimization";
+
+const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const REPORT_PAGE_SIZE = 30;
+const MAX_EVIDENCE_FILE_BYTES = 1_000_000;
+const MAX_EVIDENCE_TOTAL_BYTES = 1_800_000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusIcon(status) {
@@ -72,8 +77,11 @@ function readBlobAsDataUrl(blob) {
 }
 async function readFile(file) {
   const optimizedFile = file.type.startsWith("image/")
-    ? await optimizeImageFile(file, { maxDimension: 1600 })
+    ? await optimizeImageFile(file, { maxDimension: 1600, maxSizeBytes: 800_000 })
     : file;
+  if (optimizedFile.size > MAX_EVIDENCE_FILE_BYTES) {
+    throw new Error("Each evidence file must be no larger than 1 MB.");
+  }
 
   return {
     name: optimizedFile.name,
@@ -118,8 +126,13 @@ export default function StudentDashboard() {
 
   // Live data
   const [reports,          setReports]          = useState([]);
+  const [hasMoreReports, setHasMoreReports] = useState(false);
+  const [loadingMoreReports, setLoadingMoreReports] = useState(false);
   const [awarenessContent, setAwarenessContent] = useState([]);
   const [notifications,    setNotifications]    = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
   const [customLocations,  setCustomLocations]  = useState([]);
 
   // Report form
@@ -160,6 +173,65 @@ export default function StudentDashboard() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const openCaseDetails = async (report) => {
+    setCaseViewItem({ ...report, evidenceLoading: true });
+    try {
+      const [details, evidence] = await Promise.all([
+        getReportDetails(report.id),
+        getReportEvidence(report.id),
+      ]);
+      setCaseViewItem((current) => current?.id === report.id
+        ? { ...details, evidence, evidenceLoading: false }
+        : current);
+    } catch (error) {
+      setCaseViewItem((current) => current?.id === report.id
+        ? { ...current, evidenceLoading: false, evidenceError: error.message }
+        : current);
+    }
+  };
+
+  const openHubItem = async (item) => {
+    setHubViewItem({ ...item, imageLoading: true });
+    try {
+      const fileData = item.fullImagePath ? item.fullImage : await getAwarenessImage(item.id);
+      setHubViewItem((current) => current?.id === item.id
+        ? { ...current, fileData, imageLoading: false }
+        : current);
+    } catch (error) {
+      setHubViewItem((current) => current?.id === item.id
+        ? { ...current, imageLoading: false, imageError: error.message }
+        : current);
+    }
+  };
+
+  const loadMoreReports = async () => {
+    if (loadingMoreReports || !hasMoreReports) return;
+    setLoadingMoreReports(true);
+    try {
+      const next = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE, offset: reports.length });
+      setReports((current) => [...current, ...next]);
+      setHasMoreReports(next.length === REPORT_PAGE_SIZE);
+    } catch (error) {
+      showToast(`Could not load more cases: ${error.message}`, "error");
+    } finally {
+      setLoadingMoreReports(false);
+    }
+  };
+
+  const loadMoreNotifications = async () => {
+    if (loadingMoreNotifications || !hasMoreNotifications) return;
+    setLoadingMoreNotifications(true);
+    try {
+      const next = await getStudentNotifications({ offset: notifications.length });
+      setNotifications((current) => [...current, ...next]);
+      setHasMoreNotifications(next.length === 30);
+    } catch (error) {
+      showToast(`Could not load more notifications: ${error.message}`, "error");
+    } finally {
+      setLoadingMoreNotifications(false);
+    }
+  };
+
   // ── Refresh visible dashboard data without overlapping requests ────────────
   useEffect(() => {
     const setIfChanged = (setter) => (next) =>
@@ -169,56 +241,85 @@ export default function StudentDashboard() {
     const setNotificationsIfChanged    = setIfChanged(setNotifications);
     const setCustomLocationsIfChanged  = setIfChanged(setCustomLocations);
     let cancelled = false;
+    let refreshing = false;
     let timeoutId;
 
     async function refresh() {
+      if (cancelled || document.hidden || refreshing) return;
+      refreshing = true;
       try {
-        const [reportsData, awarenessData, notifData] = await Promise.all([
-          activeTab === "profile"
-            ? Promise.resolve(null)
-            : getReports({ includeEvidence: activeTab === "cases" }),
-          activeTab === "dashboard" ? getAwarenessContent() : Promise.resolve(null),
-          getStudentNotifications(),
-        ]);
-        if (cancelled) return;
-        if (reportsData) setReportsIfChanged(reportsData);
-        if (awarenessData) setAwarenessContentIfChanged(awarenessData);
+        try {
+          const [reportsData, awarenessData, notifData, unreadNotifications] = await Promise.all([
+            activeTab === "profile"
+              ? Promise.resolve(null)
+              : getReports({
+                  includeEvidence: false,
+                  ...(activeTab === "cases" ? { summaryOnly: true, limit: REPORT_PAGE_SIZE } : {}),
+                }),
+            activeTab === "dashboard" ? getAwarenessContent() : Promise.resolve(null),
+            getStudentNotifications(),
+            getUnreadNotificationCount(),
+          ]);
+          if (cancelled) return;
+          if (reportsData) {
+            setReportsIfChanged(reportsData);
+            if (activeTab === "cases") setHasMoreReports(reportsData.length === REPORT_PAGE_SIZE);
+          }
+          if (awarenessData) setAwarenessContentIfChanged(awarenessData);
+          setHasMoreNotifications(notifData.length === 30);
 
-        let nextNotifications = notifData;
-        if (!welcomeNotificationChecked.current) {
-          welcomeNotificationChecked.current = true;
-          const welcomeNotif = notifData.find((n) => n.type === "success" && !n.read);
-          if (welcomeNotif) {
-            showToast(welcomeNotif.title);
-            try {
-              await markStudentNotifRead(welcomeNotif.id);
-              nextNotifications = notifData.map((notification) =>
-                notification.id === welcomeNotif.id ? { ...notification, read: true } : notification
-              );
-            } catch (err) {
-              console.error("Welcome notification could not be marked as read:", err);
+          let nextNotifications = notifData;
+          let currentUnreadCount = unreadNotifications;
+          if (!welcomeNotificationChecked.current) {
+            welcomeNotificationChecked.current = true;
+            const welcomeNotif = notifData.find((n) => n.type === "success" && !n.read);
+            if (welcomeNotif) {
+              showToast(welcomeNotif.title);
+              try {
+                await markStudentNotifRead(welcomeNotif.id);
+                currentUnreadCount = Math.max(0, currentUnreadCount - 1);
+                nextNotifications = notifData.map((notification) =>
+                  notification.id === welcomeNotif.id ? { ...notification, read: true } : notification
+                );
+              } catch (err) {
+                console.error("Welcome notification could not be marked as read:", err);
+              }
             }
           }
-        }
-        setNotificationsIfChanged(nextNotifications);
-      } catch (err) {
-        console.error("Dashboard refresh failed:", err);
-      }
-
-      if (activeTab === "report") {
-        try {
-          const locationsData = await getCustomLocations();
-          if (cancelled) return;
-          setCustomLocationsIfChanged(locationsData);
+          setNotificationsIfChanged(nextNotifications);
+          setUnreadCount(currentUnreadCount);
         } catch (err) {
-          console.error("getCustomLocations failed:", err);
+          console.error("Dashboard refresh failed:", err);
+        }
+
+        if (activeTab === "report") {
+          try {
+            const locationsData = await getCustomLocations();
+            if (cancelled) return;
+            setCustomLocationsIfChanged(locationsData);
+          } catch (err) {
+            console.error("getCustomLocations failed:", err);
+          }
+        }
+      } finally {
+        refreshing = false;
+        if (!cancelled && !document.hidden) {
+          timeoutId = setTimeout(refresh, DASHBOARD_REFRESH_INTERVAL_MS);
         }
       }
-
-      if (!cancelled) timeoutId = setTimeout(refresh, 30_000);
     }
-    refresh();
-    return () => { cancelled = true; clearTimeout(timeoutId); };
+
+    const handleVisibilityChange = () => {
+      clearTimeout(timeoutId);
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (!document.hidden) refresh();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [activeTab]);
 
   useEffect(() => {
@@ -230,16 +331,23 @@ export default function StudentDashboard() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // ── Evidence file handler ─────────────────────────────────────────────────
   const addEvidenceFiles = async (files) => {
     if (!files.length) return;
     try {
       const converted = await Promise.all(files.map(readFile));
+      const currentBytes = [...evidenceFiles, ...converted].reduce((total, item) => {
+        const base64 = item.data.split(",")[1] || "";
+        return total + Math.floor(base64.length * 3 / 4);
+      }, 0);
+      if (currentBytes > MAX_EVIDENCE_TOTAL_BYTES) {
+        setFormError("Evidence files must total no more than 1.8 MB. Remove a file or upload smaller images.");
+        return;
+      }
       setEvidenceFiles((prev) => [...prev, ...converted]);
-    } catch {
-      setFormError("Could not read or optimize one or more files. Please try again.");
+    } catch (error) {
+      setFormError(error.message || "Could not read or optimize one or more files. Please try again.");
     }
   };
 
@@ -319,8 +427,13 @@ export default function StudentDashboard() {
       setFormError("Could not submit report: " + err.message);
       return;
     }
-    setReports(await getReports({ includeEvidence: false }));
-    setNotifications(await getStudentNotifications());
+    const refreshedReports = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE });
+    setReports(refreshedReports);
+    setHasMoreReports(refreshedReports.length === REPORT_PAGE_SIZE);
+    const refreshedNotifications = await getStudentNotifications();
+    setNotifications(refreshedNotifications);
+    setHasMoreNotifications(refreshedNotifications.length === 30);
+    setUnreadCount(await getUnreadNotificationCount());
     setReportForm({ type: "", date: "", time: "", location: "", description: "", descriptionLeadUp: "", descriptionImpact: "", involved: "" });
     setLocationChoice("");
     setReporterType("");
@@ -470,7 +583,13 @@ export default function StudentDashboard() {
                 <div className="s-notif-dropdown">
                   <div className="s-notif-header">
                     <span>Notifications</span>
-                    <button onClick={async () => { await markAllStudentNotifRead(); setNotifications(await getStudentNotifications()); }}>
+                    <button onClick={async () => {
+                      await markAllStudentNotifRead();
+                      const refreshed = await getStudentNotifications();
+                      setNotifications(refreshed);
+                      setHasMoreNotifications(refreshed.length === 30);
+                      setUnreadCount(0);
+                    }}>
                       Mark all read
                     </button>
                   </div>
@@ -481,7 +600,10 @@ export default function StudentDashboard() {
                     <div key={n.id} className={`s-notif-item ${!n.read ? "unread" : ""}`}
                       onClick={async () => {
                         await markStudentNotifRead(n.id);
-                        setNotifications(await getStudentNotifications());
+                        const refreshed = await getStudentNotifications();
+                        setNotifications(refreshed);
+                        setHasMoreNotifications(refreshed.length === 30);
+                        setUnreadCount(await getUnreadNotificationCount());
                         setNotifOpen(false);
                         if (n.type === "status") setActiveTab("cases");
                         else if (n.type === "hub") setActiveTab("dashboard");
@@ -491,6 +613,11 @@ export default function StudentDashboard() {
                       <div><p>{n.title}</p><span>{n.time}</span></div>
                     </div>
                   ))}
+                  {hasMoreNotifications && (
+                    <button type="button" className="back-btn" onClick={loadMoreNotifications} disabled={loadingMoreNotifications}>
+                      {loadingMoreNotifications ? "Loading…" : "Load older notifications"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -617,7 +744,7 @@ export default function StudentDashboard() {
                     const thumbSrc = item.thumbnail || ytThumb || null;
                     return (
                       <div className="s-hub-card s-hub-card-clickable" key={item.id}
-                        onClick={() => setHubViewItem(item)}>
+                        onClick={() => openHubItem(item)}>
                         <div className="s-hub-thumb-container">
                           {item.type === "video" ? (
                             <>
@@ -739,7 +866,7 @@ export default function StudentDashboard() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {myReports.map((r) => (
-                  <div className="s-panel s-case-card s-case-card-clickable" key={r.id} onClick={() => setCaseViewItem(r)}>
+                  <div className="s-panel s-case-card s-case-card-clickable" key={r.id} onClick={() => openCaseDetails(r)}>
                     <div className="s-case-top">
                       <div>
                         <span className="s-case-id">Case #{r.id}</span>
@@ -756,13 +883,18 @@ export default function StudentDashboard() {
                     <div className="s-case-meta">
                       <span>📅 {r.date}{r.time ? ` at ${r.time}` : ""}</span>
                       {r.location && <span>📍 {r.location}</span>}
-                      {r.evidence && r.evidence.length > 0 && (
-                        <span><Paperclip size={12} /> {r.evidence.length} evidence file{r.evidence.length > 1 ? "s" : ""}</span>
+                      {r.evidenceCount > 0 && (
+                        <span><Paperclip size={12} /> {r.evidenceCount} evidence file{r.evidenceCount > 1 ? "s" : ""}</span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
+            )}
+            {hasMoreReports && (
+              <button type="button" className="s-submit-btn" onClick={loadMoreReports} disabled={loadingMoreReports} style={{ marginTop: 16 }}>
+                {loadingMoreReports ? "Loading cases…" : "Load older cases"}
+              </button>
             )}
           </div>
         )}
@@ -1336,6 +1468,8 @@ export default function StudentDashboard() {
                       <p className="s-case-detail-text">{r.involved}</p>
                     </div>
                   )}
+                  {r.evidenceLoading && <p className="s-case-detail-text">Loading attached evidence…</p>}
+                  {r.evidenceError && <p className="s-case-detail-text" role="alert">Could not load evidence: {r.evidenceError}</p>}
                   {r.evidence && r.evidence.length > 0 && (
                     <div style={{ marginTop: 12 }}>
                       <label className="s-case-detail-label">Evidence</label>
@@ -1505,6 +1639,8 @@ export default function StudentDashboard() {
                 <img src={hubViewItem.fileData} alt={hubViewItem.title}
                   style={{ width: "100%", borderRadius: 10, marginBottom: 14, objectFit: "contain", maxHeight: 360 }} />
               )}
+              {hubViewItem.imageLoading && <p>Loading image…</p>}
+              {hubViewItem.imageError && <p role="alert">Could not load image: {hubViewItem.imageError}</p>}
               {hubViewItem.desc && <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7 }}>{hubViewItem.desc}</p>}
               {hubViewItem.link && hubViewItem.link !== "#" && (
                 <a href={hubViewItem.link} target="_blank" rel="noreferrer" className="s-hub-link" style={{ display: "inline-flex", marginTop: 14 }}>

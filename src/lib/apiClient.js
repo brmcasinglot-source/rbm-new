@@ -34,6 +34,7 @@ class DatabaseQuery {
       orders: [],
       returning: false,
       single: false,
+      offset: 0,
     };
     this.promise = null;
   }
@@ -87,6 +88,12 @@ class DatabaseQuery {
 
   limit(count) {
     this.query.limit = count;
+    return this;
+  }
+
+  range(from, to) {
+    this.query.offset = from;
+    this.query.limit = to - from + 1;
     return this;
   }
 

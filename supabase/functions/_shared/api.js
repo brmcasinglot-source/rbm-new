@@ -15,6 +15,9 @@ const OTP_MAX_ATTEMPTS = 5;
 const RESET_OTP_MAX_ATTEMPTS = 2;
 const SIGNUP_OTP_RESEND_COOLDOWN_MINUTES = 10;
 const STUDENT_ID_BUCKET = "student-ids";
+const REPORT_EVIDENCE_BUCKET = "report-evidence";
+const AWARENESS_MEDIA_BUCKET = "awareness-media";
+const MAX_REPORT_EVIDENCE_BYTES = 2_000_000;
 const MAX_STUDENT_ID_IMAGE_BYTES = 350_000;
 
 let database;
@@ -170,6 +173,67 @@ async function removeStudentIdImages(paths) {
   if (!existingPaths.length) return;
   const { error } = await getDatabase().storage.from(STUDENT_ID_BUCKET).remove(existingPaths);
   if (error) throw error;
+}
+
+function decodeMediaDataUrl(dataUrl) {
+  const match = /^data:([a-z0-9.+-]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(dataUrl || "");
+  if (!match) throw Object.assign(new Error("The uploaded file is invalid."), { status: 400 });
+  return { contentType: match[1].toLowerCase(), bytes: Buffer.from(match[2], "base64") };
+}
+
+async function uploadMedia(bucket, path, dataUrl) {
+  const { contentType, bytes } = decodeMediaDataUrl(dataUrl);
+  const { error } = await getDatabase().storage.from(bucket).upload(path, bytes, {
+    contentType,
+    upsert: false,
+  });
+  if (error) throw error;
+}
+
+async function removeMedia(bucket, paths) {
+  const objects = paths.filter((path) =>
+    typeof path === "string" && path && !path.startsWith("data:") && !/^https?:\/\//i.test(path)
+  );
+  if (!objects.length) return;
+  const { error } = await getDatabase().storage.from(bucket).remove(objects);
+  if (error) throw error;
+}
+
+async function uploadReportEvidence(userId, evidence) {
+  if (!Array.isArray(evidence)) {
+    throw Object.assign(new Error("Evidence must be a list of files."), { status: 400 });
+  }
+  let totalBytes = 0;
+  const uploaded = [];
+  try {
+    const stored = [];
+    for (const file of evidence) {
+      if (!file?.data || !String(file.data).startsWith("data:")) {
+        throw Object.assign(new Error("Evidence must be uploaded from the report form."), { status: 400 });
+      }
+      const { contentType, bytes } = decodeMediaDataUrl(file.data);
+      totalBytes += bytes.length;
+      if (!bytes.length || totalBytes > MAX_REPORT_EVIDENCE_BYTES) {
+        throw Object.assign(new Error("Evidence files must total no more than 2 MB. Remove a file or upload smaller images."), { status: 413 });
+      }
+      const path = `${userId}/${randomUUID()}`;
+      const { error } = await getDatabase().storage.from(REPORT_EVIDENCE_BUCKET).upload(path, bytes, {
+        contentType,
+        upsert: false,
+      });
+      if (error) throw error;
+      uploaded.push(path);
+      stored.push({ name: String(file.name || "Evidence file").slice(0, 180), type: contentType, path });
+    }
+    return { stored, uploaded };
+  } catch (error) {
+    try {
+      await removeMedia(REPORT_EVIDENCE_BUCKET, uploaded);
+    } catch (cleanupError) {
+      console.error("Could not clean up incomplete report evidence upload:", cleanupError.message);
+    }
+    throw error;
+  }
 }
 
 async function uploadStudentIdImages(studentId, frontDataUrl, backDataUrl) {
@@ -549,6 +613,85 @@ async function handleAuth(action, body, req) {
   const db = getDatabase();
   const email = String(body.email || "").trim().toLowerCase();
 
+  if (action === "report-details") {
+    const session = await getSession(req);
+    const reportId = Number(body.reportId);
+    if (!Number.isSafeInteger(reportId) || reportId < 1) {
+      throw Object.assign(new Error("Invalid report."), { status: 400 });
+    }
+    const detailColumns = [
+      "id", "type", "date", "time", "location", "description", "description_lead_up",
+      "description_impact", "description_actions", "reporter_type", "victims", "offenders",
+      "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
+      "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
+      "evidence_count", "scheduled_conference", "submitted_at", "updated_at",
+    ].join(",");
+    const { data: report, error } = await db.from("reports")
+      .select(detailColumns).eq("id", reportId).maybeSingle();
+    if (error) throw error;
+    if (!report) throw Object.assign(new Error("Report not found."), { status: 404 });
+    if (session.role !== "admin" && report.submitted_id !== session.id) {
+      throw Object.assign(new Error("You are not authorized to view this report."), { status: 403 });
+    }
+    return report;
+  }
+
+  if (action === "report-evidence") {
+    const session = await getSession(req);
+    const reportId = Number(body.reportId);
+    if (!Number.isSafeInteger(reportId) || reportId < 1) {
+      throw Object.assign(new Error("Invalid report."), { status: 400 });
+    }
+    const { data: report, error } = await db.from("reports")
+      .select("submitted_id,evidence").eq("id", reportId).maybeSingle();
+    if (error) throw error;
+    if (!report) throw Object.assign(new Error("Report not found."), { status: 404 });
+    if (session.role !== "admin" && report.submitted_id !== session.id) {
+      throw Object.assign(new Error("You are not authorized to view this evidence."), { status: 403 });
+    }
+    const evidence = await Promise.all((report.evidence || []).map(async (item) => {
+      if (!item.path) return item;
+      const { data, error: signedUrlError } = await db.storage
+        .from(REPORT_EVIDENCE_BUCKET).createSignedUrl(item.path, 60 * 60);
+      if (signedUrlError) throw signedUrlError;
+      return { name: item.name, type: item.type, data: data.signedUrl };
+    }));
+    return { evidence };
+  }
+
+  if (action === "notification-unread-count") {
+    const session = await getSession(req);
+    let query = db.from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("audience", session.role === "admin" ? "admin" : "student")
+      .eq("read", false);
+    if (session.role === "student") query = query.or(`student_id.eq.${session.id},student_id.is.null`);
+    const { count, error } = await query;
+    if (error) throw error;
+    return { count: count || 0 };
+  }
+
+  if (action === "awareness-image") {
+    await getSession(req);
+    if (!Number.isSafeInteger(Number(body.id))) {
+      throw Object.assign(new Error("Invalid awareness content."), { status: 400 });
+    }
+    const { data: item, error } = await db.from("awareness_content")
+      .select("full_image_path").eq("id", Number(body.id)).maybeSingle();
+    if (error) throw error;
+    if (!item) throw Object.assign(new Error("Awareness content not found."), { status: 404 });
+    if (!item.full_image_path) {
+      const { data: legacy, error: legacyError } = await db.from("awareness_content")
+        .select("thumbnail").eq("id", Number(body.id)).single();
+      if (legacyError) throw legacyError;
+      return { url: legacy.thumbnail?.startsWith("data:") ? legacy.thumbnail : null };
+    }
+    const { data, error: signedUrlError } = await db.storage
+      .from(AWARENESS_MEDIA_BUCKET).createSignedUrl(item.full_image_path, 60 * 60);
+    if (signedUrlError) throw signedUrlError;
+    return { url: data.signedUrl };
+  }
+
   if (action === "signup") {
     const { name, password, lrn, age, sex, grade, section, studentIdFront, studentIdBack } = body;
     if (!studentIdFront || !studentIdBack) {
@@ -817,7 +960,7 @@ function applyFilters(query, filters = []) {
 }
 
 async function runQuery(body, req) {
-  const { table, operation, columns, filters, orders, values: requestValues, returning, single, limit } = body.query || {};
+  const { table, operation, columns, filters, orders, values: requestValues, returning, single, limit, offset } = body.query || {};
   let values = requestValues;
   if (!TABLES.has(table)) throw Object.assign(new Error("Unsupported database table."), { status: 400 });
 
@@ -853,6 +996,8 @@ async function runQuery(body, req) {
   }
 
   let query = getDatabase().from(table);
+  const uploadedPaths = [];
+  let oldAwarenessPaths = [];
   if (operation === "select") query = query.select(columns || "*");
   else if (operation === "insert") {
     if (table === "reports" && role === "student") {
@@ -873,6 +1018,32 @@ async function runQuery(body, req) {
       values.reporter_section = profile.section;
       values.status = "Pending";
       values.admin_notes = "";
+      const { stored, uploaded } = await uploadReportEvidence(session.id, values.evidence || []);
+      values.evidence = stored;
+      uploadedPaths.push(...uploaded);
+    }
+    if (table === "awareness_content") {
+      values = { ...(values || {}) };
+      const sharedMedia = values.thumbnailData && values.thumbnailData === values.fullImageData;
+      for (const [source, destination] of [["thumbnailData", "thumbnail_path"], ["fullImageData", "full_image_path"]]) {
+        if (source === "fullImageData" && sharedMedia && values.thumbnail_path) {
+          values.full_image_path = values.thumbnail_path;
+          delete values[source];
+          continue;
+        }
+        if (typeof values[source] === "string" && values[source].startsWith("data:")) {
+          const path = `${session.id}/${randomUUID()}`;
+          try {
+            await uploadMedia(AWARENESS_MEDIA_BUCKET, path, values[source]);
+          } catch (error) {
+            await removeMedia(AWARENESS_MEDIA_BUCKET, uploadedPaths);
+            throw error;
+          }
+          uploadedPaths.push(path);
+          values[destination] = path;
+        }
+        delete values[source];
+      }
     }
     if (table === "notifications" && role === "student") {
       throw Object.assign(new Error("Student notifications are generated by the server."), { status: 403 });
@@ -886,9 +1057,60 @@ async function runQuery(body, req) {
     if (table === "notifications" && Object.keys(values || {}).some((key) => key !== "read")) {
       throw Object.assign(new Error("Only notification read status can be changed."), { status: 403 });
     }
+    if (table === "awareness_content") {
+      const { data: existingRows, error: existingError } = await applyFilters(
+        getDatabase().from(table).select("thumbnail_path,full_image_path"),
+        filters,
+      );
+      if (existingError) throw existingError;
+      oldAwarenessPaths = (existingRows || []).flatMap((item) => [item.thumbnail_path, item.full_image_path]);
+      values = { ...(values || {}) };
+      if (existingRows?.length) {
+        if (!Object.hasOwn(values, "thumbnail_path")) values.thumbnail_path = existingRows[0].thumbnail_path;
+        if (!Object.hasOwn(values, "full_image_path")) values.full_image_path = existingRows[0].full_image_path;
+      }
+      const sharedMedia = values.thumbnailData && values.thumbnailData === values.fullImageData;
+      for (const [source, destination] of [["thumbnailData", "thumbnail_path"], ["fullImageData", "full_image_path"]]) {
+        if (source === "fullImageData" && sharedMedia && values.thumbnail_path) {
+          values.full_image_path = values.thumbnail_path;
+          delete values[source];
+          continue;
+        }
+        if (typeof values[source] === "string" && values[source].startsWith("data:")) {
+          const path = `${session.id}/${randomUUID()}`;
+          try {
+            await uploadMedia(AWARENESS_MEDIA_BUCKET, path, values[source]);
+          } catch (error) {
+            await removeMedia(AWARENESS_MEDIA_BUCKET, uploadedPaths);
+            throw error;
+          }
+          uploadedPaths.push(path);
+          values[destination] = path;
+        }
+        delete values[source];
+      }
+    }
     query = query.update(values);
     if (returning) query = query.select(columns || "*");
   } else if (operation === "delete") {
+    if (table === "awareness_content") {
+      const { data: existingRows, error: existingError } = await applyFilters(
+        getDatabase().from(table).select("thumbnail_path,full_image_path"),
+        filters,
+      );
+      if (existingError) throw existingError;
+      oldAwarenessPaths = (existingRows || []).flatMap((item) => [item.thumbnail_path, item.full_image_path]);
+    }
+    if (table === "reports") {
+      const { data: existingRows, error: existingError } = await applyFilters(
+        getDatabase().from(table).select("evidence"),
+        filters,
+      );
+      if (existingError) throw existingError;
+      oldAwarenessPaths = (existingRows || []).flatMap((item) =>
+        (item.evidence || []).map((evidence) => evidence.path)
+      );
+    }
     query = query.delete();
   } else {
     throw Object.assign(new Error("Unsupported database operation."), { status: 400 });
@@ -923,10 +1145,27 @@ async function runQuery(body, req) {
   }
   if (enforcedFilters.length) query = applyFilters(query, enforcedFilters);
   for (const order of orders || []) query = query.order(order.column, { ascending: order.ascending !== false });
-  if (Number.isInteger(limit) && limit >= 0) query = query.limit(limit);
+  if (Number.isInteger(offset) && offset > 0) query = query.range(offset, offset + Math.max(1, limit || 1) - 1);
+  else if (Number.isInteger(limit) && limit >= 0) query = query.limit(limit);
 
   let result = await query;
-  if (result.error) throw result.error;
+  if (result.error) {
+    await removeMedia(table === "awareness_content" ? AWARENESS_MEDIA_BUCKET : REPORT_EVIDENCE_BUCKET, uploadedPaths);
+    throw result.error;
+  }
+  if (oldAwarenessPaths.length) {
+    try {
+      const retainedPaths = table === "awareness_content"
+        ? [values?.thumbnail_path, values?.full_image_path]
+        : [];
+      await removeMedia(
+        table === "awareness_content" ? AWARENESS_MEDIA_BUCKET : REPORT_EVIDENCE_BUCKET,
+        oldAwarenessPaths.filter((path) => !retainedPaths.includes(path)),
+      );
+    } catch (cleanupError) {
+      console.error(`Could not clean up replaced ${table} media:`, cleanupError.message);
+    }
+  }
   if (table === "reports" && operation === "insert" && role === "student") {
     const report = Array.isArray(result.data) ? result.data[0] : result.data;
     if (!report) throw new Error("Report was saved but its notification could not be generated.");
