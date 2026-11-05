@@ -43,6 +43,31 @@ function getSessionSecret() {
   return secret;
 }
 
+function getEmailLogoUrl(origin = "") {
+  const allowedOrigins = (getEnvironmentVariable("ALLOWED_ORIGINS") || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const candidates = [origin, ...allowedOrigins].filter(Boolean);
+  const publicOrigin = candidates.find((candidate) => {
+    try {
+      const url = new URL(candidate);
+      return ["http:", "https:"].includes(url.protocol) &&
+        !["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+    } catch {
+      return false;
+    }
+  });
+  const fallbackOrigin = publicOrigin || candidates.find((candidate) => {
+    try {
+      return ["http:", "https:"].includes(new URL(candidate).protocol);
+    } catch {
+      return false;
+    }
+  });
+  return fallbackOrigin ? new URL("/logo.png", fallbackOrigin).href : "";
+}
+
 function send(res, status, payload) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -161,13 +186,7 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
   const { error: saveError } = await db.from("auth_otps").upsert(challenge, { onConflict: "email,purpose" });
   if (saveError) throw saveError;
 
-  const originUrl = origin ? new URL(origin) : null;
-  const logoUrl = originUrl && ["http:", "https:"].includes(originUrl.protocol)
-    ? new URL("/logo.png", originUrl).href
-    : "";
-  const brandMark = logoUrl
-    ? `<img src="${logoUrl}" width="56" height="56" alt="Casinglot National High School logo" style="display:block;width:56px;height:56px;object-fit:contain;border-radius:12px;background-color:#ffffff;">`
-    : `<span style="display:inline-block;width:44px;height:44px;border:1px solid rgba(255,255,255,.55);border-radius:12px;color:#ffffff;font-size:13px;font-weight:700;line-height:44px;letter-spacing:1px;text-align:center;">CNHS</span>`;
+  const logoUrl = getEmailLogoUrl(origin);
   const message = {
     sender: {
       name: getEnvironmentVariable("BREVO_SENDER_NAME") || "CNHS Bullying Reporting System",
@@ -193,12 +212,7 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
                   <tr>
                     <td align="center" style="padding:28px 24px;background-color:#15803d;">
-                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                          <td align="center" valign="middle" width="56" height="56">${brandMark}</td>
-                          <td style="padding-left:12px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;">Bullying Reporting<br>&amp; Management System</td>
-                        </tr>
-                      </table>
+                      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="72" height="72" alt="School logo" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:12px;background-color:#ffffff;">` : ""}
                     </td>
                   </tr>
                   <tr>
@@ -288,7 +302,7 @@ async function notifyAdminsOfPendingSignup(registration, origin = "") {
   if (!recipients.length) throw new Error("No administrator email addresses are configured.");
 
   const adminUrl = origin ? new URL("/admindashboard", origin).href : "";
-  const logoUrl = origin ? new URL("/logo.png", origin).href : "";
+  const logoUrl = getEmailLogoUrl(origin);
   const name = String(registration.name || "New student");
   const studentEmail = String(registration.email || "");
   const grade = String(registration.grade || "");
@@ -326,8 +340,7 @@ async function notifyAdminsOfPendingSignup(registration, origin = "") {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
                   <tr>
                     <td align="center" style="padding:24px;background-color:#15803d;">
-                      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="56" height="56" alt="Casinglot National High School logo" style="display:inline-block;width:56px;height:56px;object-fit:contain;border-radius:12px;background-color:#ffffff;vertical-align:middle;">` : ""}
-                      <span style="display:inline-block;padding-left:12px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;vertical-align:middle;">CNHS Bullying Reporting<br>&amp; Management System</span>
+                      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="72" height="72" alt="School logo" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:12px;background-color:#ffffff;">` : ""}
                     </td>
                   </tr>
                   <tr>

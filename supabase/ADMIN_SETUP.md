@@ -14,7 +14,7 @@ ALLOWED_ORIGINS=https://your-app.example.com,http://localhost:5173
 
 Use an email address verified as a sender in Brevo. If Brevo API key security restricts authorized IPs, allow the Supabase Edge Function's outbound IP shown in the function logs, or remove that IP restriction; otherwise Brevo rejects email requests. `ALLOWED_ORIGINS` must contain the exact browser origins for your deployed frontend and any local development frontend, separated by commas. Supabase provides the project URL and service-role key to Edge Functions. Keep all secrets server-side; never add a `VITE_` prefix or put them in frontend code.
 
-Verification and password-reset emails load the school logo from `/logo.png` on the requesting frontend origin. Keep `public/logo.png` deployed and publicly accessible so email clients can display it.
+Verification, password-reset, and admin notification emails show only the school logo in their header, loaded from `/logo.png` on the requesting frontend origin (or the first public origin in `ALLOWED_ORIGINS` when the request has no origin). Keep `public/logo.png` deployed and publicly accessible so email clients can display it.
 
 After a student verifies their signup code, the API emails all administrator addresses in the `admins` table to notify them that an account is waiting for approval. These notices are sent through the configured Brevo sender; add the administrator's Gmail address to the admin account with `ADMIN_EMAIL` when provisioning, or update the existing admin email address, and ensure it is a valid recipient. The student account still requires approval in the dashboard before they can sign in.
 
