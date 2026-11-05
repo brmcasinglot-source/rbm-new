@@ -28,6 +28,12 @@ function cacheAdminSession(profile) {
   localStorage.setItem("userRole", "admin");
 }
 
+function clearCachedSession() {
+  localStorage.removeItem("cnhsSessionToken");
+  ["studentName", "studentId", "studentLRN", "studentAge", "studentSex", "studentGrade", "studentSection", "email", "userRole"]
+    .forEach((key) => localStorage.removeItem(key));
+}
+
 export async function signUpStudent(details) {
   try {
     const result = await authRequest("signup", details);
@@ -61,6 +67,23 @@ export async function signIn(email, password) {
   }
 }
 
+export async function getCurrentSession() {
+  if (!localStorage.getItem("cnhsSessionToken")) return null;
+
+  const result = await authRequest("session");
+  if (!result.user && !result.profile) {
+    clearCachedSession();
+    return null;
+  }
+  if (!["admin", "student"].includes(result.role) || !result.profile) {
+    throw new Error("The server returned an invalid account session.");
+  }
+
+  if (result.role === "admin") cacheAdminSession(result.profile);
+  else cacheStudentSession(result.profile);
+  return { role: result.role, profile: result.profile };
+}
+
 export async function sendPasswordResetEmail(email) {
   try {
     await authRequest("request-password-reset", { email });
@@ -80,13 +103,7 @@ export async function updatePassword(email, code, password) {
 }
 
 export async function signOut() {
-  try {
-    await authRequest("signout");
-  } finally {
-    localStorage.removeItem("cnhsSessionToken");
-    ["studentName", "studentId", "studentLRN", "studentAge", "studentSex", "studentGrade", "studentSection", "email", "userRole"]
-      .forEach((key) => localStorage.removeItem(key));
-  }
+  clearCachedSession();
 }
 
 export async function resendConfirmationEmail(email) {

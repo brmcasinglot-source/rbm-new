@@ -22,6 +22,7 @@ import {
   GRADE_OPTIONS, getGradeSections,
 } from "../data/store";
 import { translateStudentUI } from "../lib/studentLocale";
+import { signOut } from "../lib/auth";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusIcon(status) {
@@ -559,7 +560,13 @@ export default function StudentDashboard() {
               {profileOpen && (
                 <div className="s-dropdown">
                   <p className="s-drop-label">Signed in as {studentName || "Student"}</p>
-                  <button className="s-logout-btn" onClick={() => navigate("/login?role=student")}>
+                  <button className="s-logout-btn" onClick={async () => {
+                    try {
+                      await signOut();
+                    } finally {
+                      navigate("/login?role=student");
+                    }
+                  }}>
                     <LogOut size={15} /> Log Out
                   </button>
                 </div>

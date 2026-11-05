@@ -1382,7 +1382,13 @@ export default function AdminDashboard() {
               {profileOpen && (
                 <div className="dropdown small profile-dropdown">
                   <p className="dropdown-label">Signed in as {adminName}</p>
-                  <button className="logout-btn" onClick={async () => { await signOut(); navigate("/login?role=admin"); }}>
+                  <button className="logout-btn" onClick={async () => {
+                    try {
+                      await signOut();
+                    } finally {
+                      navigate("/login?role=admin");
+                    }
+                  }}>
                     <LogOut size={15} /> Log Out
                   </button>
                 </div>
