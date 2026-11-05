@@ -365,7 +365,7 @@ export default function Login() {
           {mode === "verify" ? (
             <>
               <h2>Verify your email</h2>
-              <p className="login-sub">Enter the 6-digit code sent to {email}.</p>
+              <p className="login-sub">Enter the 6-digit code sent to {email}. You can request another code after 10 minutes.</p>
               <form onSubmit={handleEmailVerification} noValidate>
                 <div className="input-group">
                   <label className="input-label">Verification Code</label>
@@ -393,7 +393,7 @@ export default function Login() {
           ) : mode === "reset" ? (
             <>
               <h2>Set a new password</h2>
-              <p className="login-sub">Enter the code sent to {email} and choose a new password.</p>
+              <p className="login-sub">Enter the code sent to {email} and choose a new password. You have 2 attempts to enter the code.</p>
               <form onSubmit={handlePasswordUpdate} noValidate>
                 <div className="input-group">
                   <label className="input-label">6-digit Reset Code</label>

@@ -12,6 +12,8 @@ import { hashPassword, verifyPassword } from "./password.js";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
+const RESET_OTP_MAX_ATTEMPTS = 2;
+const SIGNUP_OTP_RESEND_COOLDOWN_MINUTES = 10;
 const STUDENT_ID_BUCKET = "student-ids";
 const MAX_STUDENT_ID_IMAGE_BYTES = 350_000;
 
@@ -235,8 +237,14 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
     .eq("purpose", purpose)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing && Date.now() - new Date(existing.created_at).getTime() < 60_000) {
-    throw Object.assign(new Error("Please wait one minute before requesting another code."), { status: 429 });
+  const resendCooldownMs = purpose === "signup"
+    ? SIGNUP_OTP_RESEND_COOLDOWN_MINUTES * 60_000
+    : 60_000;
+  if (existing && Date.now() - new Date(existing.created_at).getTime() < resendCooldownMs) {
+    const waitMessage = purpose === "signup"
+      ? "Please wait up to 10 minutes before requesting another verification code."
+      : "Please wait one minute before requesting another code.";
+    throw Object.assign(new Error(waitMessage), { status: 429 });
   }
 
   const code = String(randomInt(100000, 1000000));
@@ -513,7 +521,8 @@ async function verifyOtp(email, purpose, code) {
   if (!challenge || new Date(challenge.expires_at).getTime() <= Date.now()) {
     throw Object.assign(new Error("This code is invalid or expired. Request a new code."), { status: 400 });
   }
-  if (challenge.attempts >= OTP_MAX_ATTEMPTS) {
+  const maxAttempts = purpose === "reset" ? RESET_OTP_MAX_ATTEMPTS : OTP_MAX_ATTEMPTS;
+  if (challenge.attempts >= maxAttempts) {
     throw Object.assign(new Error("Too many incorrect attempts. Request a new code."), { status: 429 });
   }
   const provided = hashOtp(email, purpose, String(code || ""));
