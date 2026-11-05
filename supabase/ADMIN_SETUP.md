@@ -14,6 +14,8 @@ ALLOWED_ORIGINS=https://your-app.example.com,http://localhost:5173
 
 Use an email address verified as a sender in Brevo. If Brevo API key security restricts authorized IPs, allow the Supabase Edge Function's outbound IP shown in the function logs, or remove that IP restriction; otherwise Brevo rejects email requests. `ALLOWED_ORIGINS` must contain the exact browser origins for your deployed frontend and any local development frontend, separated by commas. Supabase provides the project URL and service-role key to Edge Functions. Keep all secrets server-side; never add a `VITE_` prefix or put them in frontend code.
 
+Verification and password-reset emails load the school logo from `/logo.png` on the requesting frontend origin. Keep `public/logo.png` deployed and publicly accessible so email clients can display it.
+
 The frontend `.env` contains only the public project URL and anon key:
 
 ```env

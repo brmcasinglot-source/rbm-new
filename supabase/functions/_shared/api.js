@@ -125,7 +125,7 @@ function hashOtp(email, purpose, code) {
     .digest("hex");
 }
 
-async function sendOtp(email, purpose, payload = null) {
+async function sendOtp(email, purpose, payload = null, origin = "") {
   const brevoKey = getEnvironmentVariable("BREVO_API_KEY");
   const senderEmail = getEnvironmentVariable("BREVO_SENDER_EMAIL");
   if (!brevoKey || !senderEmail) {
@@ -161,6 +161,13 @@ async function sendOtp(email, purpose, payload = null) {
   const { error: saveError } = await db.from("auth_otps").upsert(challenge, { onConflict: "email,purpose" });
   if (saveError) throw saveError;
 
+  const originUrl = origin ? new URL(origin) : null;
+  const logoUrl = originUrl && ["http:", "https:"].includes(originUrl.protocol)
+    ? new URL("/logo.png", originUrl).href
+    : "";
+  const brandMark = logoUrl
+    ? `<img src="${logoUrl}" width="56" height="56" alt="Casinglot National High School logo" style="display:block;width:56px;height:56px;object-fit:contain;border-radius:12px;background-color:#ffffff;">`
+    : `<span style="display:inline-block;width:44px;height:44px;border:1px solid rgba(255,255,255,.55);border-radius:12px;color:#ffffff;font-size:13px;font-weight:700;line-height:44px;letter-spacing:1px;text-align:center;">CNHS</span>`;
   const message = {
     sender: {
       name: getEnvironmentVariable("BREVO_SENDER_NAME") || "CNHS Bullying Reporting System",
@@ -188,7 +195,7 @@ async function sendOtp(email, purpose, payload = null) {
                     <td align="center" style="padding:28px 24px;background-color:#15803d;">
                       <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                         <tr>
-                          <td align="center" valign="middle" width="44" height="44" style="width:44px;height:44px;border:1px solid rgba(255,255,255,.55);border-radius:12px;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:1px;">CNHS</td>
+                          <td align="center" valign="middle" width="56" height="56">${brandMark}</td>
                           <td style="padding-left:12px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;">Bullying Reporting<br>&amp; Management System</td>
                         </tr>
                       </table>
@@ -378,7 +385,7 @@ async function handleAuth(action, body, req) {
       section: section.trim(),
       password_hash: await hashPassword(password),
     };
-    await sendOtp(email, "signup", payload);
+    await sendOtp(email, "signup", payload, req.headers.origin);
     return { success: true, needsConfirmation: true };
   }
 
@@ -454,7 +461,7 @@ async function handleAuth(action, body, req) {
       if (account) {
         const payload = { id: account.id, role: account.role };
         try {
-          await sendOtp(email, "reset", payload);
+          await sendOtp(email, "reset", payload, req.headers.origin);
         } catch (error) {
           if (error.status !== 429) throw error;
         }
@@ -526,7 +533,7 @@ async function handleAuth(action, body, req) {
       const { data: challenge, error } = await db.from("auth_otps")
         .select("payload").eq("email", email).eq("purpose", "signup").maybeSingle();
       if (error) throw error;
-      if (challenge) await sendOtp(email, "signup", challenge.payload);
+      if (challenge) await sendOtp(email, "signup", challenge.payload, req.headers.origin);
     }
     return { success: true };
   }
