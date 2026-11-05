@@ -142,6 +142,7 @@ const FILIPINO_TRANSLATIONS = {
   "How was the victim affected? Physically, emotionally, socially…": "Paano naapektuhan ang biktima? Sa pisikal, emosyonal, o pakikisalamuha…",
   "Evidence (Photos / Files)": "Ebidensya (Mga Larawan / File)",
   "Click or drag & drop files here": "I-click o i-drag at i-drop dito ang mga file",
+  "Photos and screenshots are compressed automatically; documents are accepted too.": "Awtomatikong pinapaliit ang mga larawan at screenshot; tumatanggap din ng mga dokumento.",
   "Photos, screenshots, documents accepted": "Tumatanggap ng mga larawan, screenshot, at dokumento",
   "Submitting Anonymously": "Nagsusumite nang Hindi Nagpapakilala",
   "Submit with My Name": "Magsumite Gamit ang Aking Pangalan",

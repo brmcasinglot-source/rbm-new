@@ -13,6 +13,7 @@ import {
   signOut as signOutUser,
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
+import { optimizeImageFile } from "../lib/imageOptimization.js";
 
 const MAX_STUDENT_ID_IMAGE_SIZE = 350_000;
 
@@ -20,51 +21,25 @@ async function prepareStudentIdImage(file) {
   if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
     throw new Error("Choose a JPG, PNG, or WebP image.");
   }
-  if (typeof createImageBitmap !== "function") {
-    throw new Error("This browser cannot prepare the image. Please use a recent browser.");
+
+  const optimizedFile = await optimizeImageFile(file, {
+    maxDimension: 1200,
+    maxSizeBytes: MAX_STUDENT_ID_IMAGE_SIZE,
+    forceWebp: true,
+    backgroundColor: "#ffffff",
+    qualitySteps: [0.68, 0.56, 0.46, 0.36],
+  });
+  if (optimizedFile.size > MAX_STUDENT_ID_IMAGE_SIZE) {
+    throw new Error("Each ID photo must be under 350 KB after compression. Please take a closer, clearer photo with less background.");
   }
 
-  const bitmap = await createImageBitmap(file);
-  try {
-    const maxDimension = 1200;
-    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Could not prepare the image. Please try another photo.");
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-    let blob;
-    for (const quality of [0.68, 0.56, 0.46, 0.36]) {
-      blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-          (result) => result ? resolve(result) : reject(new Error("Could not prepare the image. Please try another photo.")),
-          "image/webp",
-          quality
-        );
-      });
-      if (blob.type !== "image/webp") {
-        throw new Error("This browser cannot prepare ID photos securely. Please use a recent browser.");
-      }
-      if (blob.size <= MAX_STUDENT_ID_IMAGE_SIZE) break;
-    }
-    if (blob.size > MAX_STUDENT_ID_IMAGE_SIZE) {
-      throw new Error("Each ID photo must be under 350 KB after compression. Please take a closer, clearer photo with less background.");
-    }
-
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error("Could not read the image. Please try again."));
-      reader.readAsDataURL(blob);
-    });
-    return { dataUrl, name: file.name };
-  } finally {
-    bitmap.close();
-  }
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read the image. Please try again."));
+    reader.readAsDataURL(optimizedFile);
+  });
+  return { dataUrl, name: optimizedFile.name };
 }
 
 function getPasswordStrength(password) {

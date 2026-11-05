@@ -23,6 +23,7 @@ import {
 } from "../data/store";
 import { translateStudentUI } from "../lib/studentLocale";
 import { signOut } from "../lib/auth";
+import { optimizeImageFile } from "../lib/imageOptimization";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusIcon(status) {
@@ -70,45 +71,9 @@ function readBlobAsDataUrl(blob) {
   });
 }
 async function readFile(file) {
-  const optimizableTypes = ["image/jpeg", "image/png", "image/webp"];
-  let optimizedFile = file;
-
-  if (optimizableTypes.includes(file.type) && typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file);
-    try {
-      const maxDimension = 1600;
-      const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Could not optimize image.");
-      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-      const optimizedBlob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-          (blob) => blob ? resolve(blob) : reject(new Error("Could not optimize image.")),
-          "image/webp",
-          0.8
-        );
-      });
-
-      if (optimizedBlob.size < file.size) {
-        const extension = {
-          "image/jpeg": ".jpg",
-          "image/png": ".png",
-          "image/webp": ".webp",
-        }[optimizedBlob.type] || "";
-        const baseName = file.name.replace(/\.[^.]+$/, "");
-        optimizedFile = new File([optimizedBlob], `${baseName}${extension}`, {
-          type: optimizedBlob.type,
-          lastModified: file.lastModified,
-        });
-      }
-    } finally {
-      bitmap.close();
-    }
-  }
+  const optimizedFile = file.type.startsWith("image/")
+    ? await optimizeImageFile(file, { maxDimension: 1600 })
+    : file;
 
   return {
     name: optimizedFile.name,
@@ -1090,7 +1055,7 @@ export default function StudentDashboard() {
                       }}>
                       <Upload size={22} color="var(--s-accent)" style={{ marginBottom: 8 }} />
                       <p>Click or drag &amp; drop files here</p>
-                      <span>Photos, screenshots, documents accepted</span>
+                      <span>Photos and screenshots are compressed automatically; documents are accepted too.</span>
                       <input id="s-file-input" type="file" multiple style={{ display: "none" }}
                         accept="image/*,.pdf,.doc,.docx,.txt"
                         onChange={handleEvidencePick} />
