@@ -16,6 +16,8 @@ Use an email address verified as a sender in Brevo. If Brevo API key security re
 
 Verification and password-reset emails load the school logo from `/logo.png` on the requesting frontend origin. Keep `public/logo.png` deployed and publicly accessible so email clients can display it.
 
+After a student verifies their signup code, the API emails all administrator addresses in the `admins` table to notify them that an account is waiting for approval. These notices are sent through the configured Brevo sender; add the administrator's Gmail address to the admin account with `ADMIN_EMAIL` when provisioning, or update the existing admin email address, and ensure it is a valid recipient. The student account still requires approval in the dashboard before they can sign in.
+
 The frontend `.env` contains only the public project URL and anon key:
 
 ```env

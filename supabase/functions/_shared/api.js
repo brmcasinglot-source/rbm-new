@@ -262,6 +262,109 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+async function notifyAdminsOfPendingSignup(registration, origin = "") {
+  const brevoKey = getEnvironmentVariable("BREVO_API_KEY");
+  const senderEmail = getEnvironmentVariable("BREVO_SENDER_EMAIL");
+  if (!brevoKey || !senderEmail) {
+    throw new Error("Brevo notification email settings are missing.");
+  }
+
+  const { data: admins, error: adminsError } = await getDatabase()
+    .from("admins")
+    .select("email")
+    .order("email", { ascending: true });
+  if (adminsError) throw adminsError;
+  const recipients = [...new Set((admins || []).map((admin) => admin.email).filter(Boolean))];
+  if (!recipients.length) throw new Error("No administrator email addresses are configured.");
+
+  const adminUrl = origin ? new URL("/admindashboard", origin).href : "";
+  const logoUrl = origin ? new URL("/logo.png", origin).href : "";
+  const name = String(registration.name || "New student");
+  const studentEmail = String(registration.email || "");
+  const grade = String(registration.grade || "");
+  const section = String(registration.section || "");
+  const message = {
+    sender: {
+      name: getEnvironmentVariable("BREVO_SENDER_NAME") || "CNHS Bullying Reporting System",
+      email: senderEmail,
+    },
+    to: [{ email: recipients[0] }],
+    ...(recipients.length > 1 ? { bcc: recipients.slice(1).map((email) => ({ email })) } : {}),
+    subject: "Student account awaiting CNHS admin approval",
+    textContent: [
+      "A student has verified their email and is waiting for administrator approval.",
+      "",
+      `Name: ${name}`,
+      `Email: ${studentEmail}`,
+      `Grade and section: ${grade} - ${section}`,
+      "",
+      adminUrl ? `Review pending accounts: ${adminUrl}` : "Sign in to the CNHS Bullying Reporting System to review pending accounts.",
+    ].join("\n"),
+    htmlContent: `
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="color-scheme" content="light">
+          <title>Student account awaiting approval</title>
+        </head>
+        <body style="margin:0;padding:0;background-color:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1e2430;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f7f5;">
+            <tr>
+              <td align="center" style="padding:40px 16px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+                  <tr>
+                    <td align="center" style="padding:24px;background-color:#15803d;">
+                      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="56" height="56" alt="Casinglot National High School logo" style="display:inline-block;width:56px;height:56px;object-fit:contain;border-radius:12px;background-color:#ffffff;vertical-align:middle;">` : ""}
+                      <span style="display:inline-block;padding-left:12px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;vertical-align:middle;">CNHS Bullying Reporting<br>&amp; Management System</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:32px;">
+                      <p style="margin:0 0 8px;color:#15803d;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Admin action required</p>
+                      <h1 style="margin:0 0 12px;color:#1e2430;font-size:24px;line-height:32px;">Student account awaiting approval</h1>
+                      <p style="margin:0 0 20px;color:#64748b;font-size:15px;line-height:24px;">A student has verified their email and is waiting for an administrator to review the registration.</p>
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb;border-radius:12px;">
+                        <tr><td style="padding:12px 16px;color:#64748b;font-size:14px;">Name</td><td style="padding:12px 16px;color:#1e2430;font-size:14px;font-weight:700;">${escapeHtml(name)}</td></tr>
+                        <tr><td style="padding:12px 16px;border-top:1px solid #e5e7eb;color:#64748b;font-size:14px;">Email</td><td style="padding:12px 16px;border-top:1px solid #e5e7eb;color:#1e2430;font-size:14px;">${escapeHtml(studentEmail)}</td></tr>
+                        <tr><td style="padding:12px 16px;border-top:1px solid #e5e7eb;color:#64748b;font-size:14px;">Grade / Section</td><td style="padding:12px 16px;border-top:1px solid #e5e7eb;color:#1e2430;font-size:14px;">${escapeHtml(grade)} - ${escapeHtml(section)}</td></tr>
+                      </table>
+                      ${adminUrl ? `<p style="margin:24px 0 0;"><a href="${escapeHtml(adminUrl)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background-color:#16a34a;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Review account</a></p>` : ""}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>`,
+  };
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": brevoKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(message),
+  });
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(`Brevo could not send the admin notification (${response.status}): ${responseText.slice(0, 300)}`);
+  }
+}
+
 async function getExistingAccount(email) {
   const db = getDatabase();
   const { data: credential, error } = await db
@@ -428,6 +531,11 @@ async function handleAuth(action, body, req) {
     }
     const { error: removeError } = await db.from("auth_otps").delete().eq("email", email).eq("purpose", "signup");
     if (removeError) throw removeError;
+    try {
+      await notifyAdminsOfPendingSignup(registration, req.headers.origin);
+    } catch (error) {
+      console.error("Admin signup notification failed:", error.message);
+    }
     return { success: true };
   }
 
