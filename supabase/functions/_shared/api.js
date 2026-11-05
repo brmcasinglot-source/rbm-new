@@ -212,7 +212,12 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
                   <tr>
                     <td align="center" style="padding:28px 24px;background-color:#15803d;">
-                      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="72" height="72" alt="School logo" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:12px;background-color:#ffffff;">` : ""}
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td align="center" valign="middle" width="72" height="72">${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="72" height="72" alt="School logo" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:12px;background-color:#ffffff;">` : ""}</td>
+                          <td style="padding-left:16px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;text-align:left;">Bullying Reporting<br>&amp; Management System</td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
                   <tr>
@@ -340,7 +345,12 @@ async function notifyAdminsOfPendingSignup(registration, origin = "") {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
                   <tr>
                     <td align="center" style="padding:24px;background-color:#15803d;">
-                      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="72" height="72" alt="School logo" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:12px;background-color:#ffffff;">` : ""}
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td align="center" valign="middle" width="72" height="72">${logoUrl ? `<img src="${escapeHtml(logoUrl)}" width="72" height="72" alt="School logo" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:12px;background-color:#ffffff;">` : ""}</td>
+                          <td style="padding-left:16px;color:#ffffff;font-size:15px;font-weight:700;line-height:21px;text-align:left;">Bullying Reporting<br>&amp; Management System</td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
                   <tr>
