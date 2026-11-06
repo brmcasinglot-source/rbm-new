@@ -447,6 +447,15 @@ export default function AdminDashboard() {
           } catch (err) {
             console.error("getCustomLocations failed:", err);
           }
+          if (activeTab === "analytics") {
+            try {
+              const gradeSectionsData = await getGradeSections();
+              if (cancelled) return;
+              setGradeSectionsIfChanged(gradeSectionsData);
+            } catch (err) {
+              console.error("getGradeSections failed:", err);
+            }
+          }
         } else if (activeTab === "awareness") {
           try {
             const awarenessData = await getAwarenessContent();
@@ -577,7 +586,15 @@ export default function AdminDashboard() {
   // Multi-filter computed
   const allGrades   = [...new Set(incidents.filter(r => !r.isAnonymous && r.reporterGrade).map(r => r.reporterGrade))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const allGenders  = [...new Set(incidents.filter(r => !r.isAnonymous && r.reporterSex).map(r => r.reporterSex))].sort();
-  const allSections = [...new Set(incidents.filter(r=>!r.isAnonymous && r.reporterSection).map(r=>r.reporterSection))].sort();
+  const allSections = [...new Set([
+    ...gradeSections.map(({ section }) => section),
+    ...incidents.filter((r) => !r.isAnonymous && r.reporterSection).map((r) => r.reporterSection),
+  ])].sort((a, b) => a.localeCompare(b));
+  const sectionsForSelectedGrade = mfGrade === "All"
+    ? allSections
+    : [...new Set(gradeSections
+      .filter(({ grade }) => grade === mfGrade)
+      .map(({ section }) => section))].sort((a, b) => a.localeCompare(b));
   const allYears    = [...new Set(incidents.filter(r=>r.date).map(r=>new Date(r.date).getFullYear()))].sort((a,b)=>b-a);
   const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -2155,7 +2172,14 @@ export default function AdminDashboard() {
                       <div className="mf-filter-row mf-dropdowns-inline">
                         <div className="mf-inline-field">
                           <span className="mf-filter-label">Grade level</span>
-                          <select className="mf-select" value={mfGrade} onChange={e => handleMultiFilterChange(setMfGrade, e.target.value)}>
+                          <select className="mf-select" value={mfGrade} onChange={e => {
+                            const grade = e.target.value;
+                            handleMultiFilterChange(setMfGrade, grade);
+                            if (mfSection !== "All" && grade !== "All" &&
+                              !gradeSections.some((item) => item.grade === grade && item.section === mfSection)) {
+                              handleMultiFilterChange(setMfSection, "All");
+                            }
+                          }}>
                             <option value="All">All grades</option>
                             {["Grade 7","Grade 8","Grade 9","Grade 10"].map(g => <option key={g} value={g}>{g}</option>)}
                           </select>
@@ -2172,7 +2196,7 @@ export default function AdminDashboard() {
                           <span className="mf-filter-label">Section</span>
                           <select className="mf-select" value={mfSection} onChange={e => handleMultiFilterChange(setMfSection, e.target.value)}>
                             <option value="All">All sections</option>
-                            {allSections.map(s => <option key={s} value={s}>{s}</option>)}
+                            {sectionsForSelectedGrade.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                         <div className="mf-inline-field">
