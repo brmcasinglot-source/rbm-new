@@ -185,7 +185,6 @@ async function uploadMedia(bucket, path, dataUrl) {
   const { contentType, bytes } = decodeMediaDataUrl(dataUrl);
   const { error } = await getDatabase().storage.from(bucket).upload(path, bytes, {
     contentType,
-    cacheControl: "31536000",
     upsert: false,
   });
   if (error) throw error;
@@ -668,45 +667,6 @@ async function handleAuth(action, body, req) {
       .eq("read", false);
     if (session.role === "student") query = query.or(`student_id.eq.${session.id},student_id.is.null`);
     const { count, error } = await query;
-    if (error) throw error;
-    return { count: count || 0 };
-  }
-
-  if (action === "notification-summary") {
-    const session = await getSession(req);
-    const requestedLimit = Number(body.limit);
-    const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 30) : 30;
-    const audience = session.role === "admin" ? "admin" : "student";
-    let notificationsQuery = db.from("notifications")
-      .select("id,title,type,read,created_at")
-      .eq("audience", audience)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(limit);
-    let unreadQuery = db.from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("audience", audience)
-      .eq("read", false);
-    if (session.role === "student") {
-      const studentFilter = `student_id.eq.${session.id},student_id.is.null`;
-      notificationsQuery = notificationsQuery.or(studentFilter);
-      unreadQuery = unreadQuery.or(studentFilter);
-    }
-    const [{ data: notifications, error: notificationsError }, { count, error: unreadError }] = await Promise.all([
-      notificationsQuery,
-      unreadQuery,
-    ]);
-    if (notificationsError) throw notificationsError;
-    if (unreadError) throw unreadError;
-    return { notifications: notifications || [], unreadCount: count || 0 };
-  }
-
-  if (action === "student-report-count") {
-    const session = await getSession(req);
-    requireRole(session, "student");
-    const { count, error } = await db.from("reports")
-      .select("id", { count: "exact", head: true })
-      .eq("submitted_id", session.id);
     if (error) throw error;
     return { count: count || 0 };
   }
