@@ -2447,6 +2447,30 @@
   color: #fff;
 }
 
+.analytics-chip-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.analytics-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #bbf7d0;
+  border-radius: 50%;
+  background: #f0fdf4;
+  color: #15803d;
+  cursor: pointer;
+}
+
+.analytics-chip-remove:hover {
+  background: #dcfce7;
+}
+
 .analytics-insight-box {
   display: flex;
   align-items: flex-start;

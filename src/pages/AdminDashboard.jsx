@@ -306,7 +306,7 @@ export default function AdminDashboard() {
   const [recordsPage, setRecordsPage] = useState(0);
 
   // Multi-filter state
-  const [mfType,    setMfType]    = useState("All");
+  const [mfType,    setMfType]    = useState([]);
   const [mfGrade,   setMfGrade]   = useState("All");
   const [mfGender,  setMfGender]  = useState("All");
   const [mfSection, setMfSection] = useState("All");
@@ -615,7 +615,7 @@ export default function AdminDashboard() {
   const mfFiltered = incidents.filter(r => {
     const d = r.date ? new Date(r.date) : null;
     return (
-      (mfType    === "All" || r.type === mfType) &&
+      (mfType.length === 0 || mfType.includes(r.type)) &&
       (mfGrade   === "All" || r.reporterGrade   === mfGrade) &&
       (mfGender  === "All" || r.reporterSex     === mfGender) &&
       (mfSection === "All" || r.reporterSection === mfSection) &&
@@ -874,7 +874,10 @@ export default function AdminDashboard() {
   }, [activeTab, incidents, monthlyData]);
 
   const mfActiveTags = [
-    mfType    !== "All" ? { label: mfType,    clear: () => handleMultiFilterChange(setMfType, "All")    } : null,
+    ...mfType.map((type) => ({
+      label: type,
+      clear: () => handleMultiFilterChange(setMfType, mfType.filter((selectedType) => selectedType !== type)),
+    })),
     mfGrade   !== "All" ? { label: mfGrade,   clear: () => handleMultiFilterChange(setMfGrade, "All")   } : null,
     mfGender  !== "All" ? { label: mfGender,  clear: () => handleMultiFilterChange(setMfGender, "All")  } : null,
     mfSection !== "All" ? { label: `Section ${mfSection}`, clear: () => handleMultiFilterChange(setMfSection, "All") } : null,
@@ -2097,9 +2100,34 @@ export default function AdminDashboard() {
                       <div className="mf-filter-row">
                         <span className="mf-filter-label">Incident type</span>
                         <div className="mf-type-chips">
-                          {["All","Physical","Verbal","Cyber","Social","Property","Others"].map(t => (
-                            <button key={t} className={`analytics-chip ${mfType === t ? "active" : ""}`}
-                              onClick={() => handleMultiFilterChange(setMfType, t)}>{t}</button>
+                          <button
+                            className={`analytics-chip ${mfType.length === 0 ? "active" : ""}`}
+                            onClick={() => handleMultiFilterChange(setMfType, [])}
+                          >All</button>
+                          {mfTypes.map((type) => (
+                            <span className="analytics-chip-selection" key={type}>
+                              <button
+                                className={`analytics-chip ${mfType.includes(type) ? "active" : ""}`}
+                                aria-pressed={mfType.includes(type)}
+                                onClick={() => handleMultiFilterChange(
+                                  setMfType,
+                                  mfType.includes(type)
+                                    ? mfType.filter((selectedType) => selectedType !== type)
+                                    : [...mfType, type]
+                                )}
+                              >{type}</button>
+                              {mfType.includes(type) && (
+                                <button
+                                  type="button"
+                                  className="analytics-chip-remove"
+                                  aria-label={`Remove ${type} filter`}
+                                  onClick={() => handleMultiFilterChange(
+                                    setMfType,
+                                    mfType.filter((selectedType) => selectedType !== type)
+                                  )}
+                                ><X size={11} /></button>
+                              )}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -2176,7 +2204,7 @@ export default function AdminDashboard() {
                         <button
                           className={`mf-clear-filters-btn${mfHasFilters ? " active" : ""}`}
                           onClick={() => {
-                            handleMultiFilterChange(setMfType, "All");
+                            handleMultiFilterChange(setMfType, []);
                             handleMultiFilterChange(setMfGrade, "All");
                             handleMultiFilterChange(setMfGender, "All");
                             handleMultiFilterChange(setMfSection, "All");
