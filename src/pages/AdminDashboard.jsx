@@ -34,12 +34,13 @@ import {
   GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
-  getUnconfirmedSignups, resendConfirmationEmail,
+  getUnconfirmedSignups, resendConfirmationEmail, getReportExportData,
   downloadCSV,
 } from "../data/store";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const ANALYTICS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 
 async function fileToDataUrl(file) {
@@ -322,6 +323,8 @@ export default function AdminDashboard() {
   const [exportYearFilter, setExportYearFilter] = useState(null);
   const [exportMenuOpen,       setExportMenuOpen]        = useState(false);
   const [exportPreviewFormat, setExportPreviewFormat] = useState(null);
+  const [exportPreviewReports, setExportPreviewReports] = useState([]);
+  const [exportLoading, setExportLoading] = useState(false);
   const exportMenuRef = useRef(null);
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -410,10 +413,15 @@ export default function AdminDashboard() {
     let cancelled = false;
     let refreshing = false;
     let timeoutId;
+    let lastRefreshAt = 0;
+    const refreshInterval = activeTab === "analytics"
+      ? ANALYTICS_REFRESH_INTERVAL_MS
+      : DASHBOARD_REFRESH_INTERVAL_MS;
 
     async function refresh() {
       if (cancelled || document.hidden || refreshing) return;
       refreshing = true;
+      lastRefreshAt = Date.now();
       try {
         try {
           const [incidentsData, notifData, unreadNotifications] = await Promise.all([
@@ -421,6 +429,7 @@ export default function AdminDashboard() {
               ? getReports({
                   includeEvidence: false,
                   summaryOnly: true,
+                  analyticsOnly: activeTab === "analytics",
                   ...(activeTab === "incidents" ? { limit: REPORT_PAGE_SIZE } : {}),
                 })
               : Promise.resolve(null),
@@ -503,14 +512,16 @@ export default function AdminDashboard() {
       } finally {
         refreshing = false;
         if (!cancelled && !document.hidden) {
-          timeoutId = setTimeout(refresh, DASHBOARD_REFRESH_INTERVAL_MS);
+          timeoutId = setTimeout(refresh, Math.max(0, refreshInterval - (Date.now() - lastRefreshAt)));
         }
       }
     }
 
     const handleVisibilityChange = () => {
       clearTimeout(timeoutId);
-      if (!document.hidden) refresh();
+      if (document.hidden) return;
+      if (Date.now() - lastRefreshAt >= refreshInterval) refresh();
+      else timeoutId = setTimeout(refresh, refreshInterval - (Date.now() - lastRefreshAt));
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     if (!document.hidden) refresh();
@@ -1313,14 +1324,31 @@ export default function AdminDashboard() {
     (exportYearFilter === null || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
   );
 
-  const beginExportPreview = (format) => {
-    setExportPreviewFormat(format);
-    setExportMenuOpen(false);
+  const beginExportPreview = async (format) => {
+    if (exportLoading) return;
+    setExportLoading(true);
+    try {
+      const selectedIds = new Set(exportFilteredIncidents.map((report) => report.id));
+      const fullReports = await getReportExportData();
+      setExportPreviewReports(fullReports.filter((report) => selectedIds.has(report.id)));
+      setExportPreviewFormat(format);
+      setExportMenuOpen(false);
+    } catch (err) {
+      showToast(`Could not prepare export: ${err.message}`, "error");
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handleExportCSV = () => {
-    downloadCSV(exportFilteredIncidents);
+    downloadCSV(exportPreviewReports);
     setExportPreviewFormat(null);
+    setExportPreviewReports([]);
+  };
+
+  const closeExportPreview = () => {
+    setExportPreviewFormat(null);
+    setExportPreviewReports([]);
   };
 
   const today = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -1333,7 +1361,7 @@ export default function AdminDashboard() {
   return (
     <div className="dashboard admin-theme" style={{ backgroundImage: `url(${bg})` }}>
       {exportPreviewFormat && (
-        <div className="admin-modal-overlay export-preview-overlay" onClick={() => setExportPreviewFormat(null)}>
+        <div className="admin-modal-overlay export-preview-overlay" onClick={closeExportPreview}>
           <section
             className="admin-modal export-preview-modal"
             role="dialog"
@@ -1350,7 +1378,7 @@ export default function AdminDashboard() {
                 type="button"
                 className="close-modal-btn"
                 aria-label="Close export preview"
-                onClick={() => setExportPreviewFormat(null)}
+                onClick={closeExportPreview}
               >
                 <X size={20} />
               </button>
@@ -1358,12 +1386,12 @@ export default function AdminDashboard() {
             <div className="admin-modal-content export-preview-content">
               <div className="export-preview-summary">
                 <div>
-                  <strong>{exportFilteredIncidents.length} incident{exportFilteredIncidents.length === 1 ? "" : "s"}</strong>
+                  <strong>{exportPreviewReports.length} incident{exportPreviewReports.length === 1 ? "" : "s"}</strong>
                   <span>will be included using the selected export filters.</span>
                 </div>
                 <span>{exportPreviewFormat}</span>
               </div>
-              {exportFilteredIncidents.length === 0 ? (
+              {exportPreviewReports.length === 0 ? (
                 <div className="export-preview-empty">
                   No incidents match these filters. Adjust the export filters before exporting.
                 </div>
@@ -1387,7 +1415,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {exportFilteredIncidents.map((report) => (
+                      {exportPreviewReports.map((report) => (
                         <tr key={report.id}>
                           <td>#{report.id}</td>
                           <td>{report.date || "—"}</td>
@@ -1413,7 +1441,7 @@ export default function AdminDashboard() {
                 type="button"
                 className="cancel-btn"
                 onClick={() => {
-                  setExportPreviewFormat(null);
+                  closeExportPreview();
                   setExportMenuOpen(true);
                 }}
               >
@@ -1423,7 +1451,7 @@ export default function AdminDashboard() {
                 type="button"
                 className="submit-btn"
                 onClick={handleExportCSV}
-                disabled={exportFilteredIncidents.length === 0}
+                disabled={exportPreviewReports.length === 0}
               >
                 <Download size={15} /> Export {exportPreviewFormat}
               </button>
@@ -2082,7 +2110,7 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
                               <p className="analytics-export-label">Choose Format</p>
-                              <button onClick={() => beginExportPreview("CSV Spreadsheet")}><FileDown size={14} color="#22c55e" /><span><strong>CSV Spreadsheet</strong><small>Excel / Google Sheets compatible</small></span></button>
+                              <button disabled={exportLoading} onClick={() => beginExportPreview("CSV Spreadsheet")}><FileDown size={14} color="#22c55e" /><span><strong>{exportLoading ? "Preparing export…" : "CSV Spreadsheet"}</strong><small>Excel / Google Sheets compatible</small></span></button>
                             </div>
                           )}
                         </div>

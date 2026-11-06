@@ -164,13 +164,35 @@ const REPORT_LIST_COLUMNS = [
   "scheduled_conference", "submitted_at", "updated_at",
 ].join(",");
 
-export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0 } = {}) {
-  const baseColumns = summaryOnly ? REPORT_LIST_COLUMNS : REPORT_COLUMNS_WITHOUT_EVIDENCE;
+const REPORT_ANALYTICS_COLUMNS = [
+  "id", "type", "date", "location", "status", "priority", "submitted_by",
+  "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous",
+].join(",");
+
+const REPORT_EXPORT_COLUMNS = [
+  "id", "type", "date", "description", "location", "status", "priority",
+  "submitted_by", "submitted_id", "reporter_sex", "reporter_grade", "reporter_section",
+  "is_anonymous", "admin_notes", "submitted_at", "updated_at",
+].join(",");
+
+export async function getReports({ includeEvidence = false, summaryOnly = true, analyticsOnly = false, limit, offset = 0 } = {}) {
+  const baseColumns = analyticsOnly
+    ? REPORT_ANALYTICS_COLUMNS
+    : summaryOnly
+      ? REPORT_LIST_COLUMNS
+      : REPORT_COLUMNS_WITHOUT_EVIDENCE;
   const columns = includeEvidence ? `${REPORT_COLUMNS_WITHOUT_EVIDENCE},evidence` : baseColumns;
   let query = supabase.from("reports").select(columns)
     .order("submitted_at", { ascending: false }).order("id", { ascending: false });
   if (Number.isInteger(limit)) query = query.range(offset, offset + limit - 1);
   const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map(reportRowToObj);
+}
+
+export async function getReportExportData() {
+  const { data, error } = await supabase.from("reports").select(REPORT_EXPORT_COLUMNS)
+    .order("submitted_at", { ascending: false }).order("id", { ascending: false });
   if (error) throw error;
   return (data || []).map(reportRowToObj);
 }
