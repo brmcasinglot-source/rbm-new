@@ -242,7 +242,7 @@ function getLocationCounts(reports, customLocations = []) {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const unseenReportsStorageKey = `adminUnseenReports:v2:${localStorage.getItem("studentId") || "unknown"}`;
+  const unseenReportsStorageKey = `adminUnseenReports:v3:${localStorage.getItem("studentId") || "unknown"}`;
   const savedReportViewState = (() => {
     try {
       const savedState = JSON.parse(localStorage.getItem(unseenReportsStorageKey) || "null");
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
       console.error("Could not load report view markers:", error);
       return null;
     }
-  });
+  })();
   const [unseenReportIds, setUnseenReportIds] = useState(
     () => new Set(savedReportViewState?.unseenIds || [])
   );
