@@ -31,10 +31,11 @@ import {
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
+  GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
   getUnconfirmedSignups, resendConfirmationEmail,
-  downloadCSV, downloadTextReport, getAnalyticsData,
+  downloadCSV,
 } from "../data/store";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
@@ -175,12 +176,11 @@ const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Propert
 const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
 
 function nextExportSelection(selected, value, options) {
-  const next = selected.length === 0
+  return selected === null
     ? options.filter((option) => option !== value)
     : selected.includes(value)
       ? selected.filter((option) => option !== value)
       : [...selected, value];
-  return next.length === options.length ? [] : next;
 }
 
 function ExportChecklist({ title, options, selected, setSelected, className = "" }) {
@@ -188,7 +188,7 @@ function ExportChecklist({ title, options, selected, setSelected, className = ""
     <>
       <div className="analytics-export-filter-heading">
         <span>{title}</span>
-        <button type="button" onClick={() => setSelected([])}>All</button>
+        <button type="button" onClick={() => setSelected(null)}>All</button>
       </div>
       {options.length > 0 ? (
         <div className={`analytics-export-checklist ${className}`}>
@@ -196,7 +196,7 @@ function ExportChecklist({ title, options, selected, setSelected, className = ""
             <label key={option}>
               <input
                 type="checkbox"
-                checked={selected.length === 0 || selected.includes(option)}
+                checked={selected === null || selected.includes(option)}
                 onChange={() => setSelected((current) => nextExportSelection(current, option, options))}
               />
               <span>{option}</span>
@@ -313,13 +313,13 @@ export default function AdminDashboard() {
   const [mfStatus,  setMfStatus]  = useState("All");
   const [mfMonth,   setMfMonth]   = useState("All");
   const [mfYear,    setMfYear]    = useState("All");
-  const [exportTypes, setExportTypes] = useState(EXPORT_INCIDENT_TYPES);
-  const [exportStatuses, setExportStatuses] = useState(EXPORT_STATUSES);
-  const [exportGradeFilter, setExportGradeFilter] = useState([]);
-  const [exportGenderFilter, setExportGenderFilter] = useState([]);
-  const [exportSectionFilter, setExportSectionFilter] = useState([]);
-  const [exportMonthFilter, setExportMonthFilter] = useState([]);
-  const [exportYearFilter, setExportYearFilter] = useState([]);
+  const [exportTypes, setExportTypes] = useState(null);
+  const [exportStatuses, setExportStatuses] = useState(null);
+  const [exportGradeFilter, setExportGradeFilter] = useState(null);
+  const [exportGenderFilter, setExportGenderFilter] = useState(null);
+  const [exportSectionFilter, setExportSectionFilter] = useState(null);
+  const [exportMonthFilter, setExportMonthFilter] = useState(null);
+  const [exportYearFilter, setExportYearFilter] = useState(null);
   const [exportMenuOpen,       setExportMenuOpen]        = useState(false);
   const [exportPreviewFormat, setExportPreviewFormat] = useState(null);
   const exportMenuRef = useRef(null);
@@ -584,12 +584,26 @@ export default function AdminDashboard() {
   const topLocation    = locationSorted[0]?.[0] || null;
 
   // Multi-filter computed
-  const allGrades   = [...new Set(incidents.filter(r => !r.isAnonymous && r.reporterGrade).map(r => r.reporterGrade))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const allGrades   = GRADE_OPTIONS;
   const allGenders  = [...new Set(incidents.filter(r => !r.isAnonymous && r.reporterSex).map(r => r.reporterSex))].sort();
   const allSections = [...new Set([
     ...gradeSections.map(({ section }) => section),
     ...incidents.filter((r) => !r.isAnonymous && r.reporterSection).map((r) => r.reporterSection),
   ])].sort((a, b) => a.localeCompare(b));
+  const exportSections = exportGradeFilter === null
+    ? allSections
+    : [...new Set([
+      ...gradeSections
+        .filter(({ grade }) => exportGradeFilter.includes(grade))
+        .map(({ section }) => section),
+      ...incidents
+        .filter((report) => exportGradeFilter.includes(report.reporterGrade) && report.reporterSection)
+        .map((report) => report.reporterSection),
+    ])].sort((a, b) => a.localeCompare(b));
+  const setExportGrades = (update) => {
+    setExportGradeFilter(update);
+    setExportSectionFilter(null);
+  };
   const sectionsForSelectedGrade = mfGrade === "All"
     ? allSections
     : [...new Set(gradeSections
@@ -1288,13 +1302,13 @@ export default function AdminDashboard() {
 
   /* Export helpers */
   const exportFilteredIncidents = incidents.filter((report) =>
-    exportTypes.includes(report.type || "Others") &&
-    exportStatuses.includes(report.status) &&
-    (exportGradeFilter.length === 0 || exportGradeFilter.includes(report.reporterGrade)) &&
-    (exportGenderFilter.length === 0 || exportGenderFilter.includes(report.reporterSex)) &&
-    (exportSectionFilter.length === 0 || exportSectionFilter.includes(report.reporterSection)) &&
-    (exportMonthFilter.length === 0 || (report.date && exportMonthFilter.includes(MONTH_NAMES[new Date(report.date).getMonth()]))) &&
-    (exportYearFilter.length === 0 || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
+    (exportTypes === null || exportTypes.includes(report.type || "Others")) &&
+    (exportStatuses === null || exportStatuses.includes(report.status)) &&
+    (exportGradeFilter === null || exportGradeFilter.includes(report.reporterGrade)) &&
+    (exportGenderFilter === null || exportGenderFilter.includes(report.reporterSex)) &&
+    (exportSectionFilter === null || exportSectionFilter.includes(report.reporterSection)) &&
+    (exportMonthFilter === null || (report.date && exportMonthFilter.includes(MONTH_NAMES[new Date(report.date).getMonth()]))) &&
+    (exportYearFilter === null || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
   );
 
   const beginExportPreview = (format) => {
@@ -1304,55 +1318,6 @@ export default function AdminDashboard() {
 
   const handleExportCSV = () => {
     downloadCSV(exportFilteredIncidents);
-    setExportPreviewFormat(null);
-  };
-
-  const handleExportText = () => {
-    downloadTextReport(exportFilteredIncidents);
-    setExportPreviewFormat(null);
-  };
-
-  const handleExportPDF = () => {
-    const data = getAnalyticsData(exportFilteredIncidents);
-    const win = window.open("", "_blank");
-    if (!win) {
-      showToast("The export preview window was blocked. Allow pop-ups and try again.", "error");
-      return;
-    }
-    const rows = data.reports.map((r) => `
-      <tr>
-        <td>#${r.id}</td><td>${r.date || "—"}</td><td>${r.type}</td>
-        <td>${r.isAnonymous ? "🕵️ Anonymous" : r.submittedBy}</td><td>${r.location || "—"}</td>
-        <td>${r.status}</td>
-        <td style="max-width:260px;font-size:11px;">${(r.description || "").slice(0, 120)}${r.description && r.description.length > 120 ? "…" : ""}</td>
-      </tr>`).join("");
-    win.document.write(`<!DOCTYPE html><html><head><title>CNHS Incident Report</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:32px;color:#1e293b;font-size:13px;}
-        h1{color:#15803d;font-size:22px;margin-bottom:4px;}
-        .sub{color:#64748b;font-size:13px;margin-bottom:24px;}
-        .kpi-row{display:flex;gap:20px;margin-bottom:24px;}
-        .kpi{background:#dcfce7;border:1.5px solid #86efac;border-radius:10px;padding:14px 20px;text-align:center;}
-        .kpi-val{font-size:26px;font-weight:900;color:#15803d;}
-        .kpi-label{font-size:11px;color:#475569;font-weight:700;}
-        table{width:100%;border-collapse:collapse;font-size:12px;}
-        th{background:#15803d;color:white;padding:8px 10px;text-align:left;}
-        td{padding:7px 10px;border-bottom:1px solid #e2e8f0;}
-        tr:nth-child(even) td{background:#f8fafc;}
-        @media print{button{display:none}}
-      </style></head><body>
-      <h1>CNHS Bullying &amp; Incident Report</h1>
-      <div class="sub">Generated: ${new Date().toLocaleString("en-PH")} — Casinglot National High School</div>
-      <div class="kpi-row">
-        <div class="kpi"><div class="kpi-val">${data.totalReports}</div><div class="kpi-label">Total Reports</div></div>
-        <div class="kpi"><div class="kpi-val">${data.pendingReports}</div><div class="kpi-label">Pending</div></div>
-        <div class="kpi"><div class="kpi-val">${data.resolvedReports}</div><div class="kpi-label">Resolved</div></div>
-        <div class="kpi"><div class="kpi-val">${data.totalStudents}</div><div class="kpi-label">Students</div></div>
-      </div>
-      <table><thead><tr><th>ID</th><th>Date</th><th>Type</th><th>By</th><th>Location</th><th>Status</th><th>Description</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-      <script>window.print();</script></body></html>`);
-    win.document.close();
     setExportPreviewFormat(null);
   };
 
@@ -1455,13 +1420,7 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 className="submit-btn"
-                onClick={
-                  exportPreviewFormat === "PDF Report"
-                    ? handleExportPDF
-                    : exportPreviewFormat === "CSV Spreadsheet"
-                      ? handleExportCSV
-                      : handleExportText
-                }
+                onClick={handleExportCSV}
                 disabled={exportFilteredIncidents.length === 0}
               >
                 <Download size={15} /> Export {exportPreviewFormat}
@@ -2094,21 +2053,21 @@ export default function AdminDashboard() {
                                 <details className="analytics-export-filter-group">
                                   <summary>
                                     <span>Student details</span>
-                                    <small>{[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection.length > 0).length
-                                      ? `${[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection.length > 0).length} active`
+                                    <small>{[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection !== null).length
+                                      ? `${[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection !== null).length} active`
                                       : "Any"}</small>
                                   </summary>
                                   <div className="analytics-export-filter-group-content">
-                                    <ExportChecklist title="Grade level" options={allGrades} selected={exportGradeFilter} setSelected={setExportGradeFilter} />
+                                    <ExportChecklist title="Grade level" options={allGrades} selected={exportGradeFilter} setSelected={setExportGrades} />
                                     <ExportChecklist title="Gender" options={allGenders} selected={exportGenderFilter} setSelected={setExportGenderFilter} />
-                                    <ExportChecklist title="Section" options={allSections} selected={exportSectionFilter} setSelected={setExportSectionFilter} />
+                                    <ExportChecklist title="Section" options={exportSections} selected={exportSectionFilter} setSelected={setExportSectionFilter} />
                                   </div>
                                 </details>
                                 <details className="analytics-export-filter-group">
                                   <summary>
                                     <span>Report date</span>
-                                    <small>{[exportMonthFilter, exportYearFilter].filter((selection) => selection.length > 0).length
-                                      ? `${[exportMonthFilter, exportYearFilter].filter((selection) => selection.length > 0).length} active`
+                                    <small>{[exportMonthFilter, exportYearFilter].filter((selection) => selection !== null).length
+                                      ? `${[exportMonthFilter, exportYearFilter].filter((selection) => selection !== null).length} active`
                                       : "Any"}</small>
                                   </summary>
                                   <div className="analytics-export-filter-group-content">
@@ -2121,9 +2080,7 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
                               <p className="analytics-export-label">Choose Format</p>
-                              <button onClick={() => beginExportPreview("PDF Report")}><FileBarChart size={14} color="#ef4444" /><span><strong>PDF Report</strong><small>Formatted printable report</small></span></button>
                               <button onClick={() => beginExportPreview("CSV Spreadsheet")}><FileDown size={14} color="#22c55e" /><span><strong>CSV Spreadsheet</strong><small>Excel / Google Sheets compatible</small></span></button>
-                              <button onClick={() => beginExportPreview("Text / DOCX")}><FileText size={14} color="#3b82f6" /><span><strong>Text / DOCX</strong><small>Plain text for Word import</small></span></button>
                             </div>
                           )}
                         </div>
