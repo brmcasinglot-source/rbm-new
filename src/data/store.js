@@ -52,20 +52,25 @@ export function computePriority(report, allReports = []) {
 // pickers — must match the `grade` check constraint on grade_sections.
 export const GRADE_OPTIONS = ["Grade 7", "Grade 8", "Grade 9", "Grade 10"];
 
+export const LOCATION_ZONE_COLORS = {
+  inside: "#2563eb",
+  outside: "#dc2626",
+};
+
 // ─── BUILT-IN LOCATIONS (shared by Student report form + Admin analytics) ─
 export const LOCATION_META = [
-  { key: "Classroom",          color: "#6366f1", icon: "🏫", zone: "inside"  },
-  { key: "Hallway",            color: "#f97316", icon: "🚶", zone: "inside"  },
-  { key: "Cafeteria/Canteen",  color: "#f59e0b", icon: "🍽️", zone: "inside"  },
-  { key: "Comfort Room",       color: "#06b6d4", icon: "🚻", zone: "inside"  },
-  { key: "Gymnasium",          color: "#22c55e", icon: "🏀", zone: "inside"  },
-  { key: "Library",            color: "#8b5cf6", icon: "📚", zone: "inside"  },
-  { key: "Staircase",          color: "#ec4899", icon: "🪜", zone: "inside"  },
-  { key: "School Entrance",    color: "#14b8a6", icon: "🚪", zone: "inside"  },
-  { key: "Near School Gate",   color: "#ef4444", icon: "🛑", zone: "outside" },
-  { key: "Street/Road",        color: "#dc2626", icon: "🛣️",  zone: "outside" },
-  { key: "Online/Cyber",       color: "#7c3aed", icon: "💻", zone: "outside" },
-  { key: "Other",              color: "#94a3b8", icon: "📍", zone: "outside" },
+  { key: "Classroom",          color: LOCATION_ZONE_COLORS.inside, icon: "🏫", zone: "inside"  },
+  { key: "Hallway",            color: LOCATION_ZONE_COLORS.inside, icon: "🚶", zone: "inside"  },
+  { key: "Cafeteria/Canteen",  color: LOCATION_ZONE_COLORS.inside, icon: "🍽️", zone: "inside"  },
+  { key: "Comfort Room",       color: LOCATION_ZONE_COLORS.inside, icon: "🚻", zone: "inside"  },
+  { key: "Gymnasium",          color: LOCATION_ZONE_COLORS.inside, icon: "🏀", zone: "inside"  },
+  { key: "Library",            color: LOCATION_ZONE_COLORS.inside, icon: "📚", zone: "inside"  },
+  { key: "Staircase",          color: LOCATION_ZONE_COLORS.inside, icon: "🪜", zone: "inside"  },
+  { key: "School Entrance",    color: LOCATION_ZONE_COLORS.inside, icon: "🚪", zone: "inside"  },
+  { key: "Near School Gate",   color: LOCATION_ZONE_COLORS.outside, icon: "🛑", zone: "outside" },
+  { key: "Street/Road",        color: LOCATION_ZONE_COLORS.outside, icon: "🛣️",  zone: "outside" },
+  { key: "Online/Cyber",       color: LOCATION_ZONE_COLORS.outside, icon: "💻", zone: "outside" },
+  { key: "Other",              color: LOCATION_ZONE_COLORS.outside, icon: "📍", zone: "outside" },
 ];
 
 // ─── ROW <-> APP-OBJECT MAPPERS ────────────────────────────────────────────
@@ -132,7 +137,15 @@ function notifRowToObj(row) {
 }
 
 function locationRowToObj(row) {
-  return { key: row.key, icon: row.icon, color: row.color, zone: row.zone, keywords: row.keywords || [], custom: !!row.custom };
+  const zone = row.zone === "outside" ? "outside" : "inside";
+  return {
+    key: row.key,
+    icon: row.icon,
+    color: LOCATION_ZONE_COLORS[zone],
+    zone,
+    keywords: row.keywords || [],
+    custom: !!row.custom,
+  };
 }
 
 // ─── REPORTS API ────────────────────────────────────────────────────────────
@@ -615,18 +628,19 @@ export async function getCustomLocations() {
   return (data || []).map(locationRowToObj);
 }
 
-export async function addCustomLocation({ name, icon, color, zone, keywords }) {
+export async function addCustomLocation({ name, icon, zone, keywords }) {
   const trimmedName = (name || "").trim();
   if (!trimmedName) return { success: false, error: "Place name is required." };
   const { data: existing, error: checkError } = await supabase.from("custom_locations").select("key").ilike("key", trimmedName);
   if (checkError) return { success: false, error: checkError.message };
   if (existing && existing.length > 0) return { success: false, error: "A place with this name already exists." };
 
+  const normalizedZone = zone === "outside" ? "outside" : "inside";
   const row = {
     key:      trimmedName,
     icon:     icon || "📍",
-    color:    color || "#64748b",
-    zone:     zone === "outside" ? "outside" : "inside",
+    color:    LOCATION_ZONE_COLORS[normalizedZone],
+    zone:     normalizedZone,
     keywords: (keywords || []).map((k) => k.trim()).filter(Boolean),
     custom:   true,
   };

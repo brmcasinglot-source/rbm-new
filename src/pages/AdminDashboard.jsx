@@ -29,7 +29,7 @@ import {
   updateConferenceOutcome, updateConferenceSchedule, cancelConference, deleteReport,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
-  LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
+  LOCATION_META, LOCATION_ZONE_COLORS, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
@@ -339,7 +339,7 @@ export default function AdminDashboard() {
 
   // Location Breakdown customization panel
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locForm, setLocForm] = useState({ name: "", icon: "📍", color: "#16a34a", zone: "inside", keywords: "" });
+  const [locForm, setLocForm] = useState({ name: "", icon: "📍", zone: "inside", keywords: "" });
 
   // Grade & Section management panel
   const [sectionMgmtGrade, setSectionMgmtGrade] = useState("Grade 7");
@@ -1212,7 +1212,7 @@ export default function AdminDashboard() {
   };
 
   const openAddLocation = () => {
-    setLocForm({ name: "", icon: "📍", color: "#16a34a", zone: "inside", keywords: "" });
+    setLocForm({ name: "", icon: "📍", zone: "inside", keywords: "" });
     setShowLocationModal(true);
   };
 
@@ -1220,7 +1220,6 @@ export default function AdminDashboard() {
     const result = await addCustomLocation({
       name:     locForm.name,
       icon:     locForm.icon,
-      color:    locForm.color,
       zone:     locForm.zone,
       keywords: locForm.keywords.split(",").map((k) => k.trim()).filter(Boolean),
     });
@@ -2245,8 +2244,9 @@ export default function AdminDashboard() {
                           <span key={loc.key} style={{
                             display: "inline-flex", alignItems: "center", gap: 5,
                             fontSize: 11, fontWeight: 700, padding: "4px 6px 4px 10px", borderRadius: 20,
-                            background: hexToRgba(loc.color, 0.12), color: loc.color,
-                            border: `1.5px solid ${hexToRgba(loc.color, 0.4)}`,
+                            background: hexToRgba(LOCATION_ZONE_COLORS[loc.zone === "outside" ? "outside" : "inside"], 0.12),
+                            color: LOCATION_ZONE_COLORS[loc.zone === "outside" ? "outside" : "inside"],
+                            border: `1.5px solid ${hexToRgba(LOCATION_ZONE_COLORS[loc.zone === "outside" ? "outside" : "inside"], 0.4)}`,
                           }}>
                             {loc.icon} {loc.key}
                             <button
@@ -2268,12 +2268,12 @@ export default function AdminDashboard() {
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 5,
                         fontSize: 11, fontWeight: 700, padding: "4px 11px", borderRadius: 20,
-                        background: "#dbeafe", color: "#1d4ed8", border: "1.5px solid #93c5fd",
+                        background: "#dbeafe", color: LOCATION_ZONE_COLORS.inside, border: "1.5px solid #93c5fd",
                       }}><Building2 size={12} /> Inside School</span>
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 5,
                         fontSize: 11, fontWeight: 700, padding: "4px 11px", borderRadius: 20,
-                        background: "#fee2e2", color: "#dc2626", border: "1.5px solid #fca5a5",
+                        background: "#fee2e2", color: LOCATION_ZONE_COLORS.outside, border: "1.5px solid #fca5a5",
                       }}><DoorOpen size={12} /> Outside / Other</span>
                     </div>
 
@@ -2294,9 +2294,9 @@ export default function AdminDashboard() {
                             {locationPageItems.map(([loc, count]) => {
                               const pct   = Math.round((count / incidents.length) * 100);
                               const meta  = allLocationMeta.find((m) => m.key === loc);
-                              const color = meta?.color || "#94a3b8";
-                              const icon  = meta?.icon  || "📍";
                               const zone  = meta?.zone  || "inside";
+                              const color = LOCATION_ZONE_COLORS[zone === "outside" ? "outside" : "inside"];
+                              const icon  = meta?.icon || "📍";
                               return (
                                 <div className="bk-row" key={loc}>
                                   <div className="bk-top">
@@ -3520,11 +3520,6 @@ export default function AdminDashboard() {
                   <input style={{ padding: "10px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 16, width: "100%", textAlign: "center" }}
                     maxLength={2}
                     value={locForm.icon} onChange={(e) => setLocForm({ ...locForm, icon: e.target.value })} />
-                </div>
-                <div className="form-group" style={{ flex: 1 }}>
-                  <label>Color</label>
-                  <input type="color" style={{ padding: 4, borderRadius: 8, border: "1.5px solid #e2e8f0", width: "100%", height: 40, cursor: "pointer" }}
-                    value={locForm.color} onChange={(e) => setLocForm({ ...locForm, color: e.target.value })} />
                 </div>
                 <div className="form-group" style={{ flex: 1.4 }}>
                   <label>Zone</label>
