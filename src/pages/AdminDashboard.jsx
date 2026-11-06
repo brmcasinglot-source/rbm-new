@@ -39,7 +39,7 @@ import {
 } from "../data/store";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
-const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 
 async function fileToDataUrl(file) {
@@ -188,7 +188,10 @@ function ExportChecklist({ title, options, selected, setSelected, className = ""
     <>
       <div className="analytics-export-filter-heading">
         <span>{title}</span>
-        <button type="button" onClick={() => setSelected(null)}>All</button>
+        <div className="analytics-export-filter-actions">
+          <button type="button" onClick={() => setSelected(null)}>All</button>
+          <button type="button" onClick={() => setSelected([])}>Clear</button>
+        </div>
       </div>
       {options.length > 0 ? (
         <div className={`analytics-export-checklist ${className}`}>
@@ -263,6 +266,7 @@ export default function AdminDashboard() {
   const [activeTab,     setActiveTab]     = useState("dashboard");
   const [profileOpen,   setProfileOpen]   = useState(false);
   const [notifOpen,     setNotifOpen]     = useState(false);
+  const [notifLoading,  setNotifLoading]  = useState(false);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [caseFilter,    setCaseFilter]    = useState("Pending");
 
@@ -421,7 +425,6 @@ export default function AdminDashboard() {
       setter((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     const setIncidentsIfChanged       = setIfChanged(setIncidents);
     const setAwarenessListIfChanged   = setIfChanged(setAwarenessList);
-    const setNotificationsIfChanged   = setIfChanged(setNotifications);
     const setCustomLocationsIfChanged = setIfChanged(setCustomLocations);
     const setGradeSectionsIfChanged      = setIfChanged(setGradeSections);
     const setStudentAccountsIfChanged    = setIfChanged(setStudentAccounts);
@@ -435,7 +438,7 @@ export default function AdminDashboard() {
       refreshing = true;
       try {
         try {
-          const [incidentsData, notifData, unreadNotifications] = await Promise.all([
+          const [incidentsData, unreadNotifications] = await Promise.all([
             ["dashboard", "incidents", "analytics"].includes(activeTab)
               ? getReports({
                   includeEvidence: false,
@@ -443,7 +446,6 @@ export default function AdminDashboard() {
                   ...(activeTab === "incidents" ? { limit: REPORT_PAGE_SIZE } : {}),
                 })
               : Promise.resolve(null),
-            getAdminNotifications(),
             getUnreadNotificationCount(),
           ]);
           if (cancelled) return;
@@ -480,8 +482,6 @@ export default function AdminDashboard() {
             setIncidentsIfChanged(incidentsData);
             if (activeTab === "incidents") setHasMoreIncidents(incidentsData.length === REPORT_PAGE_SIZE);
           }
-          setNotificationsIfChanged(notifData);
-          setHasMoreNotifications(notifData.length === 30);
           setUnreadCount(unreadNotifications);
         } catch (err) {
           console.error("Dashboard refresh failed:", err);
@@ -568,6 +568,23 @@ export default function AdminDashboard() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [activeTab, unseenReportsStorageKey]);
+
+  const handleToggleNotifications = async () => {
+    const opening = !notifOpen;
+    setNotifOpen(opening);
+    if (!opening || notifLoading) return;
+
+    setNotifLoading(true);
+    try {
+      const currentNotifications = await getAdminNotifications();
+      setNotifications(currentNotifications);
+      setHasMoreNotifications(currentNotifications.length === 30);
+    } catch (error) {
+      showToast(`Could not load notifications: ${error.message}`, "error");
+    } finally {
+      setNotifLoading(false);
+    }
+  };
 
   useEffect(() => {
     const close = (e) => {
@@ -1478,7 +1495,7 @@ export default function AdminDashboard() {
 
             {/* Notifications */}
             <div className="icon notif-icon" ref={notifRef}>
-              <Bell size={18} onClick={() => setNotifOpen(!notifOpen)} />
+              <Bell size={18} onClick={handleToggleNotifications} />
               {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
               {notifOpen && (
                 <div className="s-notif-dropdown" style={{ right: 0 }}>
@@ -1486,26 +1503,25 @@ export default function AdminDashboard() {
                     <span>Notifications</span>
                     <button onClick={async () => {
                       await markAllAdminNotifRead();
-                      const refreshed = await getAdminNotifications();
-                      setNotifications(refreshed);
-                      setHasMoreNotifications(refreshed.length === 30);
+                      setNotifications((current) => current.map((notification) => ({ ...notification, read: true })));
                       setUnreadCount(0);
                     }}>
                       Mark all read
                     </button>
                   </div>
-                  {notifications.length === 0 && (
+                  {notifLoading ? (
+                    <div style={{ padding: "14px 16px", fontSize: 13, color: "#94a3b8" }}>Loading notifications…</div>
+                  ) : notifications.length === 0 ? (
                     <div style={{ padding: "14px 16px", fontSize: 13, color: "#94a3b8" }}>No notifications yet.</div>
-                  )}
-                  {notifications.map((n) => (
+                  ) : notifications.map((n) => (
                     <div key={n.id}
                       className={`s-notif-item ${!n.read ? "unread" : ""}`}
                       onClick={async () => {
                         await markAdminNotifRead(n.id);
-                        const refreshed = await getAdminNotifications();
-                        setNotifications(refreshed);
-                        setHasMoreNotifications(refreshed.length === 30);
-                        setUnreadCount(await getUnreadNotificationCount());
+                        setNotifications((current) => current.map((notification) =>
+                          notification.id === n.id ? { ...notification, read: true } : notification
+                        ));
+                        if (!n.read) setUnreadCount((current) => Math.max(0, current - 1));
                         setNotifOpen(false);
                         if (n.type === "report") setActiveTab("incidents");
                         else if (n.type === "hub") setActiveTab("awareness");
@@ -2038,7 +2054,7 @@ export default function AdminDashboard() {
                       type="search"
                       value={exportSearch}
                       onChange={(event) => setExportSearch(event.target.value)}
-                      placeholder="Search reports by ID, type, status, location, or details"
+                      placeholder="Search by reporter name, report ID, type, status, location, or details"
                     />
                   </label>
                   <div className="analytics-export-filter-grid">

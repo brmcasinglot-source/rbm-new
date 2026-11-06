@@ -3492,6 +3492,11 @@
   font-weight: 800;
 }
 
+.analytics-export-filter-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .analytics-export-filter-heading button {
   border: 0;
   background: transparent;
