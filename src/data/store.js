@@ -181,9 +181,17 @@ export async function getReports({ includeEvidence = false, summaryOnly = true, 
 
 async function offenseRpc(functionName, args = {}) {
   const { data, error } = await supabase.rpc(functionName, args);
-  if (error) throw error;
+  if (error) {
+    if (error.message === "Unknown database function.") {
+      throw new Error("Student Offense Records is not installed on Supabase yet. Apply supabase/student_offense_records.sql and deploy the updated api Edge Function.");
+    }
+    throw error;
+  }
   return data;
 }
+
+let gradeSectionsCache = null;
+let gradeSectionsRequest = null;
 
 export async function searchOffenseStudents(searchTerm = "", { grade = null, section = null, limit = 20 } = {}) {
   const rows = await offenseRpc("search_offense_students", {
@@ -202,25 +210,30 @@ export async function searchOffenseStudents(searchTerm = "", { grade = null, sec
   }));
 }
 
-export async function searchOffenseReports(searchTerm = "", studentId = null, limit = 20) {
+export async function searchOffenseReports(searchTerm = "", limit = 20) {
   const rows = await offenseRpc("search_offense_reports", {
-    search_term: searchTerm,
-    target_student_id: studentId,
+    search_term: String(searchTerm || "").trim(),
     page_size: limit,
   });
   return (rows || []).map((report) => ({
     id: report.id,
     type: report.type,
     date: report.date,
+    time: report.time,
     status: report.status,
     location: report.location,
     description: report.description,
-    reporterName: report.reporter_name || "Anonymous",
+    victims: report.victims || [],
+    offenders: report.offenders || [],
+    witnesses: report.witnesses || [],
+    reporterName: report.is_anonymous ? "Anonymous" : report.submitted_by || "—",
     evidenceCount: report.evidence_count || 0,
     scheduledConference: report.scheduled_conference || null,
-    conferenceFindings: report.conference_findings || "",
+    conferenceFindings: "",
     submittedAt: report.submitted_at,
-    linkedToStudent: !!report.linked_to_student,
+    isAnonymous: !!report.is_anonymous,
+    submittedBy: report.is_anonymous ? null : report.submitted_by,
+    linkedToStudent: false,
   }));
 }
 
@@ -803,9 +816,17 @@ export async function deleteCustomLocation(key) {
 
 // ─── GRADE SECTIONS API (admin-managed sections per grade level) ───────────
 export async function getGradeSections() {
-  const { data, error } = await supabase.from("grade_sections").select("*").order("grade").order("section");
-  if (error) throw error;
-  return data || [];
+  if (gradeSectionsCache) return gradeSectionsCache;
+  if (!gradeSectionsRequest) {
+    gradeSectionsRequest = supabase.from("grade_sections").select("id,grade,section").order("grade").order("section")
+      .then(({ data, error }) => {
+        if (error) throw error;
+        gradeSectionsCache = data || [];
+        return gradeSectionsCache;
+      })
+      .finally(() => { gradeSectionsRequest = null; });
+  }
+  return gradeSectionsRequest;
 }
 
 export async function addGradeSection({ grade, section }) {
@@ -819,6 +840,7 @@ export async function addGradeSection({ grade, section }) {
 
   const { data, error } = await supabase.from("grade_sections").insert({ grade, section: trimmed }).select().single();
   if (error) return { success: false, error: error.message };
+  gradeSectionsCache = null;
   return { success: true, section: data };
 }
 
@@ -839,12 +861,14 @@ export async function updateGradeSection(id, section, grade) {
       error: "No section was updated. Confirm the grade_sections update policy is installed and that your signed-in account is configured as an Admin in Supabase.",
     };
   }
+  gradeSectionsCache = null;
   return { success: true, section: data };
 }
 
 export async function deleteGradeSection(id) {
   const { error } = await supabase.from("grade_sections").delete().eq("id", id);
   if (error) throw error;
+  gradeSectionsCache = null;
 }
 
 // ─── ACCOUNT CONFIRMATION API (admin approves new student registrations) ───

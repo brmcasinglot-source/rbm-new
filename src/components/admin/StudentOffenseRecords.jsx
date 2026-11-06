@@ -9,6 +9,7 @@ import {
   getReportEvidence,
   getStudentOffenseHistory,
   getStudentOffenseRecords,
+  getGradeSections,
   saveOffenseDecision,
   searchOffenseReports,
 } from "../../data/store";
@@ -61,6 +62,14 @@ function currentDateInput() {
   return date.toISOString().slice(0, 10);
 }
 
+function formatPeople(items = []) {
+  return items.map((item) => {
+    if (typeof item === "string") return item;
+    if (!item || typeof item !== "object") return "";
+    return item.name || item.full_name || item.student_name || item.person || "";
+  }).filter(Boolean).join(", ");
+}
+
 function StudentOffenseRecords() {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [filterOptions, setFilterOptions] = useState({ grades: [], sections: [], actions: [] });
@@ -76,6 +85,8 @@ function StudentOffenseRecords() {
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [studentForm, setStudentForm] = useState({ name: "", lrn: "", grade: "", section: "" });
+  const [gradeSections, setGradeSections] = useState([]);
+  const [sectionChoice, setSectionChoice] = useState("");
   const [reportSearch, setReportSearch] = useState("");
   const [reportMatches, setReportMatches] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -134,6 +145,23 @@ function StudentOffenseRecords() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!formOpen || gradeSections.length) return;
+    let active = true;
+    getGradeSections()
+      .then((sections) => { if (active) setGradeSections(sections); })
+      .catch((sectionsError) => { if (active) setFormError(`Could not load Grade & Sections options: ${sectionsError.message}`); });
+    return () => { active = false; };
+  }, [formOpen, gradeSections.length]);
+
+  const sectionsForStudentGrade = useMemo(
+    () => gradeSections.filter((item) => item.grade === studentForm.grade)
+      .map((item) => item.section)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b)),
+    [gradeSections, studentForm.grade]
+  );
+
   const updateFilter = (key, value) => {
     setFilters((current) => ({ ...current, [key]: value, ...(key === "grade" ? { section: "" } : {}) }));
   };
@@ -168,6 +196,7 @@ function StudentOffenseRecords() {
   const resetForm = () => {
     setFormOpen(false);
     setStudentForm({ name: "", lrn: "", grade: "", section: "" });
+    setSectionChoice("");
     setReportSearch("");
     setReportMatches([]);
     setSelectedReport(null);
@@ -187,7 +216,7 @@ function StudentOffenseRecords() {
     setFormLoading(true);
     setFormError("");
     try {
-      setReportMatches(await searchOffenseReports(reportSearch, null, 20));
+      setReportMatches(await searchOffenseReports(reportSearch, 20));
     } catch (searchError) {
       setFormError(searchError.message);
     } finally {
@@ -195,9 +224,9 @@ function StudentOffenseRecords() {
     }
   };
 
-  const chooseReport = async (report) => {
+  const chooseReport = (report) => {
     setSelectedReport(report);
-    setReportReview(null);
+    setReportReview(report);
     setReportEvidence(null);
     setSavedDecision("");
     setDecision("");
@@ -205,15 +234,6 @@ function StudentOffenseRecords() {
     setConferenceFindings(report.conferenceFindings || "");
     setAdminRemarks("");
     setFormError("");
-    setFormLoading(true);
-    try {
-      const details = await getReportDetails(report.id);
-      setReportReview(details);
-    } catch (reviewError) {
-      setFormError(`Could not load incident report: ${reviewError.message}`);
-    } finally {
-      setFormLoading(false);
-    }
   };
 
   const loadEvidence = async () => {
@@ -316,7 +336,7 @@ function StudentOffenseRecords() {
           <div className="student-offense-title"><ShieldCheck size={23} /><h2>Student Offense Records</h2></div>
           <p>Confidential records for offenses that were reviewed, established, and explicitly approved.</p>
         </div>
-        <button type="button" className="student-offense-primary" onClick={() => setFormOpen(true)}>
+        <button type="button" className="student-offense-primary" onClick={() => { setFormError(""); setFormOpen(true); }}>
           <ClipboardList size={16} /> Add Offense Record
         </button>
       </div>
@@ -449,16 +469,21 @@ function StudentOffenseRecords() {
                     <input value={studentForm.lrn} onChange={(event) => { setStudentForm((current) => ({ ...current, lrn: event.target.value })); setSavedDecision(""); }} autoComplete="off" />
                   </label>
                   <label className="student-offense-field">Grade level
-                    <select value={studentForm.grade} onChange={(event) => { setStudentForm((current) => ({ ...current, grade: event.target.value })); setSavedDecision(""); }} required>
+                    <select value={studentForm.grade} onChange={(event) => { setStudentForm((current) => ({ ...current, grade: event.target.value, section: "" })); setSectionChoice(""); setSavedDecision(""); }} required>
                       <option value="">Select grade</option>
                       {GRADE_LEVELS.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
                     </select>
                   </label>
                   <label className="student-offense-field">Section
-                    <input value={studentForm.section} onChange={(event) => { setStudentForm((current) => ({ ...current, section: event.target.value })); setSavedDecision(""); }} autoComplete="off" />
+                    <select value={sectionChoice} onChange={(event) => { const value = event.target.value; setSectionChoice(value); if (value !== "__manual__") setStudentForm((current) => ({ ...current, section: value })); else setStudentForm((current) => ({ ...current, section: "" })); setSavedDecision(""); }} required>
+                      <option value="">{studentForm.grade ? (sectionsForStudentGrade.length ? "Select section" : "No sections configured") : "Select grade first"}</option>
+                      {sectionsForStudentGrade.map((section) => <option key={section} value={section}>{section}</option>)}
+                      <option value="__manual__">Enter section manually</option>
+                    </select>
+                    {sectionChoice === "__manual__" && <input value={studentForm.section} onChange={(event) => { setStudentForm((current) => ({ ...current, section: event.target.value })); setSavedDecision(""); }} placeholder="Enter section" autoComplete="off" required />}
                   </label>
                 </div>
-                <p className="student-offense-help">Enter the reported student's details. No student account is created or required.</p>
+                <p className="student-offense-help">Sections update from the Grade & Sections module when you choose a grade. No student account is created or required.</p>
               </section>
               <section className="student-offense-form-step">
                 <h4>2. Select submitted incident report</h4>
@@ -480,9 +505,9 @@ function StudentOffenseRecords() {
                     <p><strong>Location:</strong> {reportReview.location || "—"}</p>
                     <p><strong>Submitted:</strong> {formatDate(reportReview.submittedAt)} · <strong>Reporter:</strong> {reportReview.isAnonymous ? "Anonymous" : reportReview.submittedBy || "—"} · <strong>Status:</strong> {reportReview.status}</p>
                     <p><strong>Description:</strong> {reportReview.description || "No description provided."}</p>
-                    <p><strong>Victims:</strong> {(reportReview.victims || []).join(", ") || "—"}</p>
-                    <p><strong>Reported individuals:</strong> {(reportReview.offenders || []).join(", ") || "—"}</p>
-                    <p><strong>Witnesses:</strong> {(reportReview.witnesses || []).join(", ") || "—"}</p>
+                    <p><strong>Victims:</strong> {formatPeople(reportReview.victims) || "—"}</p>
+                    <p><strong>Reported individuals:</strong> {formatPeople(reportReview.offenders) || "—"}</p>
+                    <p><strong>Witnesses:</strong> {formatPeople(reportReview.witnesses) || "—"}</p>
                     <p><strong>Evidence:</strong> {reportReview.evidenceCount || 0} file(s) attached</p>
                     {reportReview.scheduledConference && <p><strong>Conference:</strong> {reportReview.scheduledConference.status || (reportReview.scheduledConference.completed ? "Completed" : "Scheduled")} · {reportReview.scheduledConference.date || "Date not set"}</p>}
                     {reportReview.conferenceFindings && <p className="student-offense-findings"><strong>Existing conference findings:</strong> {reportReview.conferenceFindings}</p>}

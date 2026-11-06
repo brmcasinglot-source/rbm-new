@@ -76,6 +76,16 @@ class DatabaseQuery {
     return this;
   }
 
+  gte(column, value) {
+    this.query.filters.push({ column, operator: "gte", value });
+    return this;
+  }
+
+  lt(column, value) {
+    this.query.filters.push({ column, operator: "lt", value });
+    return this;
+  }
+
   ilike(column, value) {
     this.query.filters.push({ column, operator: "ilike", value });
     return this;

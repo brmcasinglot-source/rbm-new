@@ -952,7 +952,7 @@ const TABLES = new Set([
 
 function applyFilters(query, filters = []) {
   for (const filter of filters) {
-    if (!["eq", "neq", "ilike", "is"].includes(filter.operator)) {
+    if (!["eq", "neq", "gte", "lt", "ilike", "is"].includes(filter.operator)) {
       throw Object.assign(new Error("Unsupported query filter."), { status: 400 });
     }
     query = query[filter.operator](filter.column, filter.value);
@@ -1193,9 +1193,41 @@ async function runQuery(body, req) {
 
 async function runRpc(functionName, args, req) {
     const db = getDatabase();
+    if (functionName === "search_offense_reports") {
+      const session = await getSession(req);
+      requireRole(session, "admin");
+      const term = String(args.search_term || "").trim();
+      const pageSize = Math.max(1, Math.min(Number(args.page_size) || 20, 50));
+      const columns = "id,type,date,time,location,description,victims,offenders,witnesses,status,submitted_by,is_anonymous,evidence_count,scheduled_conference,submitted_at";
+      let query = db.from("reports").select(columns);
+      if (term) {
+        const idMatch = /^(?:report\s*)?#?(\d+)$/i.exec(term);
+        if (idMatch) {
+          query = query.eq("id", Number(idMatch[1]));
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(term)) {
+          const start = new Date(`${term}T00:00:00.000Z`);
+          const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+          query = query.or(`date.eq.${term},and(submitted_at.gte.${start.toISOString()},submitted_at.lt.${end.toISOString()})`);
+        } else {
+          const safeTerm = term.replace(/[^\p{L}\p{N}\s'-]/gu, " ").trim().slice(0, 100);
+          if (!safeTerm) return [];
+          const pattern = `*${safeTerm}*`;
+          query = query.or(`type.ilike.${pattern},description.ilike.${pattern},and(is_anonymous.eq.false,submitted_by.ilike.${pattern})`);
+        }
+      }
+      const { data, error } = await query
+        .order("submitted_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false })
+        .limit(pageSize);
+      if (error) throw error;
+      return (data || []).map((report) => ({
+        ...report,
+        reporter_name: report.is_anonymous ? "Anonymous" : report.submitted_by,
+        submitted_by: report.is_anonymous ? null : report.submitted_by,
+      }));
+    }
     const offenseFunctions = new Set([
       "search_offense_students",
-      "search_offense_reports",
       "get_student_offense_records",
       "get_student_offense_history",
       "get_report_student_links",
