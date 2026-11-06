@@ -758,15 +758,6 @@ export async function resendConfirmationEmail(email) {
   return resendOtp(email);
 }
 
-// ─── ADMIN: FULL RESET (deletes all reports + notifications) ───────────────
-export async function resetAllData() {
-  const { error: notifError } = await supabase.from("notifications").delete().neq("id", -1);
-  if (notifError) throw notifError;
-  const { error: reportsError } = await supabase.from("reports").delete().neq("id", -1);
-  if (reportsError) throw reportsError;
-  window.location.reload();
-}
-
 // ─── ANALYTICS / EXPORT API ──────────────────────────────────────────────────
 // These take the already-fetched `reports` array (the caller has it in state)
 // instead of re-querying Supabase, since they're just derived formatting.

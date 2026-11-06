@@ -1725,50 +1725,6 @@
   transform: translateY(-2px);
 }
 
-/* =========================
-   SETTINGS TAB
-========================= */
-.settings-section {
-  margin-bottom: 24px;
-}
-
-.settings-section h3 {
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text-main);
-  margin-bottom: 14px;
-  font-family: "Poppins", sans-serif;
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.settings-item {
-  background: #f8fafc;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.settings-item-info h4 {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.settings-item-info p {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 3px;
-  font-weight: 500;
-}
-
 /* Professional form elements */
 .form-group { display: flex; flex-direction: column; gap: 6px; }
 

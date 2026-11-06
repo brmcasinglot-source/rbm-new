@@ -19,7 +19,7 @@ import { signOut } from "../lib/auth";
 import {
   LayoutDashboard, Search, FileText, Image, Shield, BookOpen, User, X,
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
-  TrendingUp, Clock, Download, Calendar, Bell, Settings, ArrowUpRight,
+  TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen, Sparkles,
   Paperclip, ZoomIn, Upload, FileDown, ChevronDown, GraduationCap, UserCheck,
 } from "lucide-react";
@@ -1488,7 +1488,6 @@ export default function AdminDashboard() {
           {[
             { tab: "awareness", icon: <BookOpen size={16} />,      label: "Awareness Hub" },
             { tab: "sections",  icon: <GraduationCap size={16} />, label: "Grade & Sections" },
-            { tab: "settings",  icon: <Settings size={16} />,      label: "Settings" },
           ].map(({ tab, icon, label }) => (
             <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
               {icon} {label}
@@ -2846,37 +2845,6 @@ export default function AdminDashboard() {
                       </div>
                     );
                   })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════
-            SETTINGS TAB
-        ══════════════════════════════ */}
-        {activeTab === "settings" && (
-          <div className="admin-content">
-            <div className="card-panel">
-              <div className="title-group" style={{ marginBottom: 20 }}>
-                <h3>System Settings</h3>
-                <p className="panel-subtitle">Administrative configuration</p>
-              </div>
-              <div className="settings-section">
-                <h3>Data Management</h3>
-                <div className="settings-grid">
-                  <div className="settings-item">
-                    <div className="settings-item-info">
-                      <h4>Reset All Data</h4>
-                      <p>Clear all reports and reseed the system (dev use only)</p>
-                    </div>
-                    <button className="delete-btn small" style={{ padding: "8px 16px" }}
-                      onClick={() => {
-                        if (window.confirm("This will delete ALL reports and reset the system. Continue?")) {
-                          import("../data/store").then((m) => m.resetAllData()).catch((err) => showToast("Reset failed: " + err.message, "error"));
-                        }
-                      }}>Reset</button>
-                  </div>
                 </div>
               </div>
             </div>
