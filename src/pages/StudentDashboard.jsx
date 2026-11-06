@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import {
-  getReports, submitReport,
+  getReports, getNotificationSummary, getStudentReportCount, submitReport,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
   requestConferenceChange,
@@ -25,7 +25,7 @@ import { translateStudentUI } from "../lib/studentLocale";
 import { signOut } from "../lib/auth";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
-const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 const MAX_EVIDENCE_FILE_BYTES = 1_000_000;
 const MAX_EVIDENCE_TOTAL_BYTES = 1_800_000;
@@ -126,6 +126,7 @@ export default function StudentDashboard() {
 
   // Live data
   const [reports,          setReports]          = useState([]);
+  const [totalReportCount, setTotalReportCount] = useState(0);
   const [hasMoreReports, setHasMoreReports] = useState(false);
   const [loadingMoreReports, setLoadingMoreReports] = useState(false);
   const [awarenessContent, setAwarenessContent] = useState([]);
@@ -208,7 +209,7 @@ export default function StudentDashboard() {
     if (loadingMoreReports || !hasMoreReports) return;
     setLoadingMoreReports(true);
     try {
-      const next = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE, offset: reports.length });
+      const next = await getReports({ summaryOnly: true, studentOnly: true, limit: REPORT_PAGE_SIZE, offset: reports.length });
       setReports((current) => [...current, ...next]);
       setHasMoreReports(next.length === REPORT_PAGE_SIZE);
     } catch (error) {
@@ -243,33 +244,39 @@ export default function StudentDashboard() {
     let cancelled = false;
     let refreshing = false;
     let timeoutId;
+    let lastRefreshAt = 0;
 
     async function refresh() {
       if (cancelled || document.hidden || refreshing) return;
       refreshing = true;
+      lastRefreshAt = Date.now();
       try {
         try {
-          const [reportsData, awarenessData, notifData, unreadNotifications] = await Promise.all([
+          const [reportsData, awarenessData, notificationSummary, reportCount] = await Promise.all([
             activeTab === "profile"
               ? Promise.resolve(null)
               : getReports({
                   includeEvidence: false,
-                  ...(activeTab === "cases" ? { summaryOnly: true, limit: REPORT_PAGE_SIZE } : {}),
+                  summaryOnly: true,
+                  studentOnly: true,
+                  limit: REPORT_PAGE_SIZE,
                 }),
             activeTab === "dashboard" ? getAwarenessContent() : Promise.resolve(null),
-            getStudentNotifications(),
-            getUnreadNotificationCount(),
+            getNotificationSummary(),
+            getStudentReportCount(),
           ]);
           if (cancelled) return;
           if (reportsData) {
             setReportsIfChanged(reportsData);
-            if (activeTab === "cases") setHasMoreReports(reportsData.length === REPORT_PAGE_SIZE);
+            setHasMoreReports(reportsData.length === REPORT_PAGE_SIZE);
           }
           if (awarenessData) setAwarenessContentIfChanged(awarenessData);
+          setTotalReportCount(reportCount);
+          const notifData = notificationSummary.notifications;
           setHasMoreNotifications(notifData.length === 30);
 
           let nextNotifications = notifData;
-          let currentUnreadCount = unreadNotifications;
+          let currentUnreadCount = notificationSummary.unreadCount;
           if (!welcomeNotificationChecked.current) {
             welcomeNotificationChecked.current = true;
             const welcomeNotif = notifData.find((n) => n.type === "success" && !n.read);
@@ -304,14 +311,16 @@ export default function StudentDashboard() {
       } finally {
         refreshing = false;
         if (!cancelled && !document.hidden) {
-          timeoutId = setTimeout(refresh, DASHBOARD_REFRESH_INTERVAL_MS);
+          timeoutId = setTimeout(refresh, Math.max(0, DASHBOARD_REFRESH_INTERVAL_MS - (Date.now() - lastRefreshAt)));
         }
       }
     }
 
     const handleVisibilityChange = () => {
       clearTimeout(timeoutId);
-      if (!document.hidden) refresh();
+      if (document.hidden) return;
+      if (Date.now() - lastRefreshAt >= DASHBOARD_REFRESH_INTERVAL_MS) refresh();
+      else timeoutId = setTimeout(refresh, DASHBOARD_REFRESH_INTERVAL_MS - (Date.now() - lastRefreshAt));
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     if (!document.hidden) refresh();
@@ -427,13 +436,17 @@ export default function StudentDashboard() {
       setFormError("Could not submit report: " + err.message);
       return;
     }
-    const refreshedReports = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE });
+    const refreshedReports = await getReports({ summaryOnly: true, studentOnly: true, limit: REPORT_PAGE_SIZE });
     setReports(refreshedReports);
     setHasMoreReports(refreshedReports.length === REPORT_PAGE_SIZE);
-    const refreshedNotifications = await getStudentNotifications();
-    setNotifications(refreshedNotifications);
-    setHasMoreNotifications(refreshedNotifications.length === 30);
-    setUnreadCount(await getUnreadNotificationCount());
+    const [notificationSummary, reportCount] = await Promise.all([
+      getNotificationSummary(),
+      getStudentReportCount(),
+    ]);
+    setNotifications(notificationSummary.notifications);
+    setHasMoreNotifications(notificationSummary.notifications.length === 30);
+    setUnreadCount(notificationSummary.unreadCount);
+    setTotalReportCount(reportCount);
     setReportForm({ type: "", date: "", time: "", location: "", description: "", descriptionLeadUp: "", descriptionImpact: "", involved: "" });
     setLocationChoice("");
     setReporterType("");
@@ -1298,7 +1311,7 @@ export default function StudentDashboard() {
                     <div className="s-profile-field"><label>Gender</label><span>{profileGender || "—"}</span></div>
                     <div className="s-profile-field"><label>Grade Level</label><span>{profileGrade || "—"}</span></div>
                     <div className="s-profile-field"><label>Section</label><span>{profileSection || "—"}</span></div>
-                    <div className="s-profile-field"><label>Total Reports Filed</label><span style={{ color: "#16a34a", fontWeight: 700 }}>{myReports.length}</span></div>
+                    <div className="s-profile-field"><label>Total Reports Filed</label><span style={{ color: "#16a34a", fontWeight: 700 }}>{totalReportCount}</span></div>
                   </div>
                 </div>
               </div>

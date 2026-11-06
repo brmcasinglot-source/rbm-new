@@ -169,18 +169,32 @@ const REPORT_ANALYTICS_COLUMNS = [
   "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous",
 ].join(",");
 
+const REPORT_DASHBOARD_COLUMNS = [
+  "id", "type", "date", "time", "location", "status", "priority",
+  "submitted_by", "is_anonymous", "scheduled_conference",
+].join(",");
+
+const REPORT_STUDENT_COLUMNS = [
+  "id", "type", "date", "time", "location", "description", "status",
+  "submitted_by", "evidence_count", "scheduled_conference",
+].join(",");
+
 const REPORT_EXPORT_COLUMNS = [
   "id", "type", "date", "description", "location", "status", "priority",
   "submitted_by", "submitted_id", "reporter_sex", "reporter_grade", "reporter_section",
   "is_anonymous", "admin_notes", "submitted_at", "updated_at",
 ].join(",");
 
-export async function getReports({ includeEvidence = false, summaryOnly = true, analyticsOnly = false, limit, offset = 0 } = {}) {
-  const baseColumns = analyticsOnly
-    ? REPORT_ANALYTICS_COLUMNS
-    : summaryOnly
-      ? REPORT_LIST_COLUMNS
-      : REPORT_COLUMNS_WITHOUT_EVIDENCE;
+export async function getReports({ includeEvidence = false, summaryOnly = true, analyticsOnly = false, dashboardOnly = false, studentOnly = false, limit, offset = 0 } = {}) {
+  const baseColumns = studentOnly
+    ? REPORT_STUDENT_COLUMNS
+    : dashboardOnly
+      ? REPORT_DASHBOARD_COLUMNS
+      : analyticsOnly
+        ? REPORT_ANALYTICS_COLUMNS
+        : summaryOnly
+          ? REPORT_LIST_COLUMNS
+          : REPORT_COLUMNS_WITHOUT_EVIDENCE;
   const columns = includeEvidence ? `${REPORT_COLUMNS_WITHOUT_EVIDENCE},evidence` : baseColumns;
   let query = supabase.from("reports").select(columns)
     .order("submitted_at", { ascending: false }).order("id", { ascending: false });
@@ -222,6 +236,19 @@ export async function getReportEvidence(reportId) {
 
 export async function getUnreadNotificationCount() {
   const result = await authRequest("notification-unread-count");
+  return result.count || 0;
+}
+
+export async function getNotificationSummary({ limit = 30 } = {}) {
+  const result = await authRequest("notification-summary", { limit });
+  return {
+    notifications: (result.notifications || []).map(notifRowToObj),
+    unreadCount: result.unreadCount || 0,
+  };
+}
+
+export async function getStudentReportCount() {
+  const result = await authRequest("student-report-count");
   return result.count || 0;
 }
 

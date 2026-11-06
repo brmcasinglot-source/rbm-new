@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 import {
-  getReports, updateReportStatus, reviewConferenceRequest,
+  getReports, getNotificationSummary, updateReportStatus, reviewConferenceRequest,
   updateConferenceOutcome, updateConferenceSchedule, cancelConference, deleteReport,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
@@ -39,7 +39,7 @@ import {
 } from "../data/store";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
-const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const ANALYTICS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 
@@ -424,26 +424,26 @@ export default function AdminDashboard() {
       lastRefreshAt = Date.now();
       try {
         try {
-          const [incidentsData, notifData, unreadNotifications] = await Promise.all([
+          const [incidentsData, notificationSummary] = await Promise.all([
             ["dashboard", "incidents", "analytics"].includes(activeTab)
               ? getReports({
                   includeEvidence: false,
                   summaryOnly: true,
                   analyticsOnly: activeTab === "analytics",
+                  dashboardOnly: activeTab === "dashboard",
                   ...(activeTab === "incidents" ? { limit: REPORT_PAGE_SIZE } : {}),
                 })
               : Promise.resolve(null),
-            getAdminNotifications(),
-            getUnreadNotificationCount(),
+            getNotificationSummary(),
           ]);
           if (cancelled) return;
           if (incidentsData) {
             setIncidentsIfChanged(incidentsData);
             if (activeTab === "incidents") setHasMoreIncidents(incidentsData.length === REPORT_PAGE_SIZE);
           }
-          setNotificationsIfChanged(notifData);
-          setHasMoreNotifications(notifData.length === 30);
-          setUnreadCount(unreadNotifications);
+          setNotificationsIfChanged(notificationSummary.notifications);
+          setHasMoreNotifications(notificationSummary.notifications.length === 30);
+          setUnreadCount(notificationSummary.unreadCount);
         } catch (err) {
           console.error("Dashboard refresh failed:", err);
         }
