@@ -328,6 +328,33 @@ export async function createStudentOffenseRecord(reportId, student) {
   });
 }
 
+export async function prepareReportForOffenseApproval(reportId) {
+  const { data: updatedReport, error: updateError } = await supabase.from("reports")
+    .update({ status: "Under Investigation", updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .eq("status", "Pending")
+    .select("id,status,submitted_id")
+    .maybeSingle();
+  if (updateError) throw updateError;
+  if (updatedReport) {
+    await addStudentNotification({
+      title: `Case #${reportId} status updated to 'Under Investigation'`,
+      type: "status",
+    }, updatedReport.submitted_id);
+    return { status: updatedReport.status, changed: true };
+  }
+
+  const { data: currentReport, error: fetchError } = await supabase.from("reports")
+    .select("id,status")
+    .eq("id", reportId)
+    .single();
+  if (fetchError) throw fetchError;
+  if (!["Under Investigation", "Resolved"].includes(currentReport.status)) {
+    throw new Error("The incident must be Under Investigation or Resolved before approval.");
+  }
+  return { status: currentReport.status, changed: false };
+}
+
 export async function saveReportConferenceFindings(reportId, findings) {
   return offenseRpc("save_report_conference_findings", {
     target_report_id: reportId,

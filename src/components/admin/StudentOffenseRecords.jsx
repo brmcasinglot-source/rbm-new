@@ -10,6 +10,7 @@ import {
   getStudentOffenseHistory,
   getStudentOffenseRecords,
   getGradeSections,
+  prepareReportForOffenseApproval,
   saveOffenseDecision,
   searchOffenseReports,
 } from "../../data/store";
@@ -288,15 +289,19 @@ function StudentOffenseRecords() {
       setFormError("Enter the approved disciplinary action.");
       return;
     }
-    if (!window.confirm(`Approve an established offense record for ${studentForm.name.trim()} linked to Report #${selectedReport.id}?`)) return;
+    const pendingStatusNotice = selectedReport.status === "Pending"
+      ? " The pending report will also move to Under Investigation."
+      : "";
+    if (!window.confirm(`Approve an established offense record for ${studentForm.name.trim()} linked to Report #${selectedReport.id}?${pendingStatusNotice}`)) return;
     setFormLoading(true);
     setFormError("");
     try {
+      const reportStatus = await prepareReportForOffenseApproval(selectedReport.id);
       const created = await createStudentOffenseRecord(
         selectedReport.id,
         { ...studentForm, name: studentForm.name.trim(), lrn: studentForm.lrn.trim(), section: studentForm.section.trim() }
       );
-      setNotice(`Approved as Offense #${created.offenseNumber}.`);
+      setNotice(`Approved as Offense #${created.offenseNumber}.${reportStatus.changed ? " Report moved to Under Investigation." : ""}`);
       resetForm();
       await loadRecords(filters);
     } catch (approvalError) {
@@ -532,7 +537,7 @@ function StudentOffenseRecords() {
                   </label>
                   <h4>4. Final decision and disciplinary action</h4>
                   <p className="student-offense-help">Conference completion alone does not establish an offense. Only an Established decision followed by explicit approval is counted.</p>
-                  <p className="student-offense-help">Before approval, move the report out of Pending in Incidents (Under Investigation or Resolved).</p>
+                  <p className="student-offense-help">If the report is Pending, approval moves it to Under Investigation automatically.</p>
                   <label className="student-offense-field">Final decision
                     <select value={decision} onChange={(event) => { setDecision(event.target.value); setSavedDecision(""); }} required>
                       <option value="">Select an outcome</option>
