@@ -3241,3 +3241,457 @@
   .export-preview-summary > span { text-align: right; }
   .export-preview-table-wrap { max-height: 55vh; }
 }
+
+.analytics-page-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.analytics-page-nav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 15px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font: 700 13px "Nunito", sans-serif;
+  cursor: pointer;
+}
+
+.analytics-page-nav button.active {
+  border-bottom-color: #16a34a;
+  color: #15803d;
+}
+
+.analytics-export-page {
+  display: grid;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.analytics-export-page-header,
+.analytics-export-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .035);
+}
+
+.analytics-export-page-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+}
+
+.analytics-export-page-icon,
+.analytics-export-dataset-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.analytics-export-page-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+
+.analytics-export-page-header h2,
+.analytics-export-records-heading h3 {
+  margin: 0;
+  color: #172033;
+  font: 800 19px "Nunito", sans-serif;
+}
+
+.analytics-export-page-header p,
+.analytics-export-section-heading p,
+.analytics-export-records-heading p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12.5px;
+}
+
+.analytics-export-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: 700 12px "Nunito", sans-serif;
+  cursor: pointer;
+}
+
+.analytics-export-card {
+  padding: 20px;
+}
+
+.analytics-export-section-heading,
+.analytics-export-records-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.analytics-export-section-heading h3 {
+  margin: 0;
+  color: #1e293b;
+  font: 800 15px "Nunito", sans-serif;
+}
+
+.analytics-export-step {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.analytics-export-heading-row {
+  margin-bottom: 14px;
+}
+
+.analytics-export-clear-btn {
+  margin-left: auto;
+  padding: 7px 10px;
+}
+
+.analytics-export-dataset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.analytics-export-dataset.selected {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.analytics-export-dataset > input {
+  width: 16px;
+  height: 16px;
+  accent-color: #16a34a;
+}
+
+.analytics-export-dataset-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.analytics-export-dataset-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.analytics-export-dataset-copy strong {
+  color: #1e293b;
+  font-size: 13px;
+}
+
+.analytics-export-dataset-copy small,
+.analytics-export-format small {
+  color: #64748b;
+  font-size: 11.5px;
+}
+
+.analytics-export-dataset-count {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-export-note {
+  margin: 9px 0 0;
+  color: #64748b;
+  font-size: 11.5px;
+}
+
+.analytics-export-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  height: 42px;
+  border: 1px solid #dbe1e8;
+  border-radius: 9px;
+  color: #94a3b8;
+}
+
+.analytics-export-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #1e293b;
+  font: 500 12.5px "Nunito", sans-serif;
+}
+
+.analytics-export-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.analytics-export-filter-box,
+.analytics-export-filter-group {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+}
+
+.analytics-export-filter-group summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.analytics-export-filter-group summary small {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.analytics-export-filter-group-content {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analytics-export-filter-heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.analytics-export-filter-heading button {
+  border: 0;
+  background: transparent;
+  color: #15803d;
+  font: 700 11px "Nunito", sans-serif;
+  cursor: pointer;
+}
+
+.analytics-export-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+}
+
+.analytics-export-checklist label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475569;
+  font-size: 11.5px;
+}
+
+.analytics-export-checklist input {
+  accent-color: #16a34a;
+}
+
+.analytics-export-preview-count {
+  margin-top: 13px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.analytics-export-preview-count strong {
+  color: #15803d;
+}
+
+.analytics-export-format-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.analytics-export-format {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.analytics-export-format.selected {
+  border-color: #4ade80;
+  background: #f0fdf4;
+}
+
+.analytics-export-format-radio {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  border: 1.5px solid #94a3b8;
+  border-radius: 50%;
+}
+
+.analytics-export-format.selected .analytics-export-format-radio {
+  border: 5px solid #16a34a;
+}
+
+.analytics-export-format > span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+
+.analytics-export-format strong {
+  color: #1e293b;
+  font-size: 11.5px;
+}
+
+.analytics-export-format-extension {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 10.5px;
+}
+
+.analytics-export-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.analytics-export-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: 0;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #fff;
+  font: 800 12px "Nunito", sans-serif;
+  cursor: pointer;
+}
+
+.analytics-export-download:disabled {
+  background: #a7f3d0;
+  cursor: not-allowed;
+}
+
+.analytics-export-records-heading {
+  justify-content: space-between;
+}
+
+.analytics-export-records-heading p {
+  margin-top: 4px;
+}
+
+.analytics-export-records-heading > span {
+  flex: 0 0 auto;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.analytics-export-table-wrap {
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+}
+
+.analytics-export-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.analytics-export-table th {
+  padding: 10px 12px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.analytics-export-table td {
+  padding: 10px 12px;
+  border-top: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 11.5px;
+}
+
+.analytics-export-empty {
+  padding: 24px 12px;
+  color: #64748b;
+  text-align: center;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .analytics-export-filter-grid,
+  .analytics-export-format-options {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-export-page-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+}
+
+@media (max-width: 480px) {
+  .analytics-export-card,
+  .analytics-export-page-header {
+    padding: 14px;
+  }
+
+  .analytics-export-dataset {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .analytics-export-dataset-count {
+    width: 100%;
+    margin-left: 46px;
+  }
+
+  .analytics-export-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -21,7 +21,7 @@ import {
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen, Sparkles,
-  Paperclip, ZoomIn, Upload, FileDown, ChevronDown, GraduationCap, UserCheck,
+  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database,
 } from "lucide-react";
 
 import {
@@ -35,7 +35,7 @@ import {
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
   getUnconfirmedSignups, resendConfirmationEmail,
-  downloadCSV,
+  downloadCSV, downloadJSON, downloadTextReport,
 } from "../data/store";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
@@ -338,9 +338,10 @@ export default function AdminDashboard() {
   const [exportSectionFilter, setExportSectionFilter] = useState(null);
   const [exportMonthFilter, setExportMonthFilter] = useState(null);
   const [exportYearFilter, setExportYearFilter] = useState(null);
-  const [exportMenuOpen,       setExportMenuOpen]        = useState(false);
-  const [exportPreviewFormat, setExportPreviewFormat] = useState(null);
-  const exportMenuRef = useRef(null);
+  const [analyticsView, setAnalyticsView] = useState("overview");
+  const [exportReportsSelected, setExportReportsSelected] = useState(true);
+  const [exportSearch, setExportSearch] = useState("");
+  const [exportFormat, setExportFormat] = useState("csv");
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const trendCanvasRef = useRef(null);
@@ -1375,6 +1376,14 @@ export default function AdminDashboard() {
 
   /* Export helpers */
   const exportFilteredIncidents = incidents.filter((report) =>
+    (!exportSearch.trim() || [
+      report.id,
+      report.type,
+      report.description,
+      report.location,
+      report.isAnonymous ? "Anonymous" : report.submittedBy,
+      report.status,
+    ].some((value) => String(value || "").toLowerCase().includes(exportSearch.trim().toLowerCase()))) &&
     (exportTypes === null || exportTypes.includes(report.type || "Others")) &&
     (exportStatuses === null || exportStatuses.includes(report.status)) &&
     (exportGradeFilter === null || exportGradeFilter.includes(report.reporterGrade)) &&
@@ -1384,14 +1393,22 @@ export default function AdminDashboard() {
     (exportYearFilter === null || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
   );
 
-  const beginExportPreview = (format) => {
-    setExportPreviewFormat(format);
-    setExportMenuOpen(false);
+  const clearExportFilters = () => {
+    setExportSearch("");
+    setExportTypes(null);
+    setExportStatuses(null);
+    setExportGradeFilter(null);
+    setExportGenderFilter(null);
+    setExportSectionFilter(null);
+    setExportMonthFilter(null);
+    setExportYearFilter(null);
   };
 
-  const handleExportCSV = () => {
-    downloadCSV(exportFilteredIncidents);
-    setExportPreviewFormat(null);
+  const handleExport = () => {
+    if (!exportReportsSelected || exportFilteredIncidents.length === 0) return;
+    if (exportFormat === "json") downloadJSON(exportFilteredIncidents);
+    else if (exportFormat === "txt") downloadTextReport(exportFilteredIncidents);
+    else downloadCSV(exportFilteredIncidents);
   };
 
   const today = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -1403,106 +1420,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="dashboard admin-theme" style={{ backgroundImage: `url(${bg})` }}>
-      {exportPreviewFormat && (
-        <div className="admin-modal-overlay export-preview-overlay" onClick={() => setExportPreviewFormat(null)}>
-          <section
-            className="admin-modal export-preview-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="export-preview-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="modal-header-admin">
-              <div className="title-wrap">
-                <FileBarChart size={18} color="var(--accent-color)" />
-                <h3 id="export-preview-title">Preview {exportPreviewFormat}</h3>
-              </div>
-              <button
-                type="button"
-                className="close-modal-btn"
-                aria-label="Close export preview"
-                onClick={() => setExportPreviewFormat(null)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="admin-modal-content export-preview-content">
-              <div className="export-preview-summary">
-                <div>
-                  <strong>{exportFilteredIncidents.length} incident{exportFilteredIncidents.length === 1 ? "" : "s"}</strong>
-                  <span>will be included using the selected export filters.</span>
-                </div>
-                <span>{exportPreviewFormat}</span>
-              </div>
-              {exportFilteredIncidents.length === 0 ? (
-                <div className="export-preview-empty">
-                  No incidents match these filters. Adjust the export filters before exporting.
-                </div>
-              ) : (
-                <div className="export-preview-table-wrap">
-                  <table className="export-preview-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Description</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Priority</th>
-                        <th>Submitted By</th>
-                        <th>Student ID</th>
-                        <th>Admin Notes</th>
-                        <th>Submitted At</th>
-                        <th>Updated At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {exportFilteredIncidents.map((report) => (
-                        <tr key={report.id}>
-                          <td>#{report.id}</td>
-                          <td>{report.date || "—"}</td>
-                          <td>{report.type || "—"}</td>
-                          <td>{report.description || "—"}</td>
-                          <td>{report.location || "—"}</td>
-                          <td>{report.status || "—"}</td>
-                          <td>{report.priority || "—"}</td>
-                          <td>{report.isAnonymous ? "Anonymous" : report.submittedBy || "—"}</td>
-                          <td>{report.isAnonymous ? "—" : report.submittedId || "—"}</td>
-                          <td>{report.adminNotes || "—"}</td>
-                          <td>{report.submittedAt || "—"}</td>
-                          <td>{report.updatedAt || "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer-bar">
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={() => {
-                  setExportPreviewFormat(null);
-                  setExportMenuOpen(true);
-                }}
-              >
-                Back to Filters
-              </button>
-              <button
-                type="button"
-                className="submit-btn"
-                onClick={handleExportCSV}
-                disabled={exportFilteredIncidents.length === 0}
-              >
-                <Download size={15} /> Export {exportPreviewFormat}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
       {/* ── SIDEBAR ── */}
       <div className="sidebar">
         <div className="brand">
@@ -2059,6 +1976,172 @@ export default function AdminDashboard() {
         ══════════════════════════════ */}
         {activeTab === "analytics" && (
           <div className="admin-content">
+            <div className="analytics-page-nav" role="tablist" aria-label="Analytics pages">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={analyticsView === "overview"}
+                className={analyticsView === "overview" ? "active" : ""}
+                onClick={() => setAnalyticsView("overview")}
+              >
+                <FileBarChart size={16} /> Overview
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={analyticsView === "export"}
+                className={analyticsView === "export" ? "active" : ""}
+                onClick={() => setAnalyticsView("export")}
+              >
+                <Download size={16} /> Export
+              </button>
+            </div>
+            {analyticsView === "export" ? (
+              <div className="analytics-export-page">
+                <div className="analytics-export-page-header">
+                  <div className="analytics-export-page-icon"><Database size={22} /></div>
+                  <div>
+                    <h2>Export data</h2>
+                    <p>Prepare and download incident reports from your system.</p>
+                  </div>
+                </div>
+                <section className="analytics-export-card">
+                  <div className="analytics-export-section-heading">
+                    <span className="analytics-export-step">1</span>
+                    <div><h3>Choose data</h3><p>Select which system data to include.</p></div>
+                  </div>
+                  <label className={`analytics-export-dataset${exportReportsSelected ? " selected" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={exportReportsSelected}
+                      onChange={(event) => setExportReportsSelected(event.target.checked)}
+                    />
+                    <span className="analytics-export-dataset-icon"><FileText size={19} /></span>
+                    <span className="analytics-export-dataset-copy">
+                      <strong>Incident reports</strong>
+                      <small>Submitted reports, statuses, dates, and available student details</small>
+                    </span>
+                    <span className="analytics-export-dataset-count">{incidents.length} records</span>
+                  </label>
+                  <p className="analytics-export-note">Only data currently available in this system is shown here.</p>
+                </section>
+
+                <section className="analytics-export-card">
+                  <div className="analytics-export-section-heading analytics-export-heading-row">
+                    <span className="analytics-export-step">2</span>
+                    <div><h3>Filter records</h3><p>Narrow the incident reports included in your export.</p></div>
+                    <button type="button" className="analytics-export-clear-btn" onClick={clearExportFilters}>Clear filters</button>
+                  </div>
+                  <label className="analytics-export-search">
+                    <Search size={16} />
+                    <input
+                      type="search"
+                      value={exportSearch}
+                      onChange={(event) => setExportSearch(event.target.value)}
+                      placeholder="Search reports by ID, type, status, location, or details"
+                    />
+                  </label>
+                  <div className="analytics-export-filter-grid">
+                    <div className="analytics-export-filter-box">
+                      <ExportChecklist title="Incident type" options={EXPORT_INCIDENT_TYPES} selected={exportTypes} setSelected={setExportTypes} />
+                    </div>
+                    <div className="analytics-export-filter-box">
+                      <ExportChecklist title="Status" options={EXPORT_STATUSES} selected={exportStatuses} setSelected={setExportStatuses} />
+                    </div>
+                    <details className="analytics-export-filter-group">
+                      <summary>
+                        <span>Student details</span>
+                        <small>{[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection !== null).length
+                          ? `${[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection !== null).length} active`
+                          : "Any"}</small>
+                      </summary>
+                      <div className="analytics-export-filter-group-content">
+                        <ExportChecklist title="Grade level" options={allGrades} selected={exportGradeFilter} setSelected={setExportGrades} />
+                        <ExportChecklist title="Gender" options={allGenders} selected={exportGenderFilter} setSelected={setExportGenderFilter} />
+                        <ExportChecklist title="Section" options={exportSections} selected={exportSectionFilter} setSelected={setExportSectionFilter} />
+                      </div>
+                    </details>
+                    <details className="analytics-export-filter-group">
+                      <summary>
+                        <span>Report date</span>
+                        <small>{[exportMonthFilter, exportYearFilter].filter((selection) => selection !== null).length
+                          ? `${[exportMonthFilter, exportYearFilter].filter((selection) => selection !== null).length} active`
+                          : "Any"}</small>
+                      </summary>
+                      <div className="analytics-export-filter-group-content">
+                        <ExportChecklist title="Month" options={MONTH_NAMES} selected={exportMonthFilter} setSelected={setExportMonthFilter} className="analytics-export-month-checklist" />
+                        <ExportChecklist title="Year" options={allYears.map(String)} selected={exportYearFilter} setSelected={setExportYearFilter} />
+                      </div>
+                    </details>
+                  </div>
+                  <div className="analytics-export-preview-count">
+                    Showing <strong>{exportReportsSelected ? exportFilteredIncidents.length : 0}</strong> of {incidents.length} incident reports
+                  </div>
+                </section>
+
+                <section className="analytics-export-card analytics-export-records">
+                  <div className="analytics-export-records-heading">
+                    <div><h3>Export preview</h3><p>Showing up to 10 matching reports. Anonymous reporter details remain hidden.</p></div>
+                    <span>{exportReportsSelected ? exportFilteredIncidents.length : 0} total</span>
+                  </div>
+                  {!exportReportsSelected || exportFilteredIncidents.length === 0 ? (
+                    <div className="analytics-export-empty">No reports match your selection. Choose the incident reports dataset or adjust your filters.</div>
+                  ) : (
+                    <div className="analytics-export-table-wrap">
+                      <table className="analytics-export-table">
+                        <thead><tr><th>Report ID</th><th>Date</th><th>Type</th><th>Location</th><th>Status</th><th>Submitted by</th></tr></thead>
+                        <tbody>
+                          {exportFilteredIncidents.slice(0, 10).map((report) => (
+                            <tr key={report.id}>
+                              <td>#{report.id}</td>
+                              <td>{report.date || "—"}</td>
+                              <td>{report.type || "—"}</td>
+                              <td>{report.location || "—"}</td>
+                              <td><span className={`status-badge ${(report.status || "").toLowerCase().replace(/\s/g, "-")}`}>{report.status || "—"}</span></td>
+                              <td>{report.isAnonymous ? "Anonymous" : report.submittedBy || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+
+                <section className="analytics-export-card">
+                  <div className="analytics-export-section-heading">
+                    <span className="analytics-export-step">3</span>
+                    <div><h3>Review and export</h3><p>Choose a file format and check the matching records.</p></div>
+                  </div>
+                  <div className="analytics-export-format-options" role="radiogroup" aria-label="Export format">
+                    {[
+                      { value: "csv", label: "CSV spreadsheet", detail: "Excel and Google Sheets", extension: ".csv" },
+                      { value: "json", label: "JSON data", detail: "Structured data with summary", extension: ".json" },
+                      { value: "txt", label: "Text report", detail: "Readable report summary", extension: ".txt" },
+                    ].map((format) => (
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={exportFormat === format.value}
+                        className={`analytics-export-format${exportFormat === format.value ? " selected" : ""}`}
+                        key={format.value}
+                        onClick={() => setExportFormat(format.value)}
+                      >
+                        <span className="analytics-export-format-radio" />
+                        <span><strong>{format.label}</strong><small>{format.detail}</small></span>
+                        <span className="analytics-export-format-extension">{format.extension}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="analytics-export-action-row">
+                    <span>{exportReportsSelected ? exportFilteredIncidents.length : 0} report{exportFilteredIncidents.length === 1 ? "" : "s"} ready to export</span>
+                    <button type="button" className="analytics-export-download" onClick={handleExport} disabled={!exportReportsSelected || exportFilteredIncidents.length === 0}>
+                      <Download size={16} /> Download {exportFormat.toUpperCase()}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <>
             {incidents.length === 0 && (
               <div className="card-panel analytics-empty-banner">
                 <FileBarChart size={28} color="#16a34a" />
@@ -2116,51 +2199,6 @@ export default function AdminDashboard() {
                         <p className="panel-subtitle">
                           {mfHasFilters ? `Showing ${mfFiltered.length} of ${incidents.length} incidents` : `All ${incidents.length} incidents · Real-time`}
                         </p>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <div style={{ position: "relative" }} ref={exportMenuRef}>
-                          <button className="analytics-export-btn" onClick={() => setExportMenuOpen(!exportMenuOpen)}>
-                            <Download size={14} /> Export <ChevronDown size={13} />
-                          </button>
-                          {exportMenuOpen && (
-                            <div className="analytics-export-menu">
-                              <div className="analytics-export-filter-section">
-                                <ExportChecklist title="Incident type" options={EXPORT_INCIDENT_TYPES} selected={exportTypes} setSelected={setExportTypes} />
-                                <ExportChecklist title="Status" options={EXPORT_STATUSES} selected={exportStatuses} setSelected={setExportStatuses} />
-                                <details className="analytics-export-filter-group">
-                                  <summary>
-                                    <span>Student details</span>
-                                    <small>{[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection !== null).length
-                                      ? `${[exportGradeFilter, exportGenderFilter, exportSectionFilter].filter((selection) => selection !== null).length} active`
-                                      : "Any"}</small>
-                                  </summary>
-                                  <div className="analytics-export-filter-group-content">
-                                    <ExportChecklist title="Grade level" options={allGrades} selected={exportGradeFilter} setSelected={setExportGrades} />
-                                    <ExportChecklist title="Gender" options={allGenders} selected={exportGenderFilter} setSelected={setExportGenderFilter} />
-                                    <ExportChecklist title="Section" options={exportSections} selected={exportSectionFilter} setSelected={setExportSectionFilter} />
-                                  </div>
-                                </details>
-                                <details className="analytics-export-filter-group">
-                                  <summary>
-                                    <span>Report date</span>
-                                    <small>{[exportMonthFilter, exportYearFilter].filter((selection) => selection !== null).length
-                                      ? `${[exportMonthFilter, exportYearFilter].filter((selection) => selection !== null).length} active`
-                                      : "Any"}</small>
-                                  </summary>
-                                  <div className="analytics-export-filter-group-content">
-                                    <ExportChecklist title="Month" options={MONTH_NAMES} selected={exportMonthFilter} setSelected={setExportMonthFilter} className="analytics-export-month-checklist" />
-                                    <ExportChecklist title="Year" options={allYears.map(String)} selected={exportYearFilter} setSelected={setExportYearFilter} />
-                                  </div>
-                                </details>
-                                <p className="analytics-export-result-count">
-                                  {exportFilteredIncidents.length} of {incidents.length} incidents selected
-                                </p>
-                              </div>
-                              <p className="analytics-export-label">Choose Format</p>
-                              <button onClick={() => beginExportPreview("CSV Spreadsheet")}><FileDown size={14} color="#22c55e" /><span><strong>CSV Spreadsheet</strong><small>Excel / Google Sheets compatible</small></span></button>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
 
@@ -2575,6 +2613,8 @@ export default function AdminDashboard() {
                   </ul>
                 </div>
               </>
+            )}
+            </>
             )}
           </div>
         )}
