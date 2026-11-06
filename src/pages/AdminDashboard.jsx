@@ -242,6 +242,24 @@ function getLocationCounts(reports, customLocations = []) {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const unseenReportsStorageKey = `adminUnseenReports:v2:${localStorage.getItem("studentId") || "unknown"}`;
+  const savedReportViewState = (() => {
+    try {
+      const savedState = JSON.parse(localStorage.getItem(unseenReportsStorageKey) || "null");
+      return savedState && Array.isArray(savedState.knownIds) && Array.isArray(savedState.unseenIds)
+        ? savedState
+        : null;
+    } catch (error) {
+      console.error("Could not load report view markers:", error);
+      return null;
+    }
+  });
+  const [unseenReportIds, setUnseenReportIds] = useState(
+    () => new Set(savedReportViewState?.unseenIds || [])
+  );
+  const unseenReportIdsRef = useRef(new Set(savedReportViewState?.unseenIds || []));
+  const knownReportIdsRef = useRef(new Set(savedReportViewState?.knownIds || []));
+  const hasLoadedInitialReportsRef = useRef(!!savedReportViewState);
   const [activeTab,     setActiveTab]     = useState("dashboard");
   const [profileOpen,   setProfileOpen]   = useState(false);
   const [notifOpen,     setNotifOpen]     = useState(false);
@@ -429,6 +447,35 @@ export default function AdminDashboard() {
           ]);
           if (cancelled) return;
           if (incidentsData) {
+            const fetchedReportIds = incidentsData.map((report) => report.id);
+            const wasInitialized = hasLoadedInitialReportsRef.current;
+            const nextKnownIds = new Set(knownReportIdsRef.current);
+            const nextUnseenIds = new Set(unseenReportIdsRef.current);
+            if (!wasInitialized) {
+              hasLoadedInitialReportsRef.current = true;
+            }
+            fetchedReportIds.forEach((id) => {
+              if (wasInitialized && !nextKnownIds.has(id)) {
+                nextUnseenIds.add(id);
+              }
+              nextKnownIds.add(id);
+            });
+            const unseenChanged = nextUnseenIds.size !== unseenReportIdsRef.current.size ||
+              [...nextUnseenIds].some((id) => !unseenReportIdsRef.current.has(id));
+            const knownChanged = nextKnownIds.size !== knownReportIdsRef.current.size;
+            knownReportIdsRef.current = nextKnownIds;
+            unseenReportIdsRef.current = nextUnseenIds;
+            if (unseenChanged) setUnseenReportIds(nextUnseenIds);
+            if (knownChanged || unseenChanged || !wasInitialized) {
+              try {
+                localStorage.setItem(unseenReportsStorageKey, JSON.stringify({
+                  knownIds: [...nextKnownIds].slice(-5000),
+                  unseenIds: [...nextUnseenIds],
+                }));
+              } catch (error) {
+                console.error("Could not save report view markers:", error);
+              }
+            }
             setIncidentsIfChanged(incidentsData);
             if (activeTab === "incidents") setHasMoreIncidents(incidentsData.length === REPORT_PAGE_SIZE);
           }
@@ -519,7 +566,7 @@ export default function AdminDashboard() {
       clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeTab]);
+  }, [activeTab, unseenReportsStorageKey]);
 
   useEffect(() => {
     const close = (e) => {
@@ -976,6 +1023,21 @@ export default function AdminDashboard() {
   };
 
   const handleOpenManage = async (report) => {
+    if (unseenReportIdsRef.current.has(report.id)) {
+      const nextUnseenIds = new Set(unseenReportIdsRef.current);
+      nextUnseenIds.delete(report.id);
+      unseenReportIdsRef.current = nextUnseenIds;
+      setUnseenReportIds(nextUnseenIds);
+      try {
+        localStorage.setItem(unseenReportsStorageKey, JSON.stringify({
+          knownIds: [...knownReportIdsRef.current].slice(-5000),
+          unseenIds: [...nextUnseenIds],
+        }));
+      } catch (error) {
+        console.error("Could not save viewed report marker:", error);
+        showToast("This report was opened, but its viewed status could not be saved.", "error");
+      }
+    }
     setSelectedReport(report);
     // Skip the redundant "Pending" step — managing a pending report means it's
     // already being acted on, so jump straight to "Under Investigation".
@@ -1013,6 +1075,15 @@ export default function AdminDashboard() {
     setLoadingMoreIncidents(true);
     try {
       const next = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE, offset: incidents.length });
+      next.forEach((report) => knownReportIdsRef.current.add(report.id));
+      try {
+        localStorage.setItem(unseenReportsStorageKey, JSON.stringify({
+          knownIds: [...knownReportIdsRef.current].slice(-5000),
+          unseenIds: [...unseenReportIdsRef.current],
+        }));
+      } catch (error) {
+        console.error("Could not save loaded report markers:", error);
+      }
       setIncidents((current) => [...current, ...next]);
       setHasMoreIncidents(next.length === REPORT_PAGE_SIZE);
     } catch (err) {
@@ -1731,7 +1802,10 @@ export default function AdminDashboard() {
                           <tbody>
                             {incidents.slice(0, 6).map((r) => (
                               <tr key={r.id}>
-                                <td><b className="case-id-cell">#{r.id}</b></td>
+                                <td>
+                                  <b className="case-id-cell">#{r.id}</b>
+                                  {unseenReportIds.has(r.id) && <span className="incident-new-badge">NEW</span>}
+                                </td>
                                 <td>{r.type}</td>
                                 <td style={{ fontSize: 12 }}>{r.isAnonymous ? <span style={{ color: "#6b7280", fontStyle: "italic" }}>🕵️ Anonymous</span> : r.submittedBy}</td>
                                 <td className="date-cell">{r.date}</td>
@@ -1887,13 +1961,14 @@ export default function AdminDashboard() {
                   <div className="incidents-grid">
                     {pageItems.map((r) => (
                       <div
-                        className="card-panel incident-row"
+                        className={`card-panel incident-row${unseenReportIds.has(r.id) ? " incident-row-unseen" : ""}`}
                         key={r.id}
                         style={{ borderLeft: `4px solid ${PRIORITY_ACCENT[r.priority] || "#e5e7eb"}` }}
                       >
                         <div className="incident-top">
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                             <b className="case-id-cell" style={{ fontSize: 14 }}>#{r.id}</b>
+                            {unseenReportIds.has(r.id) && <span className="incident-new-badge">NEW</span>}
                             <span className="type-chip">{r.type}</span>
                             {r.priority && (
                               <span className={`priority-badge ${r.priority}`}>{r.priority}</span>
@@ -2436,7 +2511,10 @@ export default function AdminDashboard() {
                             <tbody>
                               {recordsPageItems.map((r) => (
                                 <tr key={r.id}>
-                                  <td><b className="case-id-cell">#{r.id}</b></td>
+                                  <td>
+                                    <b className="case-id-cell">#{r.id}</b>
+                                    {unseenReportIds.has(r.id) && <span className="incident-new-badge">NEW</span>}
+                                  </td>
                                   <td><span className="type-chip">{r.type}</span></td>
                                   <td style={{ fontSize: 12 }}>{r.isAnonymous ? <span style={{ color: "#6b7280", fontStyle: "italic" }}>🕵️ Anon</span> : r.submittedBy}</td>
                                   <td style={{ fontSize: 12 }}>{r.reporterGrade || "—"}</td>
