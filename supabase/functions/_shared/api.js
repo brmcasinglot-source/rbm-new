@@ -624,7 +624,8 @@ async function handleAuth(action, body, req) {
       "description_impact", "description_actions", "reporter_type", "victims", "offenders",
       "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
       "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
-      "evidence_count", "scheduled_conference", "submitted_at", "updated_at",
+      "evidence_count", "scheduled_conference", "conference_findings",
+      "conference_findings_updated_by", "conference_findings_updated_at", "submitted_at", "updated_at",
     ].join(",");
     const { data: report, error } = await db.from("reports")
       .select(detailColumns).eq("id", reportId).maybeSingle();
@@ -1151,6 +1152,9 @@ async function runQuery(body, req) {
   let result = await query;
   if (result.error) {
     await removeMedia(table === "awareness_content" ? AWARENESS_MEDIA_BUCKET : REPORT_EVIDENCE_BUCKET, uploadedPaths);
+    if (table === "reports" && operation === "delete" && result.error.code === "23503") {
+      throw Object.assign(new Error("This report has an offense decision or approved offense record and cannot be deleted."), { status: 409 });
+    }
     throw result.error;
   }
   if (oldAwarenessPaths.length) {
@@ -1189,6 +1193,35 @@ async function runQuery(body, req) {
 
 async function runRpc(functionName, args, req) {
     const db = getDatabase();
+    const offenseFunctions = new Set([
+      "search_offense_students",
+      "search_offense_reports",
+      "get_student_offense_records",
+      "get_student_offense_history",
+      "get_report_student_links",
+      "link_report_student",
+      "save_offense_decision",
+      "create_student_offense_record",
+      "save_report_conference_findings",
+    ]);
+    if (offenseFunctions.has(functionName)) {
+      const session = await getSession(req);
+      requireRole(session, "admin");
+      const { data, error } = await db.rpc(functionName, { ...args, actor_id: session.id });
+      if (error) {
+        if (error.code === "PGRST202" || error.code === "42883") {
+          throw Object.assign(new Error("Student Offense Records is not installed yet. Apply supabase/student_offense_records.sql."), { status: 503 });
+        }
+        if (error.code === "23505") {
+          throw Object.assign(new Error("This incident is already recorded for this student."), { status: 409 });
+        }
+        if (error.code === "P0001" || error.code === "23514") {
+          throw Object.assign(new Error(error.message), { status: 400 });
+        }
+        throw error;
+      }
+      return data;
+    }
     if (functionName === "is_lrn_taken") {
       const lrn = String(args.check_lrn || "");
       const { data: students, error } = await db.from("students").select("id").eq("lrn", lrn).limit(1);
@@ -1225,6 +1258,9 @@ async function runRpc(functionName, args, req) {
       if (fetchError) throw fetchError;
       if (!student) throw Object.assign(new Error("Student account not found."), { status: 404 });
       const { error: deleteStudentError } = await db.from("students").delete().eq("id", id);
+      if (deleteStudentError?.code === "23503") {
+        throw Object.assign(new Error("This student has linked incident or offense history and cannot be removed."), { status: 409 });
+      }
       if (deleteStudentError) throw deleteStudentError;
       const { error: deleteCredentialError } = await db.from("auth_credentials").delete().eq("id", id);
       if (deleteCredentialError) throw deleteCredentialError;

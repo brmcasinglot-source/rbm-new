@@ -102,6 +102,9 @@ function reportRowToObj(row) {
     evidenceCount:      row.evidence_count ?? (row.evidence || []).length,
     evidence:           row.evidence || [],
     scheduledConference: row.scheduled_conference || null,
+    conferenceFindings: row.conference_findings || "",
+    conferenceFindingsUpdatedBy: row.conference_findings_updated_by || null,
+    conferenceFindingsUpdatedAt: row.conference_findings_updated_at || null,
     submittedAt:        row.submitted_at,
     updatedAt:           row.updated_at,
   };
@@ -154,7 +157,8 @@ const REPORT_COLUMNS_WITHOUT_EVIDENCE = [
   "description_impact", "description_actions", "reporter_type", "victims", "offenders",
   "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
   "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
-  "evidence_count", "scheduled_conference", "submitted_at", "updated_at",
+  "evidence_count", "scheduled_conference", "conference_findings",
+  "conference_findings_updated_by", "conference_findings_updated_at", "submitted_at", "updated_at",
 ].join(",");
 
 const REPORT_LIST_COLUMNS = [
@@ -173,6 +177,149 @@ export async function getReports({ includeEvidence = false, summaryOnly = true, 
   const { data, error } = await query;
   if (error) throw error;
   return (data || []).map(reportRowToObj);
+}
+
+async function offenseRpc(functionName, args = {}) {
+  const { data, error } = await supabase.rpc(functionName, args);
+  if (error) throw error;
+  return data;
+}
+
+export async function searchOffenseStudents(searchTerm = "", { grade = null, section = null, limit = 20 } = {}) {
+  const rows = await offenseRpc("search_offense_students", {
+    search_term: searchTerm,
+    grade_filter: grade,
+    section_filter: section,
+    page_size: limit,
+  });
+  return (rows || []).map((student) => ({
+    id: student.id,
+    name: student.name,
+    lrn: student.lrn,
+    grade: student.grade,
+    section: student.section,
+    establishedOffenses: Number(student.established_offenses || 0),
+  }));
+}
+
+export async function searchOffenseReports(searchTerm = "", studentId = null, limit = 20) {
+  const rows = await offenseRpc("search_offense_reports", {
+    search_term: searchTerm,
+    target_student_id: studentId,
+    page_size: limit,
+  });
+  return (rows || []).map((report) => ({
+    id: report.id,
+    type: report.type,
+    date: report.date,
+    status: report.status,
+    location: report.location,
+    description: report.description,
+    reporterName: report.reporter_name || "Anonymous",
+    evidenceCount: report.evidence_count || 0,
+    scheduledConference: report.scheduled_conference || null,
+    conferenceFindings: report.conference_findings || "",
+    submittedAt: report.submitted_at,
+    linkedToStudent: !!report.linked_to_student,
+  }));
+}
+
+export async function getStudentOffenseRecords(filters = {}) {
+  const result = await offenseRpc("get_student_offense_records", {
+    search_term: filters.search || "",
+    grade_filter: filters.grade || null,
+    section_filter: filters.section || null,
+    offense_filter: filters.offenseNumber || null,
+    bullying_type_filter: filters.type || null,
+    date_from: filters.dateFrom || null,
+    date_to: filters.dateTo || null,
+    action_filter: filters.action || null,
+    sort_by: filters.sort || "recent",
+    page_size: filters.limit || 25,
+    page_offset: filters.offset || 0,
+  });
+  return {
+    total: Number(result?.total || 0),
+    options: {
+      grades: result?.options?.grades || [],
+      sections: result?.options?.sections || [],
+      actions: result?.options?.actions || [],
+    },
+    stats: {
+      students: Number(result?.stats?.students || 0),
+      offenses: Number(result?.stats?.offenses || 0),
+      firstOffenses: Number(result?.stats?.firstOffenses || 0),
+      repeatOffenses: Number(result?.stats?.repeatOffenses || 0),
+    },
+    records: (result?.records || []).map((record) => ({
+      id: record.id,
+      studentId: record.student_id,
+      personKey: record.person_key,
+      studentName: record.student_name,
+      lrn: record.lrn,
+      grade: record.grade,
+      section: record.section,
+      incidentReportId: record.incident_report_id,
+      offenseNumber: record.offense_number,
+      conferenceFindings: record.conference_findings || "",
+      disciplinaryAction: record.disciplinary_action,
+      approvedAt: record.approved_at,
+      reviewedAt: record.reviewed_at,
+      incidentType: record.incident_type,
+      incidentDate: record.incident_date,
+      approvedBy: record.approved_by_name || "Administrator",
+      decisionFindings: record.decision_findings || "",
+      studentOffenseCount: Number(record.student_offense_count || 0),
+    })),
+  };
+}
+
+export async function getStudentOffenseHistory(personKey) {
+  return offenseRpc("get_student_offense_history", { target_person_key: personKey });
+}
+
+export async function getReportStudentLinks(reportId) {
+  return offenseRpc("get_report_student_links", { target_report_id: reportId });
+}
+
+export async function linkReportedStudent(reportId, studentId) {
+  return offenseRpc("link_report_student", {
+    target_report_id: reportId,
+    target_student_id: studentId,
+  });
+}
+
+export async function saveOffenseDecision(reportId, student, outcome, findings, review) {
+  return offenseRpc("save_offense_decision", {
+    target_report_id: reportId,
+    student_name: student.name,
+    student_lrn: student.lrn || null,
+    student_grade: student.grade,
+    student_section: student.section || null,
+    decision_outcome: outcome,
+    decision_findings: findings,
+    conference_findings: review.conferenceFindings || null,
+    admin_remarks: review.adminRemarks || null,
+    action_text: review.disciplinaryAction || null,
+    reviewed_at: review.reviewedAt,
+  });
+}
+
+export async function createStudentOffenseRecord(reportId, student) {
+  return offenseRpc("create_student_offense_record", {
+    target_report_id: reportId,
+    student_name: student.name,
+    student_lrn: student.lrn || null,
+    student_grade: student.grade,
+    student_section: student.section || null,
+  });
+}
+
+export async function saveReportConferenceFindings(reportId, findings) {
+  return offenseRpc("save_report_conference_findings", {
+    target_report_id: reportId,
+    findings_text: findings,
+  });
 }
 
 async function getReportPriorityContext() {

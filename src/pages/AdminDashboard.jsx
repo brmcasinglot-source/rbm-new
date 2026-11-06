@@ -22,6 +22,7 @@ import {
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen, Sparkles,
   Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database,
+  History,
 } from "lucide-react";
 
 import {
@@ -34,9 +35,12 @@ import {
   GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
+  saveReportConferenceFindings,
   getUnconfirmedSignups, resendConfirmationEmail,
   downloadCSV, downloadJSON, downloadTextReport,
 } from "../data/store";
+import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
+import ReportedStudentLinks from "../components/admin/ReportedStudentLinks";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -292,6 +296,8 @@ export default function AdminDashboard() {
   const [conferenceTime,       setConferenceTime]       = useState("");
   const [conferenceLocation,   setConferenceLocation]   = useState("");
   const [conferenceNotes,      setConferenceNotes]      = useState("");
+  const [conferenceFindingsDraft, setConferenceFindingsDraft] = useState("");
+  const [conferenceFindingsSaving, setConferenceFindingsSaving] = useState(false);
   const [manageFieldErrors,    setManageFieldErrors]    = useState({});
   const [conferenceEditing,    setConferenceEditing]    = useState(false);
   const [conferenceCanceling,  setConferenceCanceling]  = useState(false);
@@ -1065,6 +1071,7 @@ export default function AdminDashboard() {
     setConferenceTime(report.scheduledConference?.time || "");
     setConferenceLocation(report.scheduledConference?.location || "");
     setConferenceNotes(report.scheduledConference?.notes || "");
+    setConferenceFindingsDraft(report.conferenceFindings || "");
     setConferenceEditing(false);
     setConferenceCanceling(false);
     setConferenceCancelReason("");
@@ -1075,6 +1082,7 @@ export default function AdminDashboard() {
         getReportDetails(report.id),
         getReportEvidence(report.id),
       ]);
+      setConferenceFindingsDraft(details.conferenceFindings || "");
       setSelectedReport((current) => current?.id === report.id ? { ...details, evidence } : current);
     } catch (err) {
       showToast(`Could not load report evidence: ${err.message}`, "error");
@@ -1086,6 +1094,23 @@ export default function AdminDashboard() {
     const report = { ...updatedReport, evidence };
     setIncidents((current) => current.map((item) => item.id === report.id ? report : item));
     setSelectedReport(report);
+    setConferenceFindingsDraft(report.conferenceFindings || "");
+  };
+
+  const handleSaveConferenceFindings = async () => {
+    if (!selectedReport || conferenceFindingsSaving) return;
+    setConferenceFindingsSaving(true);
+    try {
+      const result = await saveReportConferenceFindings(selectedReport.id, conferenceFindingsDraft);
+      const updatedReport = { ...selectedReport, conferenceFindings: result.conferenceFindings };
+      setSelectedReport(updatedReport);
+      setIncidents((current) => current.map((item) => item.id === updatedReport.id ? updatedReport : item));
+      showToast("Conference findings saved.");
+    } catch (error) {
+      showToast(`Could not save conference findings: ${error.message}`, "error");
+    } finally {
+      setConferenceFindingsSaving(false);
+    }
   };
 
   const handleLoadMoreIncidents = async () => {
@@ -1252,11 +1277,15 @@ export default function AdminDashboard() {
 
   const handleDeleteReport = async (id) => {
     if (!window.confirm("Delete this report? This cannot be undone.")) return;
-    await deleteReport(id);
-    const loadedCount = Math.max(REPORT_PAGE_SIZE, incidents.length);
-    const refreshed = await getReports({ summaryOnly: true, limit: loadedCount });
-    setIncidents(refreshed);
-    setHasMoreIncidents(refreshed.length === loadedCount);
+    try {
+      await deleteReport(id);
+      const loadedCount = Math.max(REPORT_PAGE_SIZE, incidents.length);
+      const refreshed = await getReports({ summaryOnly: true, limit: loadedCount });
+      setIncidents(refreshed);
+      setHasMoreIncidents(refreshed.length === loadedCount);
+    } catch (error) {
+      showToast(`Could not delete report: ${error.message}`, "error");
+    }
   };
 
   const openNewAwareness = () => {
@@ -1378,11 +1407,15 @@ export default function AdminDashboard() {
 
   const handleDeclineAccount = async (id, name) => {
     if (!window.confirm(`Decline and remove "${name}"'s registration? This cannot be undone.`)) return;
-    await declineStudentAccount(id);
-    const accounts = await getStudentAccounts();
-    setStudentAccounts(accounts);
-    setPendingAccountCount(accounts.filter((student) => !student.approved).length);
-    showToast(`${name}'s registration was declined.`);
+    try {
+      await declineStudentAccount(id);
+      const accounts = await getStudentAccounts();
+      setStudentAccounts(accounts);
+      setPendingAccountCount(accounts.filter((student) => !student.approved).length);
+      showToast(`${name}'s registration was declined.`);
+    } catch (error) {
+      showToast(`Could not decline ${name}: ${error.message}`, "error");
+    }
   };
 
   const handleResendConfirmation = async (email) => {
@@ -1453,6 +1486,7 @@ export default function AdminDashboard() {
             { tab: "incidents",      icon: <FileText size={16} />,        label: "Incidents" },
             { tab: "confirmations",  icon: <UserCheck size={16} />,       label: "Confirmations" },
             { tab: "analytics",      icon: <FileBarChart size={16} />,    label: "Analytics" },
+            { tab: "student-offenses", icon: <History size={16} />,       label: "Student Offense Records" },
           ].map(({ tab, icon, label }) => (
             <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
               {icon} {label}
@@ -2634,6 +2668,8 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
+        {activeTab === "student-offenses" && <StudentOffenseRecords />}
+
         {/* ══════════════════════════════
             AWARENESS HUB TAB
         ══════════════════════════════ */}
@@ -3073,6 +3109,8 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              <ReportedStudentLinks reportId={selectedReport.id} />
+
               <section className="manage-conference-section">
                 <div className="manage-conference-heading">
                   <div>
@@ -3148,9 +3186,25 @@ export default function AdminDashboard() {
                           )}
                         </div>
                         {selectedConferenceStatus === "Completed" && (
-                          <p className="manage-conference-completed-on">
-                            <strong>Completed on:</strong> {formatConferenceDate(selectedConference.completedAt)}
-                          </p>
+                          <>
+                            <p className="manage-conference-completed-on">
+                              <strong>Completed on:</strong> {formatConferenceDate(selectedConference.completedAt)}
+                            </p>
+                            <div className="manage-conference-findings">
+                              <label htmlFor="conference-findings">Conference findings</label>
+                              <textarea
+                                id="conference-findings"
+                                value={conferenceFindingsDraft}
+                                onChange={(event) => setConferenceFindingsDraft(event.target.value)}
+                                rows={4}
+                                placeholder="Document the conference discussion and findings."
+                              />
+                              <p>Findings are saved separately from the schedule. Completing a conference does not create an offense record.</p>
+                              <button type="button" className="manage-conference-button primary" onClick={handleSaveConferenceFindings} disabled={conferenceFindingsSaving || !conferenceFindingsDraft.trim()}>
+                                {conferenceFindingsSaving ? "Saving findings…" : "Save Conference Findings"}
+                              </button>
+                            </div>
+                          </>
                         )}
                         {selectedConferenceStatus === "Reschedule Requested" && (
                           <p className="manage-conference-reason">
