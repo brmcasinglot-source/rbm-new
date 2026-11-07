@@ -332,6 +332,61 @@
   text-underline-offset: 2px;
 }
 
+.student-offense-linked-report {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.student-offense-attached-reports,
+.student-offense-added-students {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 11px;
+}
+
+.student-offense-attached-reports ul,
+.student-offense-added-students ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-offense-attached-reports li,
+.student-offense-added-students li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid #dcfce7;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.student-offense-attached-reports li > span,
+.student-offense-added-students li > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.student-offense-attached-reports li strong,
+.student-offense-added-students li {
+  color: #334155;
+}
+
+.student-offense-attached-reports li small,
+.student-offense-added-students li span {
+  color: #64748b;
+  font-size: 10px;
+}
+
 .student-offense-history-btn {
   display: grid;
   place-items: center;
@@ -478,6 +533,218 @@
 
 .student-offense-student-fields .student-offense-field {
   margin: 0;
+}
+
+.student-offense-final-decision,
+.student-offense-intervention-plan {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dfe7e2;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.student-offense-final-decision-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.student-offense-final-decision-heading > span {
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.student-offense-final-decision-heading > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.student-offense-decision-options,
+.student-offense-action-options {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.student-offense-decision-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.student-offense-decision-choice,
+.student-offense-action-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.student-offense-decision-choice.selected {
+  border-color: #86efac;
+  background: #f0fdf4;
+  box-shadow: inset 0 0 0 1px #bbf7d0;
+}
+
+.student-offense-action-choice.selected,
+.student-offense-action-choice:has(input:checked) {
+  border-color: #86efac;
+  background: #f0fdf4;
+  box-shadow: inset 0 0 0 1px #bbf7d0;
+}
+
+.student-offense-decision-choice input {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 1px 0 0;
+  accent-color: #15803d;
+}
+
+.student-offense-action-choice input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  margin: 1px 0 0;
+  place-content: center;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  background: #fff;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.student-offense-action-choice input[type="checkbox"]::before {
+  width: 7px;
+  height: 4px;
+  border-bottom: 1.5px solid #fff;
+  border-left: 1.5px solid #fff;
+  content: "";
+  transform: rotate(-45deg) scale(0);
+  transition: transform .12s ease;
+}
+
+.student-offense-action-choice input[type="checkbox"]:checked {
+  border-color: #15803d;
+  background: #15803d;
+}
+
+.student-offense-action-choice input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+.student-offense-action-choice input[type="checkbox"]:focus-visible {
+  outline: 3px solid #bbf7d0;
+  outline-offset: 2px;
+}
+
+.student-offense-decision-choice > span,
+.student-offense-action-choice > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.student-offense-decision-choice strong,
+.student-offense-action-choice strong {
+  color: #263445;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.student-offense-decision-choice small,
+.student-offense-action-choice small {
+  color: #64748b;
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+.student-offense-decision-basis {
+  display: grid;
+  gap: 6px;
+}
+
+.student-offense-decision-basis > span {
+  color: #475569;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.student-offense-decision-basis textarea {
+  min-height: 82px;
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.student-offense-action-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.student-offense-action-choice {
+  min-height: 52px;
+}
+
+.student-offense-action-choice:hover {
+  border-color: #b8c8bd;
+}
+
+.student-offense-action-choice:focus-within {
+  outline: 2px solid #86efac;
+  outline-offset: 2px;
+}
+
+.student-offense-other-choice {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.student-offense-other-input {
+  flex: 1 1 100%;
+  min-width: 0;
+  min-height: 32px;
+  margin-left: 23px;
+  padding: 6px 8px;
+  border: 1px solid #dbe1e8;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font: 500 10.5px "Nunito", sans-serif;
+}
+
+.student-offense-recommendations-heading {
+  padding-top: 12px;
+  border-top: 1px solid #eef2f6;
+}
+
+.student-offense-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.student-offense-action-cell {
+  white-space: pre-line;
+  line-height: 1.5;
 }
 
 .student-offense-report-review p {
@@ -769,6 +1036,11 @@
 }
 
 @media (max-width: 560px) {
+  .student-offense-decision-options,
+  .student-offense-action-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .student-offense-report-review {
     padding-right: 10px;
     padding-left: 10px;

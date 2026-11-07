@@ -274,6 +274,7 @@ export async function getStudentOffenseRecords(filters = {}) {
       grade: record.grade,
       section: record.section,
       incidentReportId: record.incident_report_id,
+      incidentReportIds: record.incident_report_ids || [record.incident_report_id],
       offenseNumber: record.offense_number,
       conferenceFindings: record.conference_findings || "",
       disciplinaryAction: record.disciplinary_action,
@@ -319,13 +320,14 @@ export async function saveOffenseDecision(reportId, student, outcome, findings, 
   });
 }
 
-export async function createStudentOffenseRecord(reportId, student) {
+export async function createStudentOffenseRecord(reportId, student, reportIds = [reportId]) {
   return offenseRpc("create_student_offense_record", {
     target_report_id: reportId,
     student_name: student.name,
     student_lrn: student.lrn || null,
     student_grade: student.grade,
     student_section: student.section || null,
+    attached_report_ids: reportIds,
   });
 }
 

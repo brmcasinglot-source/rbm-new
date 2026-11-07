@@ -60,6 +60,15 @@ create table if not exists public.student_offense_records (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.student_offense_record_reports (
+  offense_record_id bigint not null references public.student_offense_records(id) on delete cascade,
+  report_id bigint not null references public.reports(id) on delete restrict,
+  person_key text not null,
+  created_at timestamptz not null default now(),
+  primary key (offense_record_id, report_id),
+  unique (person_key, report_id)
+);
+
 create table if not exists public.student_offense_audit (
   id bigint generated always as identity primary key,
   action text not null,
@@ -168,6 +177,11 @@ alter table public.student_offense_records alter column student_name set not nul
 alter table public.student_offense_records alter column student_grade set not null;
 alter table public.student_offense_records alter column reviewed_at set not null;
 
+insert into public.student_offense_record_reports (offense_record_id, report_id, person_key)
+select id, incident_report_id, person_key
+from public.student_offense_records
+on conflict (offense_record_id, report_id) do nothing;
+
 alter table public.student_offense_decisions
   drop constraint if exists student_offense_decisions_student_id_fkey;
 alter table public.student_offense_decisions
@@ -245,6 +259,7 @@ $$;
 alter table public.report_student_links enable row level security;
 alter table public.student_offense_decisions enable row level security;
 alter table public.student_offense_records enable row level security;
+alter table public.student_offense_record_reports enable row level security;
 alter table public.student_offense_audit enable row level security;
 
 drop policy if exists "offense links admin read" on public.report_student_links;
@@ -256,17 +271,20 @@ create policy "offense decisions admin read" on public.student_offense_decisions
 drop policy if exists "offense records admin read" on public.student_offense_records;
 create policy "offense records admin read" on public.student_offense_records
   for select using (public.is_admin());
+drop policy if exists "offense record reports admin read" on public.student_offense_record_reports;
+create policy "offense record reports admin read" on public.student_offense_record_reports
+  for select using (public.is_admin());
 drop policy if exists "offense audit admin read" on public.student_offense_audit;
 create policy "offense audit admin read" on public.student_offense_audit
   for select using (public.is_admin());
 
 revoke all on table public.report_student_links, public.student_offense_decisions,
-  public.student_offense_records, public.student_offense_audit
+  public.student_offense_records, public.student_offense_record_reports, public.student_offense_audit
 from public, anon, authenticated;
 grant select on table public.report_student_links, public.student_offense_decisions,
-  public.student_offense_records, public.student_offense_audit to authenticated;
+  public.student_offense_records, public.student_offense_record_reports, public.student_offense_audit to authenticated;
 grant all on table public.report_student_links, public.student_offense_decisions,
-  public.student_offense_records, public.student_offense_audit to service_role;
+  public.student_offense_records, public.student_offense_record_reports, public.student_offense_audit to service_role;
 
 create or replace function public.search_offense_students(
   actor_id uuid,
@@ -388,6 +406,8 @@ begin
 
   with all_records as (
     select o.id, o.student_id, o.person_key, o.incident_report_id, o.offense_number,
+      array(select rr.report_id from public.student_offense_record_reports rr
+        where rr.offense_record_id = o.id order by rr.report_id) as incident_report_ids,
       o.conference_findings, o.admin_remarks, o.reviewed_at,
       o.disciplinary_action, o.approved_by, o.approved_at,
       o.student_name, o.student_lrn as lrn, o.student_grade as grade, o.student_section as section,
@@ -402,7 +422,8 @@ begin
     select * from all_records m
     where (term = '' or lower(m.student_name) like '%' || term || '%'
       or lower(coalesce(m.lrn, '')) like '%' || term || '%'
-      or m.incident_report_id::text like '%' || term || '%')
+      or exists (select 1 from unnest(m.incident_report_ids) as linked(report_id)
+        where linked.report_id::text like '%' || term || '%'))
       and (grade_filter is null or m.grade = grade_filter)
       and (section_filter is null or m.section = section_filter)
       and (offense_filter is null or case
@@ -421,6 +442,8 @@ begin
 
   with all_records as (
     select o.id, o.student_id, o.person_key, o.incident_report_id, o.offense_number,
+      array(select rr.report_id from public.student_offense_record_reports rr
+        where rr.offense_record_id = o.id order by rr.report_id) as incident_report_ids,
       o.conference_findings, o.admin_remarks, o.reviewed_at,
       o.disciplinary_action, o.approved_by, o.approved_at,
       o.student_name, o.student_lrn as lrn, o.student_grade as grade, o.student_section as section,
@@ -435,7 +458,8 @@ begin
     select * from all_records m
     where (term = '' or lower(m.student_name) like '%' || term || '%'
       or lower(coalesce(m.lrn, '')) like '%' || term || '%'
-      or m.incident_report_id::text like '%' || term || '%')
+      or exists (select 1 from unnest(m.incident_report_ids) as linked(report_id)
+        where linked.report_id::text like '%' || term || '%'))
       and (grade_filter is null or m.grade = grade_filter)
       and (section_filter is null or m.section = section_filter)
       and (offense_filter is null or case
@@ -504,6 +528,8 @@ begin
     'records', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', o.id, 'incidentReportId', o.incident_report_id,
+        'incidentReportIds', (select jsonb_agg(rr.report_id order by rr.report_id)
+          from public.student_offense_record_reports rr where rr.offense_record_id = o.id),
         'offenseNumber', o.offense_number, 'incidentType', r.type, 'incidentDate', r.date,
         'conferenceFindings', o.conference_findings, 'adminRemarks', o.admin_remarks,
         'reviewedAt', o.reviewed_at, 'disciplinaryAction', o.disciplinary_action,
@@ -623,9 +649,6 @@ begin
     raise exception 'Select a valid grade level';
   end if;
   if reviewed_at is null then raise exception 'Enter the date of review'; end if;
-  if decision_outcome = 'Established' and nullif(trim(decision_findings), '') is null then
-    raise exception 'Record decision findings for an established offense';
-  end if;
   identity_key := public.offense_person_key(student_lrn, student_name, student_grade, student_section);
   select s.id into matched_student_id
   from public.students s
@@ -667,20 +690,23 @@ $$;
 
 drop function if exists public.create_student_offense_record(uuid, bigint, uuid, text);
 drop function if exists public.create_student_offense_record(uuid, bigint, text, text, text, text, text, text, date);
+drop function if exists public.create_student_offense_record(uuid, bigint, text, text, text, text);
 create or replace function public.create_student_offense_record(
   actor_id uuid,
   target_report_id bigint,
   student_name text,
   student_lrn text,
   student_grade text,
-  student_section text
+  student_section text,
+  attached_report_ids bigint[] default '{}'::bigint[]
 ) returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 declare
   latest_decision public.student_offense_decisions%rowtype;
-  incident public.reports%rowtype;
   identity_key text;
+  report_ids bigint[];
+  found_report_count integer;
   new_offense_number integer;
   new_record public.student_offense_records%rowtype;
 begin
@@ -693,14 +719,25 @@ begin
     raise exception 'Select a valid grade level';
   end if;
   identity_key := public.offense_person_key(student_lrn, student_name, student_grade, student_section);
+  select array_agg(distinct supplied.report_id order by supplied.report_id)
+  into report_ids
+  from unnest(coalesce(attached_report_ids, '{}'::bigint[]) || array[target_report_id])
+    as supplied(report_id)
+  where supplied.report_id is not null;
+  if coalesce(cardinality(report_ids), 0) = 0 then raise exception 'Select at least one incident report'; end if;
+
   perform pg_advisory_xact_lock(hashtextextended(identity_key, 74129));
-  select * into incident from public.reports where id = target_report_id for update;
-  if not found or incident.status not in ('Under Investigation', 'Resolved') then
+  perform r.id from public.reports r
+    where r.id = any(report_ids) order by r.id for update;
+  select count(*) into found_report_count from public.reports where id = any(report_ids);
+  if found_report_count <> cardinality(report_ids) then raise exception 'An attached incident report was not found'; end if;
+  if exists (select 1 from public.reports where id = any(report_ids)
+    and status not in ('Under Investigation', 'Resolved')) then
     raise exception 'Move the incident out of Pending in Incidents before approving an offense';
   end if;
 
-  if exists (select 1 from public.student_offense_records
-    where person_key = identity_key and incident_report_id = target_report_id) then
+  if exists (select 1 from public.student_offense_record_reports
+    where person_key = identity_key and report_id = any(report_ids)) then
     raise exception 'This incident is already recorded for this student';
   end if;
   select * into latest_decision
@@ -727,15 +764,19 @@ begin
     latest_decision.admin_remarks, latest_decision.reviewed_at, latest_decision.disciplinary_action, actor_id)
   returning * into new_record;
 
+  insert into public.student_offense_record_reports (offense_record_id, report_id, person_key)
+  select new_record.id, report_id, identity_key from unnest(report_ids) as linked(report_id);
+
   insert into public.student_offense_audit
     (action, student_id, report_id, offense_record_id, actor_id, details)
   values ('offense_approved', latest_decision.student_id, target_report_id, new_record.id, actor_id,
-    jsonb_build_object('offenseNumber', new_offense_number, 'decisionId', latest_decision.id));
+    jsonb_build_object('offenseNumber', new_offense_number, 'decisionId', latest_decision.id, 'reportIds', report_ids));
 
   return jsonb_build_object(
     'id', new_record.id,
     'studentId', latest_decision.student_id,
     'incidentReportId', target_report_id,
+    'incidentReportIds', report_ids,
     'offenseNumber', new_offense_number,
     'approvedAt', new_record.approved_at,
     'reviewedAt', new_record.reviewed_at
@@ -786,7 +827,7 @@ revoke all on function public.get_student_offense_history(uuid, text) from publi
 revoke all on function public.get_report_student_links(uuid, bigint) from public, anon, authenticated;
 revoke all on function public.link_report_student(uuid, bigint, uuid) from public, anon, authenticated;
 revoke all on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date) from public, anon, authenticated;
-revoke all on function public.create_student_offense_record(uuid, bigint, text, text, text, text) from public, anon, authenticated;
+revoke all on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) from public, anon, authenticated;
 revoke all on function public.save_report_conference_findings(uuid, bigint, text) from public, anon, authenticated;
 grant execute on function public.search_offense_students(uuid, text, text, text, integer) to service_role;
 grant execute on function public.search_offense_reports(uuid, text, uuid, integer) to service_role;
@@ -796,7 +837,7 @@ grant execute on function public.get_student_offense_history(uuid, text) to serv
 grant execute on function public.get_report_student_links(uuid, bigint) to service_role;
 grant execute on function public.link_report_student(uuid, bigint, uuid) to service_role;
 grant execute on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date) to service_role;
-grant execute on function public.create_student_offense_record(uuid, bigint, text, text, text, text) to service_role;
+grant execute on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) to service_role;
 grant execute on function public.save_report_conference_findings(uuid, bigint, text) to service_role;
 
 notify pgrst, 'reload schema';
