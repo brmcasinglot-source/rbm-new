@@ -389,12 +389,14 @@ function StudentOffenseRecords() {
   };
 
   const startAddingReport = () => {
+    reportReviewRequestRef.current += 1;
     setSelectedReport(null);
     setReportReview(null);
     setReportConfirmed(false);
     setAddingMoreReports(true);
     setReportEvidence(null);
     setFormError("");
+    loadReportMatches(reportSearch);
   };
 
   const removeAttachedReport = (reportId) => {
@@ -421,6 +423,7 @@ function StudentOffenseRecords() {
     setOtherIntervention("");
     setSavedDecision("");
     setFormError("");
+    loadReportMatches(reportSearch);
   };
 
   const submitDecision = async (event) => {
