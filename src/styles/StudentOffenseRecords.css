@@ -773,17 +773,18 @@
   outline-offset: 2px;
 }
 
-.student-offense-other-choice {
-  align-items: flex-start;
-  flex-wrap: wrap;
+.student-offense-other-option {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
 }
 
 .student-offense-other-input {
-  flex: 1 1 100%;
+  width: 100%;
   min-width: 0;
-  min-height: 32px;
-  margin-left: 23px;
-  padding: 6px 8px;
+  min-height: 36px;
+  padding: 8px 10px;
   border: 1px solid #dbe1e8;
   border-radius: 6px;
   background: #fff;

@@ -703,7 +703,7 @@ function StudentOffenseRecords() {
               <label>Disciplinary action
                 <select value={filters.action} onChange={(event) => updateFilter("action", event.target.value)}>
                   <option value="">All actions</option>
-                  {filterOptions.actions.map((action) => <option key={action} value={action}>{action}</option>)}
+                  {filterOptions.actions.map((action) => <option key={action} value={action}>{formatActionDisplay(action)}</option>)}
                 </select>
               </label>
               <label>Sort by
@@ -991,15 +991,18 @@ function StudentOffenseRecords() {
                           <span><strong>{option.label}</strong><small>{option.detail}</small></span>
                         </label>
                       ))}
-                      <label className={`student-offense-action-choice student-offense-other-choice${otherInterventionSelected ? " selected" : ""}`}>
-                        <input type="checkbox" checked={otherInterventionSelected} onChange={(event) => {
-                          setOtherInterventionSelected(event.target.checked);
-                          if (!event.target.checked) setOtherIntervention("");
-                          setSavedDecision("");
-                        }} />
-                        <span><strong>Other (specify)</strong><small>Add another suitable intervention.</small></span>
+                      <div className="student-offense-other-option">
+                        <label className={`student-offense-action-choice${otherInterventionSelected ? " selected" : ""}`}>
+                          <input type="checkbox" checked={otherInterventionSelected} onChange={(event) => {
+                            setOtherInterventionSelected(event.target.checked);
+                            if (!event.target.checked) setOtherIntervention("");
+                            setSavedDecision("");
+                            setFormError("");
+                          }} />
+                          <span><strong>Other (specify)</strong><small>Add another suitable intervention.</small></span>
+                        </label>
                         {otherInterventionSelected && <input className="student-offense-other-input" value={otherIntervention} onChange={(event) => { setOtherIntervention(event.target.value); setSavedDecision(""); setFormError(""); }} placeholder="Specify school intervention" aria-label="Specify other school intervention" required />}
-                      </label>
+                      </div>
                     </fieldset>
 
                     <div className="student-offense-final-decision-heading student-offense-recommendations-heading">
