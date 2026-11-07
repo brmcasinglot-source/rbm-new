@@ -37,7 +37,7 @@ import {
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
   saveReportConferenceFindings,
   getUnconfirmedSignups, resendConfirmationEmail,
-  downloadCSV, downloadJSON, downloadTextReport,
+  downloadCSV, downloadDOCX, downloadXLSX,
 } from "../data/store";
 import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
 import ReportedStudentLinks from "../components/admin/ReportedStudentLinks";
@@ -267,6 +267,7 @@ export default function AdminDashboard() {
   const unseenReportIdsRef = useRef(new Set(savedReportViewState?.unseenIds || []));
   const knownReportIdsRef = useRef(new Set(savedReportViewState?.knownIds || []));
   const hasLoadedInitialReportsRef = useRef(!!savedReportViewState);
+  const reportRefreshRef = useRef({ refreshedAt: 0, completeList: false });
   const [activeTab,     setActiveTab]     = useState("dashboard");
   const [profileOpen,   setProfileOpen]   = useState(false);
   const [notifOpen,     setNotifOpen]     = useState(false);
@@ -351,7 +352,8 @@ export default function AdminDashboard() {
   const [analyticsView, setAnalyticsView] = useState("overview");
   const [exportReportsSelected, setExportReportsSelected] = useState(true);
   const [exportSearch, setExportSearch] = useState("");
-  const [exportFormat, setExportFormat] = useState("csv");
+  const [exportFormat, setExportFormat] = useState("xlsx");
+  const [exportError, setExportError] = useState("");
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const trendCanvasRef = useRef(null);
@@ -444,8 +446,13 @@ export default function AdminDashboard() {
       refreshing = true;
       try {
         try {
+          const needsReports = ["dashboard", "incidents", "analytics"].includes(activeTab);
+          const needsCompleteReportList = activeTab !== "incidents";
+          const reportRefreshIsDue = Date.now() - reportRefreshRef.current.refreshedAt >= DASHBOARD_REFRESH_INTERVAL_MS;
+          const shouldRefreshReports = needsReports &&
+            (reportRefreshIsDue || (needsCompleteReportList && !reportRefreshRef.current.completeList));
           const [incidentsData, unreadNotifications] = await Promise.all([
-            ["dashboard", "incidents", "analytics"].includes(activeTab)
+            shouldRefreshReports
               ? getReports({
                   includeEvidence: false,
                   summaryOnly: true,
@@ -456,6 +463,10 @@ export default function AdminDashboard() {
           ]);
           if (cancelled) return;
           if (incidentsData) {
+            reportRefreshRef.current = {
+              refreshedAt: Date.now(),
+              completeList: needsCompleteReportList,
+            };
             const fetchedReportIds = incidentsData.map((report) => report.id);
             const wasInitialized = hasLoadedInitialReportsRef.current;
             const nextKnownIds = new Set(knownReportIdsRef.current);
@@ -1454,11 +1465,17 @@ export default function AdminDashboard() {
     setExportYearFilter(null);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!exportReportsSelected || exportFilteredIncidents.length === 0) return;
-    if (exportFormat === "json") downloadJSON(exportFilteredIncidents);
-    else if (exportFormat === "txt") downloadTextReport(exportFilteredIncidents);
-    else downloadCSV(exportFilteredIncidents);
+    setExportError("");
+    try {
+      if (exportFormat === "xlsx") await downloadXLSX(exportFilteredIncidents);
+      else if (exportFormat === "docx") await downloadDOCX(exportFilteredIncidents);
+      else downloadCSV(exportFilteredIncidents);
+    } catch (error) {
+      console.error("Failed to export reports:", error);
+      setExportError("The export could not be created. Please try again.");
+    }
   };
 
   const today = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -2164,9 +2181,9 @@ export default function AdminDashboard() {
                   </div>
                   <div className="analytics-export-format-options" role="radiogroup" aria-label="Export format">
                     {[
-                      { value: "csv", label: "CSV spreadsheet", detail: "Excel and Google Sheets", extension: ".csv" },
-                      { value: "json", label: "JSON data", detail: "Structured data with summary", extension: ".json" },
-                      { value: "txt", label: "Text report", detail: "Readable report summary", extension: ".txt" },
+                      { value: "xlsx", label: "Excel spreadsheet (.xlsx)", detail: "Formatted, ready to print", extension: ".xlsx" },
+                      { value: "csv", label: "CSV spreadsheet", detail: "Plain data for importing", extension: ".csv" },
+                      { value: "docx", label: "Docs", detail: "Word and Google Docs", extension: ".docx" },
                     ].map((format) => (
                       <button
                         type="button"
@@ -2174,7 +2191,10 @@ export default function AdminDashboard() {
                         aria-checked={exportFormat === format.value}
                         className={`analytics-export-format${exportFormat === format.value ? " selected" : ""}`}
                         key={format.value}
-                        onClick={() => setExportFormat(format.value)}
+                        onClick={() => {
+                          setExportFormat(format.value);
+                          setExportError("");
+                        }}
                       >
                         <span className="analytics-export-format-radio" />
                         <span><strong>{format.label}</strong><small>{format.detail}</small></span>
@@ -2185,9 +2205,10 @@ export default function AdminDashboard() {
                   <div className="analytics-export-action-row">
                     <span>{exportReportsSelected ? exportFilteredIncidents.length : 0} report{exportFilteredIncidents.length === 1 ? "" : "s"} ready to export</span>
                     <button type="button" className="analytics-export-download" onClick={handleExport} disabled={!exportReportsSelected || exportFilteredIncidents.length === 0}>
-                      <Download size={16} /> Download {exportFormat.toUpperCase()}
+                      <Download size={16} /> Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "docx" ? "DOCS" : "CSV"}
                     </button>
                   </div>
+                  {exportError && <p className="analytics-export-error" role="alert">{exportError}</p>}
                 </section>
               </div>
             ) : (

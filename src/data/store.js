@@ -162,7 +162,7 @@ const REPORT_COLUMNS_WITHOUT_EVIDENCE = [
 ].join(",");
 
 const REPORT_LIST_COLUMNS = [
-  "id", "type", "date", "time", "location", "description", "status", "priority",
+  "id", "type", "date", "time", "location", "description", "reporter_type", "status", "priority",
   "submitted_by", "submitted_id", "reporter_age", "reporter_sex", "reporter_grade",
   "reporter_section", "is_anonymous", "admin_notes", "evidence_count",
   "scheduled_conference", "submitted_at", "updated_at",
@@ -1053,56 +1053,163 @@ export function downloadCSV(reports) {
   downloadFile(`CNHS_Reports_${new Date().toISOString().slice(0,10)}.csv`, csv, "text/csv");
 }
 
-export function downloadJSON(reports) {
-  const data = getAnalyticsData(reports);
+export async function downloadXLSX(reports) {
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Incident Report Log", {
+    pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+  });
+  const reportDate = (value) => {
+    if (!value) return "—";
+    const dateText = String(value);
+    const date = new Date(dateText);
+    return Number.isNaN(date.getTime())
+      ? dateText
+      : date.toLocaleString("en-PH", dateText.includes("T")
+        ? { dateStyle: "medium", timeStyle: "short" }
+        : { dateStyle: "medium" });
+  };
+  const counts = {
+    pending: reports.filter((report) => report.status === "Pending").length,
+    investigating: reports.filter((report) => report.status === "Under Investigation").length,
+    resolved: reports.filter((report) => report.status === "Resolved").length,
+    victims: reports.filter((report) => report.reporterType === "Victim").length,
+    friends: reports.filter((report) => ["Friend", "Friend of Victim"].includes(report.reporterType)).length,
+  };
+  const columns = [
+    { header: "Report No.", key: "id", width: 16 },
+    { header: "Date filed", key: "dateFiled", width: 23 },
+    { header: "Incident date", key: "incidentDate", width: 17 },
+    { header: "Type", key: "type", width: 18 },
+    { header: "Location", key: "location", width: 22 },
+    { header: "Status", key: "status", width: 23 },
+    { header: "Reporter", key: "reporter", width: 24 },
+    { header: "Reporter role", key: "reporterRole", width: 20 },
+    { header: "Description", key: "description", width: 54 },
+  ];
+  const reportNumber = (id) => {
+    const numericId = Number(id);
+    return Number.isInteger(numericId) && numericId >= 0
+      ? `CNHS-${String(numericId).padStart(4, "0")}`
+      : String(id ?? "—");
+  };
+  const reporterRole = (value) => {
+    if (value === "Friend") return "Friend of victim";
+    return value || "—";
+  };
+  worksheet.columns = columns;
+  worksheet.mergeCells("A1:I1");
+  worksheet.getCell("A1").value = "CNHS Incident Report Log";
+  worksheet.getCell("A1").font = { name: "Arial", size: 18, bold: true, color: { argb: "FF373085" } };
+  worksheet.getCell("A1").alignment = { vertical: "middle" };
+  worksheet.getRow(1).height = 30;
+
+  worksheet.mergeCells("A2:I2");
+  worksheet.getCell("A2").value = `Generated ${new Date().toLocaleString("en-PH")}  |  Filtered reports  |  Prepared by: Admin`;
+  worksheet.getCell("A2").font = { name: "Arial", size: 10, color: { argb: "FF475569" } };
+  worksheet.getRow(2).height = 20;
+
+  worksheet.mergeCells("A3:I3");
+  worksheet.getCell("A3").value = `Total: ${reports.length}  |  Pending: ${counts.pending}  |  Under investigation: ${counts.investigating}  |  Resolved: ${counts.resolved}  |  Victim: ${counts.victims}  |  Friend of victim: ${counts.friends}`;
+  worksheet.getCell("A3").font = { name: "Arial", size: 10, bold: true, color: { argb: "FF1E293B" } };
+  worksheet.getRow(3).height = 22;
+  worksheet.getRow(4).height = 8;
+
+  const headerRow = worksheet.addRow(columns.map((column) => column.header));
+  headerRow.height = 24;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF373085" } };
+    cell.alignment = { vertical: "middle", wrapText: true };
+  });
+
+  reports.forEach((report, index) => {
+    const row = worksheet.addRow([
+      reportNumber(report.id),
+      reportDate(report.submittedAt),
+      reportDate(report.date),
+      report.type || "—",
+      report.location || "—",
+      report.status || "—",
+      report.isAnonymous ? "Anonymous" : report.submittedBy || "—",
+      reporterRole(report.reporterType),
+      report.description || "—",
+    ]);
+    row.height = 34;
+    row.eachCell((cell) => {
+      cell.font = { name: "Arial", size: 10, color: { argb: "FF1E293B" } };
+      cell.alignment = { vertical: "middle", wrapText: true };
+      cell.border = { bottom: { style: "hair", color: { argb: "FFE2E8F0" } } };
+      if (index % 2 === 1) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      }
+    });
+    const statusCell = row.getCell(6);
+    if (report.status === "Pending") {
+      statusCell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF92400E" } };
+      statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    } else if (report.status === "Under Investigation") {
+      statusCell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF1D4ED8" } };
+    } else if (report.status === "Resolved") {
+      statusCell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF15803D" } };
+    }
+  });
+
+  worksheet.autoFilter = `A5:I${Math.max(5, worksheet.rowCount)}`;
+  worksheet.views = [{ state: "frozen", ySplit: 5 }];
+  worksheet.pageSetup.printTitlesRow = "1:5";
+  worksheet.pageSetup.margins = { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 };
+  workbook.creator = "CNHS Bullying & Incident Reporting System";
+
+  const buffer = await workbook.xlsx.writeBuffer();
   downloadFile(
-    `CNHS_Analytics_${new Date().toISOString().slice(0,10)}.json`,
-    JSON.stringify(data, null, 2),
-    "application/json"
+    `CNHS_Incident_Report_Log_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    buffer,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
 }
 
-export function downloadTextReport(reports) {
+export async function downloadDOCX(reports) {
+  const { Document, HeadingLevel, Packer, Paragraph, TextRun } = await import("docx");
   const data = getAnalyticsData(reports);
-  const lines = [
-    "=== CNHS BULLYING & INCIDENT REPORTING SYSTEM ===",
-    `Report Generated: ${new Date(data.generatedAt).toLocaleString()}`,
-    "",
-    "── SUMMARY ──────────────────────────────────────",
-    `Total Reports     : ${data.totalReports}`,
-    `Pending           : ${data.pendingReports}`,
-    `In Progress       : ${data.inProgressReports}`,
-    `Resolved          : ${data.resolvedReports}`,
-    "",
-    "── BY TYPE ──────────────────────────────────────",
-    ...Object.entries(data.byType).map(([k, v]) => `  ${k}: ${v}`),
-    "",
-    "── BY STATUS ────────────────────────────────────",
-    ...Object.entries(data.byStatus).map(([k, v]) => `  ${k}: ${v}`),
-    "",
-    "── BY PRIORITY ──────────────────────────────────",
-    ...Object.entries(data.byPriority).map(([k, v]) => `  ${k}: ${v}`),
-    "",
-    "── INDIVIDUAL REPORTS ───────────────────────────",
-    ...data.reports.map((r) =>
-      [
-        `Report #${r.id}`,
-        `  Date        : ${r.date}`,
-        `  Type        : ${r.type}`,
-        `  Status      : ${r.status}`,
-        `  Priority    : ${r.priority}`,
-        `  Location    : ${r.location}`,
-        `  Submitted By: ${r.submittedBy} (${r.submittedId})`,
-        `  Description : ${r.description}`,
-        `  Admin Notes : ${r.adminNotes || "None"}`,
-        `  Submitted At: ${r.submittedAt}`,
-        "",
-      ].join("\n")
-    ),
+  const value = (item) => item == null || item === "" ? "—" : String(item);
+  const detail = (label, item) => new Paragraph({
+    children: [
+      new TextRun({ text: `${label}: `, bold: true }),
+      new TextRun(value(item)),
+    ],
+  });
+  const children = [
+    new Paragraph({ text: "CNHS Bullying & Incident Reporting System", heading: HeadingLevel.TITLE }),
+    detail("Report generated", new Date(data.generatedAt).toLocaleString()),
+    new Paragraph({ text: "Summary", heading: HeadingLevel.HEADING_1 }),
+    detail("Total reports", data.totalReports),
+    detail("Pending", data.pendingReports),
+    detail("In progress", data.inProgressReports),
+    detail("Resolved", data.resolvedReports),
+    new Paragraph({ text: "Individual reports", heading: HeadingLevel.HEADING_1 }),
   ];
+
+  data.reports.forEach((report) => {
+    children.push(
+      new Paragraph({ text: `Report #${report.id}`, heading: HeadingLevel.HEADING_2 }),
+      detail("Date", report.date),
+      detail("Type", report.type),
+      detail("Status", report.status),
+      detail("Priority", report.priority),
+      detail("Location", report.location),
+      detail("Submitted by", `${report.submittedBy} (${report.submittedId})`),
+      detail("Description", report.description),
+      detail("Admin notes", report.adminNotes),
+      detail("Submitted at", report.submittedAt),
+    );
+  });
+
+  const document = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(document);
   downloadFile(
-    `CNHS_Report_${new Date().toISOString().slice(0,10)}.txt`,
-    lines.join("\n"),
-    "text/plain"
+    `CNHS_Reports_${new Date().toISOString().slice(0,10)}.docx`,
+    blob,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   );
 }
