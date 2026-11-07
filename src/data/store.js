@@ -280,6 +280,8 @@ export async function getStudentOffenseRecords(filters = {}) {
       disciplinaryAction: record.disciplinary_action,
       approvedAt: record.approved_at,
       reviewedAt: record.reviewed_at,
+      followUpDate: record.follow_up_date,
+      followUpStatus: record.follow_up_status,
       incidentType: record.incident_type,
       incidentDate: record.incident_date,
       approvedBy: record.approved_by_name || "Administrator",
@@ -307,6 +309,7 @@ export async function linkReportedStudent(reportId, studentId) {
 export async function saveOffenseDecision(reportId, student, outcome, findings, review) {
   return offenseRpc("save_offense_decision", {
     target_report_id: reportId,
+    attached_report_ids: review.attachedReportIds || [reportId],
     student_name: student.name,
     student_lrn: student.lrn || null,
     student_grade: student.grade,
@@ -316,6 +319,7 @@ export async function saveOffenseDecision(reportId, student, outcome, findings, 
     conference_findings: review.conferenceFindings || null,
     admin_remarks: review.adminRemarks || null,
     action_text: review.disciplinaryAction || null,
+    follow_up_date: review.followUpDate || null,
     reviewed_at: review.reviewedAt,
   });
 }

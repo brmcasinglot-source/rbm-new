@@ -1,6 +1,7 @@
 -- Apply once to an existing Supabase project to add admin-managed,
 -- established Student Offense Records. No report or conference automatically
--- creates an offense record.
+-- creates an offense record. Mediation resolves reports without an offense
+-- record; established decisions carry a follow-up date for monitoring.
 -- After applying, deploy the updated `api` Edge Function so its admin-only
 -- RPC allowlist can call these database functions.
 
@@ -34,6 +35,7 @@ create table if not exists public.student_offense_decisions (
   conference_findings text,
   admin_remarks text,
   disciplinary_action text,
+  follow_up_date date,
   reviewed_at date not null default current_date,
   decided_by uuid not null references public.admins(id) on delete restrict,
   decided_at timestamptz not null default now(),
@@ -55,6 +57,7 @@ create table if not exists public.student_offense_records (
   admin_remarks text,
   reviewed_at date not null default current_date,
   disciplinary_action text not null check (length(trim(disciplinary_action)) > 0),
+  follow_up_date date,
   approved_by uuid not null references public.admins(id) on delete restrict,
   approved_at timestamptz not null default now(),
   created_at timestamptz not null default now()
@@ -89,6 +92,7 @@ alter table public.student_offense_decisions
   add column if not exists conference_findings text,
   add column if not exists admin_remarks text,
   add column if not exists disciplinary_action text,
+  add column if not exists follow_up_date date,
   add column if not exists reviewed_at date;
 
 alter table public.student_offense_records
@@ -98,7 +102,8 @@ alter table public.student_offense_records
   add column if not exists student_grade text,
   add column if not exists student_section text,
   add column if not exists admin_remarks text,
-  add column if not exists reviewed_at date;
+  add column if not exists reviewed_at date,
+  add column if not exists follow_up_date date;
 
 create or replace function public.offense_person_key(
   student_lrn text, student_name text, student_grade text, student_section text
@@ -408,7 +413,12 @@ begin
     select o.id, o.student_id, o.person_key, o.incident_report_id, o.offense_number,
       array(select rr.report_id from public.student_offense_record_reports rr
         where rr.offense_record_id = o.id order by rr.report_id) as incident_report_ids,
-      o.conference_findings, o.admin_remarks, o.reviewed_at,
+      o.conference_findings, o.admin_remarks, o.reviewed_at, o.follow_up_date,
+      case
+        when o.follow_up_date is null then 'Not scheduled'
+        when o.follow_up_date < current_date then 'Overdue'
+        else 'Monitoring'
+      end as follow_up_status,
       o.disciplinary_action, o.approved_by, o.approved_at,
       o.student_name, o.student_lrn as lrn, o.student_grade as grade, o.student_section as section,
       r.type as incident_type, r.date as incident_date, a.name as approved_by_name,
@@ -444,7 +454,12 @@ begin
     select o.id, o.student_id, o.person_key, o.incident_report_id, o.offense_number,
       array(select rr.report_id from public.student_offense_record_reports rr
         where rr.offense_record_id = o.id order by rr.report_id) as incident_report_ids,
-      o.conference_findings, o.admin_remarks, o.reviewed_at,
+      o.conference_findings, o.admin_remarks, o.reviewed_at, o.follow_up_date,
+      case
+        when o.follow_up_date is null then 'Not scheduled'
+        when o.follow_up_date < current_date then 'Overdue'
+        else 'Monitoring'
+      end as follow_up_status,
       o.disciplinary_action, o.approved_by, o.approved_at,
       o.student_name, o.student_lrn as lrn, o.student_grade as grade, o.student_section as section,
       r.type as incident_type, r.date as incident_date, a.name as approved_by_name,
@@ -532,6 +547,7 @@ begin
           from public.student_offense_record_reports rr where rr.offense_record_id = o.id),
         'offenseNumber', o.offense_number, 'incidentType', r.type, 'incidentDate', r.date,
         'conferenceFindings', o.conference_findings, 'adminRemarks', o.admin_remarks,
+        'followUpDate', o.follow_up_date,
         'reviewedAt', o.reviewed_at, 'disciplinaryAction', o.disciplinary_action,
         'approvedBy', a.name, 'approvedAt', o.approved_at, 'reportDescription', r.description,
         'reportLocation', r.location
@@ -544,7 +560,8 @@ begin
     'decisions', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', d.id, 'reportId', d.report_id, 'outcome', d.outcome,
-        'findings', d.findings, 'decidedBy', a.name, 'decidedAt', d.decided_at
+        'findings', d.findings, 'followUpDate', d.follow_up_date,
+        'decidedBy', a.name, 'decidedAt', d.decided_at
       ) order by d.decided_at desc, d.id desc)
       from public.student_offense_decisions d
       left join public.admins a on a.id = d.decided_by
@@ -616,6 +633,8 @@ $$;
 
 drop function if exists public.save_offense_decision(uuid, bigint, uuid, text, text);
 drop function if exists public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, date);
+drop function if exists public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date);
+drop function if exists public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date, date, bigint[]);
 create or replace function public.save_offense_decision(
   actor_id uuid,
   target_report_id bigint,
@@ -628,7 +647,9 @@ create or replace function public.save_offense_decision(
   conference_findings text,
   admin_remarks text,
   action_text text,
-  reviewed_at date
+  reviewed_at date,
+  follow_up_date date,
+  attached_report_ids bigint[]
 ) returns jsonb
 language plpgsql security definer set search_path = public
 as $$
@@ -636,6 +657,8 @@ declare
   decision_id bigint;
   matched_student_id uuid;
   identity_key text;
+  report_ids bigint[];
+  found_report_count integer;
 begin
   if not exists (select 1 from public.admins where id = actor_id) then
     raise exception 'Not authorized';
@@ -649,6 +672,12 @@ begin
     raise exception 'Select a valid grade level';
   end if;
   if reviewed_at is null then raise exception 'Enter the date of review'; end if;
+  if decision_outcome = 'Established' and follow_up_date is null then
+    raise exception 'Choose a follow-up date for an established decision';
+  end if;
+  if decision_outcome <> 'Established' and follow_up_date is not null then
+    raise exception 'A follow-up date is only allowed for an established decision';
+  end if;
   identity_key := public.offense_person_key(student_lrn, student_name, student_grade, student_section);
   select s.id into matched_student_id
   from public.students s
@@ -662,29 +691,46 @@ begin
   order by case when nullif(trim(student_lrn), '') is not null then 0 else 1 end
   limit 1;
   perform pg_advisory_xact_lock(hashtextextended(identity_key, 74129));
-  perform 1 from public.reports where id = target_report_id for update;
-  if not found then raise exception 'Incident report not found'; end if;
-  if exists (select 1 from public.student_offense_records
-    where incident_report_id = target_report_id and person_key = identity_key) then
+  select array_agg(distinct supplied.report_id order by supplied.report_id)
+  into report_ids
+  from unnest(coalesce(attached_report_ids, '{}'::bigint[]) || array[target_report_id])
+    as supplied(report_id)
+  where supplied.report_id is not null;
+  perform r.id from public.reports r
+    where r.id = any(report_ids) order by r.id for update;
+  select count(*) into found_report_count from public.reports where id = any(report_ids);
+  if found_report_count <> cardinality(report_ids) then raise exception 'An attached incident report was not found'; end if;
+  if exists (select 1 from public.student_offense_record_reports
+    where report_id = any(report_ids) and person_key = identity_key)
+    or exists (select 1 from public.student_offense_records
+      where incident_report_id = any(report_ids) and person_key = identity_key) then
     raise exception 'An offense is already approved for this student and incident';
   end if;
 
   insert into public.student_offense_decisions
     (report_id, student_id, person_key, student_name, student_lrn, student_grade,
      student_section, outcome, findings, conference_findings, admin_remarks,
-     disciplinary_action, reviewed_at, decided_by)
+     disciplinary_action, reviewed_at, follow_up_date, decided_by)
   values (target_report_id, matched_student_id, identity_key, trim(student_name),
     nullif(trim(student_lrn), ''), trim(student_grade), nullif(trim(student_section), ''),
     decision_outcome, coalesce(trim(decision_findings), ''), nullif(trim(conference_findings), ''),
-    nullif(trim(admin_remarks), ''), nullif(trim(action_text), ''), reviewed_at, actor_id)
+    nullif(trim(admin_remarks), ''), nullif(trim(action_text), ''), reviewed_at,
+    case when decision_outcome = 'Established' then follow_up_date else null end, actor_id)
   returning id into decision_id;
+
+  if decision_outcome = 'Resolved Through Mediation' then
+    update public.reports
+    set status = 'Resolved', updated_at = now()
+    where id = any(report_ids);
+  end if;
 
   insert into public.student_offense_audit
     (action, student_id, report_id, actor_id, details)
   values ('decision_recorded', matched_student_id, target_report_id, actor_id,
-    jsonb_build_object('decisionId', decision_id, 'outcome', decision_outcome, 'personKey', identity_key));
+    jsonb_build_object('decisionId', decision_id, 'outcome', decision_outcome,
+      'personKey', identity_key, 'reportIds', report_ids));
 
-  return jsonb_build_object('id', decision_id, 'outcome', decision_outcome);
+  return jsonb_build_object('id', decision_id, 'outcome', decision_outcome, 'reportIds', report_ids);
 end;
 $$;
 
@@ -757,11 +803,12 @@ begin
   insert into public.student_offense_records
     (student_id, person_key, student_name, student_lrn, student_grade, student_section,
      incident_report_id, decision_id, offense_number, conference_findings, admin_remarks,
-     reviewed_at, disciplinary_action, approved_by)
+     reviewed_at, disciplinary_action, follow_up_date, approved_by)
   values (latest_decision.student_id, identity_key, latest_decision.student_name,
     latest_decision.student_lrn, latest_decision.student_grade, latest_decision.student_section,
     target_report_id, latest_decision.id, new_offense_number, latest_decision.conference_findings,
-    latest_decision.admin_remarks, latest_decision.reviewed_at, latest_decision.disciplinary_action, actor_id)
+    latest_decision.admin_remarks, latest_decision.reviewed_at, latest_decision.disciplinary_action,
+    latest_decision.follow_up_date, actor_id)
   returning * into new_record;
 
   insert into public.student_offense_record_reports (offense_record_id, report_id, person_key)
@@ -779,7 +826,8 @@ begin
     'incidentReportIds', report_ids,
     'offenseNumber', new_offense_number,
     'approvedAt', new_record.approved_at,
-    'reviewedAt', new_record.reviewed_at
+    'reviewedAt', new_record.reviewed_at,
+    'followUpDate', new_record.follow_up_date
   );
 end;
 $$;
@@ -826,7 +874,7 @@ revoke all on function public.get_student_offense_records(uuid, text, text, text
 revoke all on function public.get_student_offense_history(uuid, text) from public, anon, authenticated;
 revoke all on function public.get_report_student_links(uuid, bigint) from public, anon, authenticated;
 revoke all on function public.link_report_student(uuid, bigint, uuid) from public, anon, authenticated;
-revoke all on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date) from public, anon, authenticated;
+revoke all on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date, date, bigint[]) from public, anon, authenticated;
 revoke all on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) from public, anon, authenticated;
 revoke all on function public.save_report_conference_findings(uuid, bigint, text) from public, anon, authenticated;
 grant execute on function public.search_offense_students(uuid, text, text, text, integer) to service_role;
@@ -836,7 +884,7 @@ grant execute on function public.get_student_offense_records(uuid, text, text, t
 grant execute on function public.get_student_offense_history(uuid, text) to service_role;
 grant execute on function public.get_report_student_links(uuid, bigint) to service_role;
 grant execute on function public.link_report_student(uuid, bigint, uuid) to service_role;
-grant execute on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date) to service_role;
+grant execute on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date, date, bigint[]) to service_role;
 grant execute on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) to service_role;
 grant execute on function public.save_report_conference_findings(uuid, bigint, text) to service_role;
 
