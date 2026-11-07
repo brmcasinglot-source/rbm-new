@@ -1197,9 +1197,10 @@ async function runRpc(functionName, args, req) {
       const session = await getSession(req);
       requireRole(session, "admin");
       const term = String(args.search_term || "").trim();
-      const pageSize = Math.max(1, Math.min(Number(args.page_size) || 20, 50));
+      const pageSize = Math.max(1, Math.min(Number(args.page_size) || 21, 51));
+      const pageOffset = Math.max(0, Math.min(Number(args.page_offset) || 0, 100000));
       const columns = "id,type,date,time,location,description,victims,offenders,witnesses,status,submitted_by,is_anonymous,evidence_count,scheduled_conference,submitted_at";
-      let query = db.from("reports").select(columns);
+      let query = db.from("reports").select(columns).neq("status", "Resolved");
       if (term) {
         const idMatch = /^(?:report\s*)?#?(\d+)$/i.exec(term);
         if (idMatch) {
@@ -1218,7 +1219,7 @@ async function runRpc(functionName, args, req) {
       const { data, error } = await query
         .order("submitted_at", { ascending: false, nullsFirst: false })
         .order("id", { ascending: false })
-        .limit(pageSize);
+        .range(pageOffset, pageOffset + pageSize - 1);
       if (error) throw error;
       return (data || []).map((report) => ({
         ...report,

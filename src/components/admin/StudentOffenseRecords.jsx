@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, ChevronLeft, ChevronRight, ClipboardList,
   FileText, History, LoaderCircle, Search, ShieldCheck, UserRound, X,
@@ -57,6 +57,17 @@ function formatDate(value) {
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function formatReportNumber(id) {
+  const numericId = Number(id);
+  return Number.isInteger(numericId) && numericId >= 0
+    ? `CNHS-${String(numericId).padStart(4, "0")}`
+    : String(id ?? "—");
+}
+
+function formatReporterRole(role) {
+  return role === "Friend" ? "Friend of victim" : role || "—";
+}
+
 function currentDateInput() {
   const date = new Date();
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
@@ -90,8 +101,13 @@ function StudentOffenseRecords() {
   const [sectionChoice, setSectionChoice] = useState("");
   const [reportSearch, setReportSearch] = useState("");
   const [reportMatches, setReportMatches] = useState([]);
+  const [reportSearchLoading, setReportSearchLoading] = useState(false);
+  const [reportSearchHasMore, setReportSearchHasMore] = useState(false);
+  const reportSearchRequestRef = useRef(0);
+  const reportReviewRequestRef = useRef(0);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportReview, setReportReview] = useState(null);
+  const [reportConfirmed, setReportConfirmed] = useState(false);
   const [decision, setDecision] = useState("");
   const [decisionFindings, setDecisionFindings] = useState("");
   const [conferenceFindings, setConferenceFindings] = useState("");
@@ -130,6 +146,23 @@ function StudentOffenseRecords() {
       setError(loadError.message);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const loadReportMatches = useCallback(async (searchTerm, offset = 0) => {
+    const requestId = ++reportSearchRequestRef.current;
+    setReportSearchLoading(true);
+    setFormError("");
+    try {
+      const reports = await searchOffenseReports(searchTerm, 20, offset);
+      if (requestId !== reportSearchRequestRef.current) return;
+      const pageReports = reports.slice(0, 20);
+      setReportMatches((current) => offset ? [...current, ...pageReports] : pageReports);
+      setReportSearchHasMore(reports.length > 20);
+    } catch (searchError) {
+      if (requestId === reportSearchRequestRef.current) setFormError(searchError.message);
+    } finally {
+      if (requestId === reportSearchRequestRef.current) setReportSearchLoading(false);
     }
   }, []);
 
@@ -195,13 +228,18 @@ function StudentOffenseRecords() {
   };
 
   const resetForm = () => {
+    reportSearchRequestRef.current += 1;
+    reportReviewRequestRef.current += 1;
+    setReportSearchLoading(false);
     setFormOpen(false);
     setStudentForm({ name: "", lrn: "", grade: "", section: "" });
     setSectionChoice("");
     setReportSearch("");
     setReportMatches([]);
+    setReportSearchHasMore(false);
     setSelectedReport(null);
     setReportReview(null);
+    setReportConfirmed(false);
     setDecision("");
     setDecisionFindings("");
     setConferenceFindings("");
@@ -214,20 +252,29 @@ function StudentOffenseRecords() {
 
   const handleReportSearch = async (event) => {
     event.preventDefault();
-    setFormLoading(true);
-    setFormError("");
-    try {
-      setReportMatches(await searchOffenseReports(reportSearch, 20));
-    } catch (searchError) {
-      setFormError(searchError.message);
-    } finally {
-      setFormLoading(false);
-    }
+    await loadReportMatches(reportSearch);
   };
 
-  const chooseReport = (report) => {
+  const chooseReport = async (report) => {
+    if (selectedReport?.id === report.id) {
+      reportReviewRequestRef.current += 1;
+      setSelectedReport(null);
+      setReportReview(null);
+      setReportConfirmed(false);
+      setReportEvidence(null);
+      setDecision("");
+      setDecisionFindings("");
+      setConferenceFindings("");
+      setAdminRemarks("");
+      setSavedDecision("");
+      setDisciplinaryAction("");
+      setFormError("");
+      return;
+    }
+    const requestId = ++reportReviewRequestRef.current;
     setSelectedReport(report);
-    setReportReview(report);
+    setReportReview({ ...report, loading: true });
+    setReportConfirmed(false);
     setReportEvidence(null);
     setSavedDecision("");
     setDecision("");
@@ -235,6 +282,16 @@ function StudentOffenseRecords() {
     setConferenceFindings(report.conferenceFindings || "");
     setAdminRemarks("");
     setFormError("");
+    try {
+      const details = await getReportDetails(report.id);
+      if (requestId !== reportReviewRequestRef.current) return;
+      setSelectedReport(details);
+      setReportReview(details);
+      setConferenceFindings(details.conferenceFindings || "");
+    } catch (reviewError) {
+      if (requestId !== reportReviewRequestRef.current) return;
+      setReportReview({ ...report, error: reviewError.message });
+    }
   };
 
   const loadEvidence = async () => {
@@ -252,8 +309,8 @@ function StudentOffenseRecords() {
 
   const submitDecision = async (event) => {
     event.preventDefault();
-    if (!studentForm.name.trim() || !studentForm.grade || !selectedReport || !decision || !reviewedAt) {
-      setFormError("Complete the student information, selected report, decision, and review date.");
+    if (!studentForm.name.trim() || !studentForm.grade || !selectedReport || !reportConfirmed || !decision || !reviewedAt) {
+      setFormError("Complete the student information, choose a report, select a decision, and enter the review date.");
       return;
     }
     if (decision === "Established" && !decisionFindings.trim()) {
@@ -284,7 +341,7 @@ function StudentOffenseRecords() {
   };
 
   const approveOffense = async () => {
-    if (!studentForm.name.trim() || !selectedReport || savedDecision !== "Established") return;
+    if (!studentForm.name.trim() || !selectedReport || !reportConfirmed || savedDecision !== "Established") return;
     if (!disciplinaryAction.trim()) {
       setFormError("Enter the approved disciplinary action.");
       return;
@@ -341,7 +398,7 @@ function StudentOffenseRecords() {
           <div className="student-offense-title"><ShieldCheck size={23} /><h2>Student Offense Records</h2></div>
           <p>Confidential records for offenses that were reviewed, established, and explicitly approved.</p>
         </div>
-        <button type="button" className="student-offense-primary" onClick={() => { setFormError(""); setFormOpen(true); }}>
+        <button type="button" className="student-offense-primary" onClick={() => { setFormError(""); setFormOpen(true); loadReportMatches(""); }}>
           <ClipboardList size={16} /> Add Offense Record
         </button>
       </div>
@@ -493,37 +550,98 @@ function StudentOffenseRecords() {
               <section className="student-offense-form-step">
                 <h4>2. Select submitted incident report</h4>
                 <form className="student-offense-search" onSubmit={handleReportSearch}>
-                  <Search size={16} /><input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="Search report ID, reporter, incident type, or submission date" />
-                  <button type="submit" disabled={formLoading}>{formLoading ? "Searching…" : "Search"}</button>
+                  <Search size={16} /><input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="Filter by report ID, reporter, incident type, or submission date" />
+                  <button type="submit" disabled={reportSearchLoading}>{reportSearchLoading ? "Searching…" : "Search"}</button>
                 </form>
-                <p className="student-offense-help">Reports are searchable independently of student profile links. Anonymous reporter information remains protected.</p>
+                <p className="student-offense-help">Unresolved reports are shown automatically. Use the search to filter them. Anonymous reporter information remains protected.</p>
+                {reportSearchLoading && reportMatches.length === 0 && <p className="student-offense-help">Loading unresolved reports…</p>}
+                {!reportSearchLoading && reportMatches.length === 0 && !formError && <p className="student-offense-help">No unresolved reports found.</p>}
                 {reportMatches.length > 0 && (
                   <ul className="student-offense-select-list">
                     {reportMatches.map((report) => (
-                      <li key={report.id}><span><strong>Report #{report.id} · {report.type}</strong><small>{formatDate(report.date)} · Submitted {formatDate(report.submittedAt)} · {report.reporterName || "Anonymous"} · {report.status}</small></span><button type="button" onClick={() => chooseReport(report)}>Review</button></li>
+                      <li key={report.id} className={selectedReport?.id === report.id ? "selected" : ""}>
+                        <span><strong>Report #{report.id} · {report.type}</strong><small>{formatDate(report.date)} · Submitted {formatDate(report.submittedAt)} · {report.reporterName || "Anonymous"} · {report.status}</small></span>
+                        <button type="button" onClick={() => chooseReport(report)}>{selectedReport?.id === report.id ? "Unselect" : "Review"}</button>
+                        {selectedReport?.id === report.id && reportReview && (
+                          reportReview.loading ? (
+                            <div className="student-offense-report-review"><p>Loading full incident details…</p></div>
+                          ) : reportReview.error ? (
+                            <div className="student-offense-report-review"><p className="student-offense-error">{reportReview.error}</p></div>
+                          ) : (
+                            <div className="student-offense-report-review">
+                              <header className="student-offense-report-banner">
+                                <div className="student-offense-report-number">
+                                  <small>REPORT ID</small>
+                                  <strong>{formatReportNumber(reportReview.id)}</strong>
+                                </div>
+                                <div className="student-offense-report-tags">
+                                  <span><small>TYPE</small><strong>{reportReview.type || "—"}</strong></span>
+                                  <span><small>STATUS</small><strong className={`student-offense-report-status ${(reportReview.status || "").toLowerCase().replace(/\s/g, "-")}`}>{reportReview.status || "—"}</strong></span>
+                                </div>
+                              </header>
+
+                              <section className="student-offense-report-section">
+                                <h5>Case summary</h5>
+                                <div className="student-offense-report-grid">
+                                  <div><small>Incident date</small><strong>{formatDate(reportReview.date)}</strong></div>
+                                  <div><small>Incident time</small><strong>{reportReview.time || "—"}</strong></div>
+                                  <div><small>Location</small><strong>{reportReview.location || "—"}</strong></div>
+                                  <div><small>Date filed</small><strong>{formatDate(reportReview.submittedAt)}</strong></div>
+                                  <div><small>Reporter</small><strong>{reportReview.isAnonymous ? "Anonymous" : reportReview.submittedBy || "—"}</strong></div>
+                                  <div><small>Reporter role</small><strong>{formatReporterRole(reportReview.reporterType)}</strong></div>
+                                </div>
+                              </section>
+
+                              <section className="student-offense-report-section">
+                                <h5>People involved</h5>
+                                <div className="student-offense-report-grid student-offense-report-people">
+                                  <div><small>Victims</small><strong>{formatPeople(reportReview.victims) || "None listed"}</strong></div>
+                                  <div><small>Reported individuals</small><strong>{formatPeople(reportReview.offenders) || "None listed"}</strong></div>
+                                  <div><small>Witnesses</small><strong>{formatPeople(reportReview.witnesses) || "None listed"}</strong></div>
+                                </div>
+                              </section>
+
+                              <section className="student-offense-report-narrative">
+                                <h5>Incident description</h5>
+                                <div><small>What happened?</small><p>{reportReview.description || "No incident description provided."}</p></div>
+                                <div><small>Events leading up to the incident</small><p>{reportReview.descriptionLeadUp || "No prior events or context provided."}</p></div>
+                                <div><small>Impact on the victim</small><p>{reportReview.descriptionImpact || "No impact details provided."}</p></div>
+                                <div><small>Actions taken</small><p>{reportReview.descriptionActions || "No actions taken were provided."}</p></div>
+                              </section>
+
+                              <section className="student-offense-report-section student-offense-report-followup">
+                                <h5>Evidence and follow-up</h5>
+                                <div className="student-offense-report-grid">
+                                  <div><small>Evidence attached</small><strong>{reportReview.evidenceCount || 0} file(s)</strong></div>
+                                  <div><small>Conference</small><strong>{reportReview.scheduledConference?.status || (reportReview.scheduledConference?.completed ? "Completed" : reportReview.scheduledConference ? "Scheduled" : "Not scheduled")}</strong></div>
+                                  <div><small>Conference date</small><strong>{reportReview.scheduledConference?.date ? formatDate(reportReview.scheduledConference.date) : "—"}</strong></div>
+                                </div>
+                                {reportReview.conferenceFindings && <p className="student-offense-findings"><strong>Conference findings:</strong> {reportReview.conferenceFindings}</p>}
+                                <button type="button" className="student-offense-secondary" onClick={loadEvidence} disabled={evidenceLoading || !reportReview.evidenceCount}>
+                                  {evidenceLoading ? "Loading evidence…" : reportEvidence ? "Evidence loaded" : `Review attached evidence (${reportReview.evidenceCount || 0})`}
+                                </button>
+                                {reportEvidence?.length > 0 && <ul className="student-offense-evidence-list">{reportEvidence.map((item, index) => <li key={`${item.name}-${index}`}><a href={item.data} target="_blank" rel="noreferrer">{item.name || `Evidence ${index + 1}`}</a></li>)}</ul>}
+                              </section>
+                              {reportConfirmed ? (
+                                <div className="student-offense-report-confirmed" role="status">
+                                  <strong>Report {formatReportNumber(reportReview.id)} chosen for offense review.</strong>
+                                  <button type="button" className="student-offense-secondary" onClick={() => setReportConfirmed(false)}>Choose a different report</button>
+                                </div>
+                              ) : (
+                                <button type="button" className="student-offense-primary student-offense-choose-report" onClick={() => { setReportConfirmed(true); setFormError(""); }}>
+                                  Choose this report
+                                </button>
+                              )}
+                            </div>
+                          )
+                        )}
+                      </li>
                     ))}
                   </ul>
                 )}
-                {selectedReport && reportReview && (
-                  <div className="student-offense-report-review">
-                    <div className="student-offense-report-review-header"><strong>Report #{reportReview.id} · {reportReview.type}</strong><span>{formatDate(reportReview.date)}{reportReview.time ? ` · ${reportReview.time}` : ""}</span></div>
-                    <p><strong>Location:</strong> {reportReview.location || "—"}</p>
-                    <p><strong>Submitted:</strong> {formatDate(reportReview.submittedAt)} · <strong>Reporter:</strong> {reportReview.isAnonymous ? "Anonymous" : reportReview.submittedBy || "—"} · <strong>Status:</strong> {reportReview.status}</p>
-                    <p><strong>Description:</strong> {reportReview.description || "No description provided."}</p>
-                    <p><strong>Victims:</strong> {formatPeople(reportReview.victims) || "—"}</p>
-                    <p><strong>Reported individuals:</strong> {formatPeople(reportReview.offenders) || "—"}</p>
-                    <p><strong>Witnesses:</strong> {formatPeople(reportReview.witnesses) || "—"}</p>
-                    <p><strong>Evidence:</strong> {reportReview.evidenceCount || 0} file(s) attached</p>
-                    {reportReview.scheduledConference && <p><strong>Conference:</strong> {reportReview.scheduledConference.status || (reportReview.scheduledConference.completed ? "Completed" : "Scheduled")} · {reportReview.scheduledConference.date || "Date not set"}</p>}
-                    {reportReview.conferenceFindings && <p className="student-offense-findings"><strong>Existing conference findings:</strong> {reportReview.conferenceFindings}</p>}
-                    <button type="button" className="student-offense-secondary" onClick={loadEvidence} disabled={evidenceLoading || !reportReview.evidenceCount}>
-                      {evidenceLoading ? "Loading evidence…" : reportEvidence ? "Evidence loaded" : "Review attached evidence"}
-                    </button>
-                    {reportEvidence?.length > 0 && <ul className="student-offense-evidence-list">{reportEvidence.map((item, index) => <li key={`${item.name}-${index}`}><a href={item.data} target="_blank" rel="noreferrer">{item.name || `Evidence ${index + 1}`}</a></li>)}</ul>}
-                  </div>
-                )}
+                {reportSearchHasMore && <button type="button" className="student-offense-secondary" onClick={() => loadReportMatches(reportSearch, reportMatches.length)} disabled={reportSearchLoading}>{reportSearchLoading ? "Loading…" : "Load more unresolved reports"}</button>}
               </section>
-              {selectedReport && reportReview && (
+              {selectedReport && reportReview && reportConfirmed && !reportReview.loading && !reportReview.error && (
                 <form className="student-offense-form-step" onSubmit={submitDecision}>
                   <h4>3. Conference findings and review</h4>
                   <label className="student-offense-field">Conference findings

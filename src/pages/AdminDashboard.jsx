@@ -83,6 +83,13 @@ function getTypeCounts(reports) {
   return counts;
 }
 
+function formatReportNumber(id) {
+  const numericId = Number(id);
+  return Number.isInteger(numericId) && numericId >= 0
+    ? `CNHS-${String(numericId).padStart(4, "0")}`
+    : String(id ?? "—");
+}
+
 /** Returns last N months as { label, count } from reports */
 function getMonthlyTrend(reports, n = 6) {
   const months = [];
@@ -2156,16 +2163,17 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="analytics-export-table-wrap">
                       <table className="analytics-export-table">
-                        <thead><tr><th>Report ID</th><th>Date</th><th>Type</th><th>Location</th><th>Status</th><th>Submitted by</th></tr></thead>
+                        <thead><tr><th>Report No.</th><th>Date</th><th>Type</th><th>Location</th><th>Status</th><th>Reporter</th><th>Reporter role</th></tr></thead>
                         <tbody>
                           {exportFilteredIncidents.slice(0, 10).map((report) => (
                             <tr key={report.id}>
-                              <td>#{report.id}</td>
+                              <td>{formatReportNumber(report.id)}</td>
                               <td>{report.date || "—"}</td>
                               <td>{report.type || "—"}</td>
                               <td>{report.location || "—"}</td>
                               <td><span className={`status-badge ${(report.status || "").toLowerCase().replace(/\s/g, "-")}`}>{report.status || "—"}</span></td>
                               <td>{report.isAnonymous ? "Anonymous" : report.submittedBy || "—"}</td>
+                              <td>{report.reporterType === "Friend" ? "Friend of victim" : report.reporterType || "—"}</td>
                             </tr>
                           ))}
                         </tbody>

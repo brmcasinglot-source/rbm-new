@@ -210,10 +210,11 @@ export async function searchOffenseStudents(searchTerm = "", { grade = null, sec
   }));
 }
 
-export async function searchOffenseReports(searchTerm = "", limit = 20) {
+export async function searchOffenseReports(searchTerm = "", limit = 20, offset = 0) {
   const rows = await offenseRpc("search_offense_reports", {
     search_term: String(searchTerm || "").trim(),
-    page_size: limit,
+    page_size: limit + 1,
+    page_offset: offset,
   });
   return (rows || []).map((report) => ({
     id: report.id,
