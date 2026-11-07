@@ -200,6 +200,8 @@ alter table public.student_offense_records
 alter table public.student_offense_records
   add constraint student_offense_records_student_id_fkey
   foreign key (student_id) references public.students(id) on delete set null;
+alter table public.student_offense_records
+  drop constraint if exists student_offense_records_decision_person_fkey;
 alter table public.student_offense_decisions
   drop constraint if exists student_offense_decisions_id_report_id_person_key_key;
 alter table public.student_offense_decisions
@@ -210,8 +212,6 @@ alter table public.student_offense_records
 alter table public.student_offense_records
   add constraint student_offense_records_person_incident_key unique (person_key, incident_report_id),
   add constraint student_offense_records_person_offense_key unique (person_key, offense_number);
-alter table public.student_offense_records
-  drop constraint if exists student_offense_records_decision_person_fkey;
 alter table public.student_offense_records
   add constraint student_offense_records_decision_person_fkey
   foreign key (decision_id, incident_report_id, person_key)
