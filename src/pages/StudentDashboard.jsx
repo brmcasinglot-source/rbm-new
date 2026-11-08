@@ -1453,21 +1453,68 @@ export default function StudentDashboard() {
                 <div className="s-case-details-box">
                   <h4 className="s-case-tracker-title" style={{ marginBottom: 10 }}><FileText size={14} color="var(--s-accent)" /> Report Details</h4>
                   <div className="s-case-detail-grid">
+                    <div><label>Incident Type</label><span>{r.type || "—"}</span></div>
                     <div><label>Date</label><span>{r.date || "—"}</span></div>
                     <div><label>Time</label><span>{r.time || "—"}</span></div>
                     <div><label>Location</label><span>{r.location || "—"}</span></div>
+                    <div><label>Reporter Role</label><span>{r.reporterType || "—"}</span></div>
                     <div><label>Submitted</label><span>{r.isAnonymous ? "🕵️ Anonymously" : "With my name"}</span></div>
                   </div>
                   <div style={{ marginTop: 12 }}>
-                    <label className="s-case-detail-label">Description</label>
+                    <label className="s-case-detail-label">What Happened?</label>
                     <p className="s-case-detail-text">{r.description || "No description provided."}</p>
                   </div>
-                  {r.involved && (
-                    <div style={{ marginTop: 12 }}>
-                      <label className="s-case-detail-label">People Involved</label>
-                      <p className="s-case-detail-text">{r.involved}</p>
-                    </div>
-                  )}
+                  <div style={{ marginTop: 12 }}>
+                    <label className="s-case-detail-label">Events Leading to the Incident</label>
+                    <p className="s-case-detail-text">{r.descriptionLeadUp || "No prior events or context provided."}</p>
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <label className="s-case-detail-label">Impact on the Victim</label>
+                    <p className="s-case-detail-text">{r.descriptionImpact || "No impact details provided."}</p>
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <label className="s-case-detail-label">Actions Taken</label>
+                    <p className="s-case-detail-text">{r.descriptionActions || "No actions taken were provided."}</p>
+                  </div>
+                  {[
+                    ["Victim Information", r.victims],
+                    ["Alleged Offender Information", r.offenders],
+                    ["Witness Information", r.witnesses],
+                  ].map(([groupLabel, people]) => {
+                    const providedPeople = (Array.isArray(people) ? people : []).filter((person) =>
+                      person && Object.values(person).some((value) => String(value || "").trim())
+                    );
+                    if (providedPeople.length === 0) return null;
+                    return (
+                      <div className="s-case-people-group" key={groupLabel}>
+                        <label className="s-case-detail-label">{groupLabel}</label>
+                        <div className="s-case-person-list">
+                          {providedPeople.map((person, index) => {
+                            const details = [
+                              person.age && { label: "Age", value: person.age },
+                              person.grade && { label: "Grade", value: person.grade },
+                              person.section && { label: "Section", value: person.section },
+                              person.adviser && { label: "Adviser", value: person.adviser },
+                              person.parentName && { label: "Parent / Guardian", value: person.parentName },
+                              person.parentContact && { label: "Guardian Contact", value: person.parentContact },
+                            ].filter(Boolean);
+                            return (
+                              <div className="s-case-person-card" key={`${groupLabel}-${index}`}>
+                                <strong>{person.name || "Name not provided"}</strong>
+                                {details.length > 0 && (
+                                  <div className="s-case-person-meta">
+                                    {details.map((detail) => (
+                                      <span key={detail.label}><b>{detail.label}:</b> {detail.value}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                   {r.evidenceLoading && <p className="s-case-detail-text">Loading attached evidence…</p>}
                   {r.evidenceError && <p className="s-case-detail-text" role="alert">Could not load evidence: {r.evidenceError}</p>}
                   {r.evidence && r.evidence.length > 0 && (

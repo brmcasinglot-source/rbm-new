@@ -2972,6 +2972,23 @@
   border-radius: 8px;
   padding: 10px 12px;
 }
+.s-case-people-group { margin-top: 12px; }
+.s-case-person-list { display: grid; gap: 8px; }
+.s-case-person-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.s-case-person-card > strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #111827;
+  font-size: 13px;
+}
+.s-case-person-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.s-case-person-meta span { color: #4b5563; font-size: 12px; }
+.s-case-person-meta b { color: #6b7280; }
 @media (max-width: 480px) {
   .s-case-detail-grid { grid-template-columns: 1fr; }
 }
