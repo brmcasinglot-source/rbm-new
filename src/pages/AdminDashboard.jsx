@@ -40,7 +40,6 @@ import {
   downloadCSV, downloadDOCX, downloadXLSX,
 } from "../data/store";
 import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
-import ReportedStudentLinks from "../components/admin/ReportedStudentLinks";
 import { optimizeImageFile } from "../lib/imageOptimization";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -3137,8 +3136,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
-
-              <ReportedStudentLinks reportId={selectedReport.id} />
 
               <section className="manage-conference-section">
                 <div className="manage-conference-heading">

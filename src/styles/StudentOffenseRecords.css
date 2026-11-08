@@ -1,7 +1,9 @@
 .student-offense-page {
   display: grid;
   align-content: start;
+  grid-auto-rows: max-content;
   gap: 16px;
+  min-height: 0;
 }
 
 .student-offense-header,
@@ -45,9 +47,7 @@
 .student-offense-primary,
 .student-offense-secondary,
 .student-offense-search > button,
-.student-offense-select-list li > button,
-.reported-student-search > button[type="submit"],
-.reported-student-search-results li > button {
+.student-offense-select-list li > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -162,8 +162,7 @@
   color: #94a3b8;
 }
 
-.student-offense-search input,
-.reported-student-search input {
+.student-offense-search input {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -828,8 +827,6 @@
 }
 
 .student-offense-select-list,
-.reported-student-link-list,
-.reported-student-search-results,
 .student-offense-evidence-list {
   display: grid;
   gap: 7px;
@@ -838,8 +835,7 @@
   list-style: none;
 }
 
-.student-offense-select-list li,
-.reported-student-search-results li {
+.student-offense-select-list li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -850,8 +846,7 @@
   border-radius: 8px;
 }
 
-.student-offense-select-list li > span,
-.reported-student-search-results li > span {
+.student-offense-select-list li > span {
   display: grid;
   flex: 1;
   gap: 3px;
@@ -862,20 +857,17 @@
   background: #f8fdf9;
 }
 
-.student-offense-select-list strong,
-.reported-student-search-results strong {
+.student-offense-select-list strong {
   color: #334155;
   font-size: 11.5px;
 }
 
-.student-offense-select-list small,
-.reported-student-search-results small {
+.student-offense-select-list small {
   color: #64748b;
   font-size: 10.5px;
 }
 
-.student-offense-select-list li > button,
-.reported-student-search-results li > button {
+.student-offense-select-list li > button {
   min-height: 29px;
   padding: 5px 9px;
   font-size: 10.5px;
@@ -1085,6 +1077,12 @@
   font-size: 11px;
 }
 
+.student-offense-confirmed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .student-offense-findings {
   padding: 9px;
   border-left: 3px solid #16a34a;
@@ -1262,109 +1260,6 @@
   text-align: center;
 }
 
-.reported-student-linker {
-  display: grid;
-  gap: 10px;
-  margin: 4px 0 15px;
-  padding: 14px;
-  border: 1px solid #bbf7d0;
-  border-radius: 10px;
-  background: #f8fdf9;
-}
-
-.reported-student-linker-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #15803d;
-}
-
-.reported-student-linker-heading h4 {
-  margin: 0;
-  color: #166534;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.reported-student-linker-heading p,
-.reported-student-link-empty {
-  margin: 3px 0 0;
-  color: #64748b;
-  font-size: 11px;
-}
-
-.reported-student-link-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 9px;
-  border: 1px solid #dcfce7;
-  border-radius: 8px;
-  background: #fff;
-  color: #15803d;
-}
-
-.reported-student-link-list li > span:nth-child(2) {
-  display: grid;
-  flex: 1;
-  gap: 3px;
-}
-
-.reported-student-link-list strong {
-  color: #334155;
-  font-size: 11.5px;
-}
-
-.reported-student-link-list small {
-  color: #64748b;
-  font-size: 10.5px;
-}
-
-.reported-student-label,
-.reported-student-linked {
-  padding: 3px 7px;
-  border-radius: 20px;
-  background: #dcfce7;
-  color: #166534;
-  font-size: 9.5px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.reported-student-search {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 0 8px;
-  border: 1px solid #dbe1e8;
-  border-radius: 8px;
-  background: #fff;
-  color: #94a3b8;
-}
-
-.reported-student-search > button:not([type="submit"]) {
-  display: grid;
-  place-items: center;
-  padding: 3px;
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.reported-student-search > button[type="submit"] {
-  min-height: 28px;
-  padding: 5px 9px;
-  font-size: 10.5px;
-}
-
-.reported-student-link-error {
-  margin: 0;
-  color: #b91c1c;
-  font-size: 11px;
-}
-
 .manage-conference-findings {
   display: grid;
   gap: 7px;
@@ -1483,14 +1378,6 @@
   .student-offense-modal-header,
   .student-offense-modal-content {
     padding: 13px;
-  }
-
-  .reported-student-link-list li {
-    flex-wrap: wrap;
-  }
-
-  .reported-student-label {
-    margin-left: 23px;
   }
 
   .student-offense-report-meta {

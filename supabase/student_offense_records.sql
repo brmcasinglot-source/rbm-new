@@ -1,7 +1,8 @@
 -- Apply once to an existing Supabase project to add admin-managed,
 -- established Student Offense Records. No report or conference automatically
 -- creates an offense record. Mediation resolves reports without an offense
--- record; established decisions carry a follow-up date for monitoring.
+-- record and notifies the reporting student; established decisions carry a
+-- follow-up date for monitoring.
 -- After applying, deploy the updated `api` Edge Function so its admin-only
 -- RPC allowlist can call these database functions.
 
@@ -326,17 +327,21 @@ begin
 end;
 $$;
 
+drop function if exists public.search_offense_reports(uuid, text, uuid, integer);
 create or replace function public.search_offense_reports(
   actor_id uuid,
   search_term text default '',
   target_student_id uuid default null,
-  page_size integer default 20
+  page_size integer default 20,
+  page_offset integer default 0
 ) returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 declare
   result jsonb;
   term text := lower(trim(coalesce(search_term, '')));
+  safe_limit integer := greatest(1, least(coalesce(page_size, 20), 50));
+  safe_offset integer := greatest(0, least(coalesce(page_offset, 0), 100000));
 begin
   if not exists (select 1 from public.admins where id = actor_id) then
     raise exception 'Not authorized';
@@ -352,10 +357,11 @@ begin
         where l.report_id = r.id and l.student_id = target_student_id
       ) as linked_to_student
     from public.reports r
-    where (target_student_id is null or exists (
-      select 1 from public.report_student_links l
-      where l.report_id = r.id and l.student_id = target_student_id
-    ))
+    where r.status = 'Under Investigation'
+      and (target_student_id is null or exists (
+        select 1 from public.report_student_links l
+        where l.report_id = r.id and l.student_id = target_student_id
+      ))
       and (term = '' or r.id::text like '%' || term || '%'
         or lower(coalesce(r.type, '')) like '%' || term || '%'
         or lower(coalesce(r.description, '')) like '%' || term || '%'
@@ -363,7 +369,7 @@ begin
           and lower(coalesce(r.submitted_by, '')) like '%' || term || '%')
         or coalesce(r.submitted_at::date::text, '') like '%' || term || '%')
     order by r.submitted_at desc nulls last, r.id desc
-    limit greatest(1, least(coalesce(page_size, 20), 50))
+    limit safe_limit offset safe_offset
   ) matches;
   return result;
 end;
@@ -428,7 +434,7 @@ begin
     join public.reports r on r.id = o.incident_report_id
     join public.admins a on a.id = o.approved_by
     join public.student_offense_decisions d on d.id = o.decision_id
-  ), matching as (
+  ), matching_candidates as (
     select * from all_records m
     where (term = '' or lower(m.student_name) like '%' || term || '%'
       or lower(coalesce(m.lrn, '')) like '%' || term || '%'
@@ -447,6 +453,10 @@ begin
       and (date_from is null or m.reviewed_at >= date_from)
       and (date_to is null or m.reviewed_at <= date_to)
       and (action_filter is null or m.disciplinary_action = action_filter)
+  ), matching as (
+    select distinct on (m.person_key) m.*
+    from matching_candidates m
+    order by m.person_key, m.offense_number desc, m.id desc
   )
   select count(*) into matching_total from matching;
 
@@ -469,7 +479,7 @@ begin
     join public.reports r on r.id = o.incident_report_id
     join public.admins a on a.id = o.approved_by
     join public.student_offense_decisions d on d.id = o.decision_id
-  ), matching as (
+  ), matching_candidates as (
     select * from all_records m
     where (term = '' or lower(m.student_name) like '%' || term || '%'
       or lower(coalesce(m.lrn, '')) like '%' || term || '%'
@@ -488,6 +498,10 @@ begin
       and (date_from is null or m.reviewed_at >= date_from)
       and (date_to is null or m.reviewed_at <= date_to)
       and (action_filter is null or m.disciplinary_action = action_filter)
+  ), matching as (
+    select distinct on (m.person_key) m.*
+    from matching_candidates m
+    order by m.person_key, m.offense_number desc, m.id desc
   )
   select coalesce(jsonb_agg(to_jsonb(page)), '[]'::jsonb) into result_records
   from (
@@ -656,6 +670,7 @@ as $$
 declare
   decision_id bigint;
   matched_student_id uuid;
+  matched_student_lrn text;
   identity_key text;
   report_ids bigint[];
   found_report_count integer;
@@ -678,8 +693,7 @@ begin
   if decision_outcome <> 'Established' and follow_up_date is not null then
     raise exception 'A follow-up date is only allowed for an established decision';
   end if;
-  identity_key := public.offense_person_key(student_lrn, student_name, student_grade, student_section);
-  select s.id into matched_student_id
+  select s.id, s.lrn into matched_student_id, matched_student_lrn
   from public.students s
   where s.approved and (
     (nullif(trim(student_lrn), '') is not null and lower(trim(s.lrn)) = lower(trim(student_lrn)))
@@ -690,6 +704,22 @@ begin
   )
   order by case when nullif(trim(student_lrn), '') is not null then 0 else 1 end
   limit 1;
+  identity_key := coalesce(
+    (
+      select o.person_key from public.student_offense_records o
+      where o.student_id = matched_student_id
+      order by o.offense_number desc, o.id desc limit 1
+    ),
+    (
+      select d.person_key from public.student_offense_decisions d
+      where d.student_id = matched_student_id and d.report_id = target_report_id
+      order by d.decided_at desc, d.id desc limit 1
+    ),
+    public.offense_person_key(
+      coalesce(nullif(trim(student_lrn), ''), matched_student_lrn),
+      student_name, student_grade, student_section
+    )
+  );
   perform pg_advisory_xact_lock(hashtextextended(identity_key, 74129));
   select array_agg(distinct supplied.report_id order by supplied.report_id)
   into report_ids
@@ -712,7 +742,8 @@ begin
      student_section, outcome, findings, conference_findings, admin_remarks,
      disciplinary_action, reviewed_at, follow_up_date, decided_by)
   values (target_report_id, matched_student_id, identity_key, trim(student_name),
-    nullif(trim(student_lrn), ''), trim(student_grade), nullif(trim(student_section), ''),
+    coalesce(nullif(trim(student_lrn), ''), matched_student_lrn),
+    trim(student_grade), nullif(trim(student_section), ''),
     decision_outcome, coalesce(trim(decision_findings), ''), nullif(trim(conference_findings), ''),
     nullif(trim(admin_remarks), ''), nullif(trim(action_text), ''), reviewed_at,
     case when decision_outcome = 'Established' then follow_up_date else null end, actor_id)
@@ -722,6 +753,20 @@ begin
     update public.reports
     set status = 'Resolved', updated_at = now()
     where id = any(report_ids);
+
+    insert into public.notifications (audience, student_id, title, type, read)
+    select 'student', r.submitted_id,
+      format('Report #%s was resolved through mediation.', r.id), 'status', false
+    from public.reports r
+    where r.id = any(report_ids)
+      and r.submitted_id is not null
+      and not exists (
+        select 1 from public.notifications n
+        where n.audience = 'student'
+          and n.student_id = r.submitted_id
+          and n.title = format('Report #%s was resolved through mediation.', r.id)
+          and n.type = 'status'
+      );
   end if;
 
   insert into public.student_offense_audit
@@ -733,6 +778,31 @@ begin
   return jsonb_build_object('id', decision_id, 'outcome', decision_outcome, 'reportIds', report_ids);
 end;
 $$;
+
+insert into public.notifications (audience, student_id, title, type, read)
+select 'student', r.submitted_id,
+  format('Report #%s was resolved through mediation.', r.id), 'status', false
+from public.reports r
+where r.status = 'Resolved'
+  and r.submitted_id is not null
+  and (
+    select a.details->>'outcome'
+    from public.student_offense_audit a
+    where a.action = 'decision_recorded'
+      and (
+        a.report_id = r.id
+        or a.details->'reportIds' @> jsonb_build_array(r.id)
+      )
+    order by a.created_at desc, a.id desc
+    limit 1
+  ) = 'Resolved Through Mediation'
+  and not exists (
+    select 1 from public.notifications n
+    where n.audience = 'student'
+      and n.student_id = r.submitted_id
+      and n.title = format('Report #%s was resolved through mediation.', r.id)
+      and n.type = 'status'
+  );
 
 drop function if exists public.create_student_offense_record(uuid, bigint, uuid, text);
 drop function if exists public.create_student_offense_record(uuid, bigint, text, text, text, text, text, text, date);
@@ -750,6 +820,8 @@ language plpgsql security definer set search_path = public
 as $$
 declare
   latest_decision public.student_offense_decisions%rowtype;
+  matched_student_id uuid;
+  matched_student_lrn text;
   identity_key text;
   report_ids bigint[];
   found_report_count integer;
@@ -764,7 +836,33 @@ begin
     or trim(student_grade) not in ('Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12') then
     raise exception 'Select a valid grade level';
   end if;
-  identity_key := public.offense_person_key(student_lrn, student_name, student_grade, student_section);
+  select s.id, s.lrn into matched_student_id, matched_student_lrn
+  from public.students s
+  where s.approved and (
+    (nullif(trim(student_lrn), '') is not null and lower(trim(s.lrn)) = lower(trim(student_lrn)))
+    or (nullif(trim(student_lrn), '') is null
+      and lower(trim(s.name)) = lower(trim(student_name))
+      and lower(trim(coalesce(s.grade, ''))) = lower(trim(student_grade))
+      and lower(trim(coalesce(s.section, ''))) = lower(trim(coalesce(student_section, ''))))
+  )
+  order by case when nullif(trim(student_lrn), '') is not null then 0 else 1 end
+  limit 1;
+  identity_key := coalesce(
+    (
+      select o.person_key from public.student_offense_records o
+      where o.student_id = matched_student_id
+      order by o.offense_number desc, o.id desc limit 1
+    ),
+    (
+      select d.person_key from public.student_offense_decisions d
+      where d.student_id = matched_student_id and d.report_id = target_report_id
+      order by d.decided_at desc, d.id desc limit 1
+    ),
+    public.offense_person_key(
+      coalesce(nullif(trim(student_lrn), ''), matched_student_lrn),
+      student_name, student_grade, student_section
+    )
+  );
   select array_agg(distinct supplied.report_id order by supplied.report_id)
   into report_ids
   from unnest(coalesce(attached_report_ids, '{}'::bigint[]) || array[target_report_id])
@@ -798,14 +896,17 @@ begin
   end if;
 
   select coalesce(max(offense_number), 0) + 1 into new_offense_number
-  from public.student_offense_records where person_key = identity_key;
+  from public.student_offense_records
+  where person_key = identity_key
+    or (matched_student_id is not null and student_id = matched_student_id);
 
   insert into public.student_offense_records
     (student_id, person_key, student_name, student_lrn, student_grade, student_section,
      incident_report_id, decision_id, offense_number, conference_findings, admin_remarks,
      reviewed_at, disciplinary_action, follow_up_date, approved_by)
-  values (latest_decision.student_id, identity_key, latest_decision.student_name,
-    latest_decision.student_lrn, latest_decision.student_grade, latest_decision.student_section,
+  values (coalesce(latest_decision.student_id, matched_student_id), identity_key, latest_decision.student_name,
+    coalesce(latest_decision.student_lrn, matched_student_lrn),
+    latest_decision.student_grade, latest_decision.student_section,
     target_report_id, latest_decision.id, new_offense_number, latest_decision.conference_findings,
     latest_decision.admin_remarks, latest_decision.reviewed_at, latest_decision.disciplinary_action,
     latest_decision.follow_up_date, actor_id)
@@ -868,7 +969,7 @@ end;
 $$;
 
 revoke all on function public.search_offense_students(uuid, text, text, text, integer) from public, anon, authenticated;
-revoke all on function public.search_offense_reports(uuid, text, uuid, integer) from public, anon, authenticated;
+revoke all on function public.search_offense_reports(uuid, text, uuid, integer, integer) from public, anon, authenticated;
 revoke all on function public.get_student_offense_filter_options(uuid) from public, anon, authenticated;
 revoke all on function public.get_student_offense_records(uuid, text, text, text, text, text, date, date, text, text, integer, integer) from public, anon, authenticated;
 revoke all on function public.get_student_offense_history(uuid, text) from public, anon, authenticated;
@@ -878,7 +979,7 @@ revoke all on function public.save_offense_decision(uuid, bigint, text, text, te
 revoke all on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) from public, anon, authenticated;
 revoke all on function public.save_report_conference_findings(uuid, bigint, text) from public, anon, authenticated;
 grant execute on function public.search_offense_students(uuid, text, text, text, integer) to service_role;
-grant execute on function public.search_offense_reports(uuid, text, uuid, integer) to service_role;
+grant execute on function public.search_offense_reports(uuid, text, uuid, integer, integer) to service_role;
 grant execute on function public.get_student_offense_filter_options(uuid) to service_role;
 grant execute on function public.get_student_offense_records(uuid, text, text, text, text, text, date, date, text, text, integer, integer) to service_role;
 grant execute on function public.get_student_offense_history(uuid, text) to service_role;

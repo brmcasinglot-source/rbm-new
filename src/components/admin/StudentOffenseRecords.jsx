@@ -183,9 +183,12 @@ function StudentOffenseRecords() {
     || addingMoreReports
     || reviewingAttachedReport
     || Boolean(selectedReport && !reportConfirmed);
+  const unresolvedReportMatches = reportMatches.filter(
+    (report) => String(report.status || "").toLowerCase() === "under investigation"
+  );
   const selectableReportMatches = reviewingAttachedReport && selectedReport
     ? [selectedReport]
-    : reportMatches.filter((report) => (
+    : unresolvedReportMatches.filter((report) => (
       report.id === selectedReport?.id
       || !attachedReports.some((attached) => attached.id === report.id)
     ));
@@ -815,7 +818,10 @@ function StudentOffenseRecords() {
                 ) : (
                   <div className="student-offense-report-confirmed" role="status">
                     <strong>Student offense approved and linked to {attachedReports.length} report{attachedReports.length === 1 ? "" : "s"}.</strong>
-                    <button type="button" className="student-offense-primary" onClick={startAnotherStudent}>Add another student to these reports</button>
+                    <div className="student-offense-confirmed-actions">
+                      <button type="button" className="student-offense-primary" onClick={startAnotherStudent}>Add another student to these reports</button>
+                      <button type="button" className="student-offense-secondary" onClick={resetForm}>Done</button>
+                    </div>
                   </div>
                 )}
               </section>
@@ -849,11 +855,11 @@ function StudentOffenseRecords() {
                       <Search size={16} /><input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="Filter by report ID, reporter, incident type, or submission date" />
                       <button type="submit" disabled={reportSearchLoading}>{reportSearchLoading ? "Searching…" : "Search"}</button>
                     </form>
-                    <p className="student-offense-help">{addingMoreReports ? "Choose another unresolved report to attach to this offense record." : "Unresolved reports are shown automatically. Use the search to filter them."} Anonymous reporter information remains protected.</p>
+                    <p className="student-offense-help">{addingMoreReports ? "Choose another report under investigation to attach to this offense record." : "Reports under investigation are shown automatically. Use the search to filter them."} Anonymous reporter information remains protected.</p>
                   </>
                 )}
-                {showReportPicker && !reviewingAttachedReport && reportSearchLoading && reportMatches.length === 0 && <p className="student-offense-help">Loading unresolved reports…</p>}
-                {showReportPicker && !reviewingAttachedReport && !reportSearchLoading && reportMatches.length === 0 && !formError && <p className="student-offense-help">No unresolved reports found.</p>}
+                {showReportPicker && !reviewingAttachedReport && reportSearchLoading && unresolvedReportMatches.length === 0 && <p className="student-offense-help">Loading reports under investigation…</p>}
+                {showReportPicker && !reviewingAttachedReport && !reportSearchLoading && unresolvedReportMatches.length === 0 && !formError && <p className="student-offense-help">No reports under investigation found.</p>}
                 {showReportPicker && selectableReportMatches.length > 0 && (
                   <ul className="student-offense-select-list">
                     {selectableReportMatches.map((report) => (
@@ -936,7 +942,7 @@ function StudentOffenseRecords() {
                     ))}
                   </ul>
                 )}
-                {showReportPicker && !reviewingAttachedReport && reportSearchHasMore && <button type="button" className="student-offense-secondary" onClick={() => loadReportMatches(reportSearch, reportMatches.length)} disabled={reportSearchLoading}>{reportSearchLoading ? "Loading…" : "Load more unresolved reports"}</button>}
+                {showReportPicker && !reviewingAttachedReport && reportSearchHasMore && <button type="button" className="student-offense-secondary" onClick={() => loadReportMatches(reportSearch, reportMatches.length)} disabled={reportSearchLoading}>{reportSearchLoading ? "Loading…" : "Load more reports under investigation"}</button>}
               </section>
                 {attachedReports.length > 0 && !addingMoreReports && (!selectedReport || reportConfirmed) && addingAnotherStudent && (
                 <form ref={decisionFormRef} className="student-offense-form-step student-offense-decision-form" onSubmit={submitDecision}>
@@ -1054,33 +1060,29 @@ function StudentOffenseRecords() {
                 : history.error ? <p className="student-offense-error">{history.error}</p>
                   : history.records.length === 0 ? <p className="student-offense-empty">No established offenses for this student.</p> : (
                     <ol className="student-offense-timeline">
-                      {history.records.map((record) => (
-                        <li key={record.id}>
-                          <span className="student-offense-timeline-dot" />
-                          <div className="student-offense-timeline-card">
-                            <div className="student-offense-timeline-heading"><strong>Offense #{record.offenseNumber}</strong><span>{formatDate(record.approvedAt)}</span></div>
-                            <p><strong>{record.incidentType}</strong> · {formatDate(record.incidentDate)} · { (record.incidentReportIds || [record.incidentReportId]).map((reportId) => <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>Report #{reportId}</button>)}</p>
-                            <p><strong>Student ID/LRN:</strong> {history.student?.lrn || "—"} · <strong>Grade/Section:</strong> {[history.student?.grade, history.student?.section].filter(Boolean).join(" / ") || "—"}</p>
-                            {record.conferenceFindings && <p><strong>Conference findings:</strong> {record.conferenceFindings}</p>}
-                            {record.adminRemarks && <p><strong>Admin/Prefect remarks:</strong> {record.adminRemarks}</p>}
-                            <p><strong>Decision findings:</strong> {history.decisions.find((decisionItem) => decisionItem.reportId === record.incidentReportId)?.findings || "—"}</p>
-                            <p className="student-offense-action-cell"><strong>Disciplinary action:</strong> {record.disciplinaryAction}</p>
-                            <p><strong>Approved by:</strong> {record.approvedBy || "Administrator"}</p>
-                            <p><strong>Date reviewed:</strong> {formatDate(record.reviewedAt)}</p>
-                            <p><strong>Follow-up:</strong> {record.followUpDate ? `${formatDate(record.followUpDate)} · ${getFollowUpStatus(record.followUpDate)}` : "Not scheduled"}</p>
-                          </div>
-                        </li>
-                      ))}
+                      {history.records.map((record) => {
+                        const decisionFindings = history.decisions
+                          .find((decisionItem) => decisionItem.reportId === record.incidentReportId)?.findings;
+                        return (
+                          <li key={record.id}>
+                            <span className="student-offense-timeline-dot" />
+                            <div className="student-offense-timeline-card">
+                              <div className="student-offense-timeline-heading"><strong>Offense #{record.offenseNumber}</strong><span>{formatDate(record.approvedAt)}</span></div>
+                              <p><strong>{record.incidentType}</strong> · {formatDate(record.incidentDate)} · { (record.incidentReportIds || [record.incidentReportId]).map((reportId) => <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>Report #{reportId}</button>)}</p>
+                              <p><strong>Student ID/LRN:</strong> {history.student?.lrn || "—"} · <strong>Grade/Section:</strong> {[history.student?.grade, history.student?.section].filter(Boolean).join(" / ") || "—"}</p>
+                              {record.conferenceFindings && <p><strong>Conference findings:</strong> {record.conferenceFindings}</p>}
+                              {record.adminRemarks && <p><strong>Admin/Prefect remarks:</strong> {record.adminRemarks}</p>}
+                              {decisionFindings && <p><strong>Decision findings:</strong> {decisionFindings}</p>}
+                              <p className="student-offense-action-cell"><strong>Disciplinary action:</strong> {record.disciplinaryAction}</p>
+                              <p><strong>Approved by:</strong> {record.approvedBy || "Administrator"}</p>
+                              <p><strong>Date reviewed:</strong> {formatDate(record.reviewedAt)}</p>
+                              <p><strong>Follow-up:</strong> {record.followUpDate ? `${formatDate(record.followUpDate)} · ${getFollowUpStatus(record.followUpDate)}` : "Not scheduled"}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ol>
                   )}
-              {history.decisions?.length > 0 && (
-                <section className="student-offense-decision-history">
-                  <h4>Other recorded decisions</h4>
-                  {history.decisions.filter((decisionItem) => decisionItem.outcome !== "Established" || !history.records.some((record) => record.incidentReportId === decisionItem.reportId)).map((decisionItem) => (
-                    <div key={decisionItem.id}><strong>{decisionItem.outcome}</strong><span>Report #{decisionItem.reportId} · {formatDate(decisionItem.decidedAt)}</span><p>{decisionItem.findings}</p></div>
-                  ))}
-                </section>
-              )}
             </div>
           </section>
         </div>
