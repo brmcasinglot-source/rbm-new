@@ -33,7 +33,7 @@ import {
   LOCATION_META, LOCATION_ZONE_COLORS, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   GRADE_OPTIONS,
-  getStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
+  getStudentAccounts, getPendingStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
   saveReportConferenceFindings,
   getUnconfirmedSignups, resendConfirmationEmail,
@@ -44,6 +44,7 @@ import { optimizeImageFile } from "../lib/imageOptimization";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
+const ACCOUNT_PAGE_SIZE = 25;
 
 async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -396,11 +397,18 @@ export default function AdminDashboard() {
   const [customLocations,  setCustomLocations]  = useState([]);
   const [gradeSections,    setGradeSections]    = useState([]);
   const [studentAccounts,    setStudentAccounts]    = useState([]);
+  const [pendingAccounts, setPendingAccounts] = useState([]);
+  const [hasMoreStudentAccounts, setHasMoreStudentAccounts] = useState(false);
+  const [hasMorePendingAccounts, setHasMorePendingAccounts] = useState(false);
+  const [studentAccountPage, setStudentAccountPage] = useState(0);
+  const [pendingAccountPage, setPendingAccountPage] = useState(0);
+  const [studentAccountsLoading, setStudentAccountsLoading] = useState(true);
+  const [studentAccountsError, setStudentAccountsError] = useState("");
+  const [pendingAccountsError, setPendingAccountsError] = useState("");
   const [studentIdViewer, setStudentIdViewer] = useState(null);
   const [pendingAccountCount, setPendingAccountCount] = useState(0);
   const [unconfirmedSignups, setUnconfirmedSignups] = useState([]);
   const [unconfirmedError,   setUnconfirmedError]   = useState("");
-  const pendingAccounts = studentAccounts.filter((s) => !s.approved);
 
   const profileRef = useRef(null);
   const notifRef   = useRef(null);
@@ -545,12 +553,28 @@ export default function AdminDashboard() {
           }
         } else if (activeTab === "confirmations") {
           try {
-            const studentAccountsData = await getStudentAccounts();
+            const studentAccountsData = await getStudentAccounts(studentAccountPage, ACCOUNT_PAGE_SIZE);
             if (cancelled) return;
-            setStudentAccountsIfChanged(studentAccountsData);
-            setPendingAccountCount(studentAccountsData.filter((student) => !student.approved).length);
+            setStudentAccountsIfChanged(studentAccountsData.accounts);
+            setHasMoreStudentAccounts(studentAccountsData.hasMoreAccounts);
+            setStudentAccountsError("");
           } catch (err) {
-            console.error("getStudentAccounts failed:", err);
+            if (cancelled) return;
+            console.error("getStudentAccounts failed:", err.message);
+            setStudentAccountsError(err.message);
+          } finally {
+            if (!cancelled) setStudentAccountsLoading(false);
+          }
+          try {
+            const pendingAccountsData = await getPendingStudentAccounts(pendingAccountPage, ACCOUNT_PAGE_SIZE);
+            if (cancelled) return;
+            setPendingAccounts(pendingAccountsData.accounts);
+            setHasMorePendingAccounts(pendingAccountsData.hasMore);
+            setPendingAccountsError("");
+          } catch (err) {
+            if (cancelled) return;
+            console.error("getPendingStudentAccounts failed:", err.message);
+            setPendingAccountsError(err.message);
           }
           try {
             const unconfirmedData = await getUnconfirmedSignups();
@@ -590,7 +614,7 @@ export default function AdminDashboard() {
       clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeTab, unseenReportsStorageKey]);
+  }, [activeTab, unseenReportsStorageKey, studentAccountPage, pendingAccountPage]);
 
   const handleToggleNotifications = async () => {
     const opening = !notifOpen;
@@ -1396,14 +1420,34 @@ export default function AdminDashboard() {
     showToast(`Section renamed to "${result.section.section}".`);
   };
 
+  const refreshStudentAccountPages = async () => {
+    const [accounts, pending] = await Promise.all([
+      getStudentAccounts(studentAccountPage, ACCOUNT_PAGE_SIZE),
+      getPendingStudentAccounts(pendingAccountPage, ACCOUNT_PAGE_SIZE),
+    ]);
+    setStudentAccounts(accounts.accounts);
+    setHasMoreStudentAccounts(accounts.hasMoreAccounts);
+    setPendingAccounts(pending.accounts);
+    setHasMorePendingAccounts(pending.hasMore);
+    setPendingAccountCount(await getPendingStudentAccountCount());
+    setStudentAccountsError("");
+    setPendingAccountsError("");
+    setStudentAccountsLoading(false);
+    if (studentAccountPage > 0 && accounts.accounts.length === 0) {
+      setStudentAccountPage((page) => page - 1);
+    }
+    if (pendingAccountPage > 0 && pending.accounts.length === 0) {
+      setPendingAccountPage((page) => page - 1);
+    }
+  };
+
   const handleApproveAccount = async (id, name) => {
     try {
       await approveStudentAccount(id);
-      const accounts = await getStudentAccounts();
-      setStudentAccounts(accounts);
-      setPendingAccountCount(accounts.filter((student) => !student.approved).length);
+      await refreshStudentAccountPages();
       showToast(`${name}'s account has been confirmed. They can now log in.`);
     } catch (err) {
+      setStudentAccountsError(err.message);
       showToast(`Could not approve ${name}: ${err.message}`, "error");
     }
   };
@@ -1426,11 +1470,10 @@ export default function AdminDashboard() {
     if (!window.confirm(`Decline and remove "${name}"'s registration? This cannot be undone.`)) return;
     try {
       await declineStudentAccount(id);
-      const accounts = await getStudentAccounts();
-      setStudentAccounts(accounts);
-      setPendingAccountCount(accounts.filter((student) => !student.approved).length);
+      await refreshStudentAccountPages();
       showToast(`${name}'s registration was declined.`);
     } catch (error) {
+      setStudentAccountsError(error.message);
       showToast(`Could not decline ${name}: ${error.message}`, "error");
     }
   };
@@ -2809,15 +2852,27 @@ export default function AdminDashboard() {
               <div className="title-group" style={{ marginBottom: 20 }}>
                 <h3>Account Confirmations</h3>
                 <p className="panel-subtitle">
-                  New student sign-ups land here after email verification — approve or decline before they can log in.
+                  Verified student sign-ups land here — approve or decline before they can log in.
                 </p>
               </div>
 
-              {pendingAccounts.length === 0 ? (
+              {studentAccountsError && (
+                <p style={{ color: "#b91c1c", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 8, fontSize: 12.5, padding: "10px 12px", fontWeight: 600 }}>
+                  Couldn't load student accounts: {studentAccountsError}
+                </p>
+              )}
+              {pendingAccountsError && (
+                <p style={{ color: "#b91c1c", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 8, fontSize: 12.5, padding: "10px 12px", fontWeight: 600 }}>
+                  Couldn't load the approval queue: {pendingAccountsError}
+                </p>
+              )}
+              {studentAccountsLoading && pendingAccounts.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 13, padding: "8px 0 4px" }}>Loading student accounts…</p>
+              ) : !pendingAccountsError && pendingAccounts.length === 0 && !hasMorePendingAccounts ? (
                 <p style={{ color: "#94a3b8", fontSize: 13, padding: "8px 0 4px" }}>
                   No accounts waiting for admin approval right now.
                 </p>
-              ) : (
+              ) : pendingAccounts.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {pendingAccounts.map((s) => (
                     <div key={s.id} style={{
@@ -2838,11 +2893,7 @@ export default function AdminDashboard() {
                           <span>{s.email}</span>
                           <span>LRN {s.lrn || "—"}</span>
                           <span>{s.grade || "—"} · {s.section || "—"}</span>
-                          <span>{s.age || "—"} yrs old{s.sex ? ` · ${s.sex}` : ""}</span>
                           <span>Registered {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
-                          <span style={{ color: s.hasStudentIdFront && s.hasStudentIdBack ? "#15803d" : "#b91c1c", fontWeight: 700 }}>
-                            ID photos: {s.hasStudentIdFront && s.hasStudentIdBack ? "front and back uploaded" : "missing"}
-                          </span>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
@@ -2877,23 +2928,42 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              ) : null}
+              {(pendingAccountPage > 0 || hasMorePendingAccounts) && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, fontSize: 12, color: "#64748b" }}>
+                  <span>Pending approvals · Page {pendingAccountPage + 1}</span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="read-btn tiny" disabled={pendingAccountPage === 0} onClick={() => setPendingAccountPage((page) => page - 1)}>Previous</button>
+                    <button className="read-btn tiny" disabled={!hasMorePendingAccounts} onClick={() => setPendingAccountPage((page) => page + 1)}>Next</button>
+                  </div>
+                </div>
               )}
             </div>
 
             <div className="card-panel">
               <div className="title-group" style={{ marginBottom: 12 }}>
                 <h3>All Student Accounts</h3>
-                <p className="panel-subtitle">{studentAccounts.length} account{studentAccounts.length !== 1 ? "s" : ""} total</p>
+                <p className="panel-subtitle">
+                  Verified student profiles, including pending and approved accounts.
+                </p>
               </div>
-              {studentAccounts.length === 0 ? (
+              {studentAccountsLoading && studentAccounts.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                  Loading student accounts…
+                </p>
+              ) : studentAccountsError && studentAccounts.length === 0 ? (
+                <p style={{ color: "#b91c1c", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                  Student accounts could not be loaded. Check the error above and try again.
+                </p>
+              ) : studentAccounts.length === 0 ? (
                 <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-                  No student accounts yet.
+                  No verified student accounts yet. Sign-ups awaiting email verification are listed above.
                 </p>
               ) : (
                 <div className="table-container">
                   <table className="cases-table compact">
                     <thead>
-                      <tr><th>Name</th><th>Email</th><th>LRN</th><th>Grade</th><th>Section</th><th>Status</th><th></th></tr>
+                      <tr><th>Name</th><th>Email</th><th>LRN</th><th>Grade</th><th>Section</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                       {studentAccounts.map((s) => (
@@ -2908,15 +2978,19 @@ export default function AdminDashboard() {
                               {s.approved ? "Approved" : "Pending"}
                             </span>
                           </td>
-                          <td>
-                            {!s.approved && (
-                              <button className="read-btn tiny" onClick={() => handleApproveAccount(s.id, s.name)}>Approve</button>
-                            )}
-                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+              {(studentAccountPage > 0 || hasMoreStudentAccounts) && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, fontSize: 12, color: "#64748b" }}>
+                  <span>Student accounts · Page {studentAccountPage + 1}</span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="read-btn tiny" disabled={studentAccountPage === 0} onClick={() => setStudentAccountPage((page) => page - 1)}>Previous</button>
+                    <button className="read-btn tiny" disabled={!hasMoreStudentAccounts} onClick={() => setStudentAccountPage((page) => page + 1)}>Next</button>
+                  </div>
                 </div>
               )}
             </div>

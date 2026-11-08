@@ -906,25 +906,50 @@ export async function deleteGradeSection(id) {
 }
 
 // ─── ACCOUNT CONFIRMATION API (admin approves new student registrations) ───
-export async function getStudentAccounts() {
+export async function getStudentAccounts(page = 0, pageSize = 25) {
+  const accountColumns = "id,name,email,lrn,grade,section,approved,created_at";
   const { data, error } = await supabase.from("students")
-    .select("id,name,email,lrn,age,sex,grade,section,approved,created_at,student_id_front_path,student_id_back_path")
-    .order("created_at", { ascending: false });
+    .select(accountColumns)
+    .order("created_at", { ascending: false })
+    .range(page * pageSize, (page + 1) * pageSize);
   if (error) throw error;
-  return (data || []).map((student) => ({
-    id: student.id,
-    name: student.name,
-    email: student.email,
-    lrn: student.lrn,
-    age: student.age,
-    sex: student.sex,
-    grade: student.grade,
-    section: student.section,
-    approved: student.approved,
-    created_at: student.created_at,
-    hasStudentIdFront: !!student.student_id_front_path,
-    hasStudentIdBack: !!student.student_id_back_path,
-  }));
+  const accountRows = data || [];
+  return {
+    accounts: accountRows.slice(0, pageSize).map((student) => ({
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      lrn: student.lrn,
+      grade: student.grade,
+      section: student.section,
+      approved: student.approved,
+    })),
+    hasMoreAccounts: accountRows.length > pageSize,
+  };
+}
+
+export async function getPendingStudentAccounts(page = 0, pageSize = 25) {
+  const pendingColumns = "id,name,email,lrn,grade,section,approved,created_at";
+  const { data, error } = await supabase.from("students")
+    .select(pendingColumns)
+    .eq("approved", false)
+    .order("created_at", { ascending: false })
+    .range(page * pageSize, (page + 1) * pageSize);
+  if (error) throw error;
+  const pendingRows = data || [];
+  return {
+    accounts: pendingRows.slice(0, pageSize).map((student) => ({
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      lrn: student.lrn,
+      grade: student.grade,
+      section: student.section,
+      approved: student.approved,
+      created_at: student.created_at,
+    })),
+    hasMore: pendingRows.length > pageSize,
+  };
 }
 
 export async function getPendingStudentAccountCount() {
