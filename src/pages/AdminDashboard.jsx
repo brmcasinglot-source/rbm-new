@@ -22,7 +22,7 @@ import {
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen, Sparkles,
   Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database,
-  History,
+  History, ClipboardList,
 } from "lucide-react";
 
 import {
@@ -34,6 +34,7 @@ import {
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
+  getStudentOffenseRecords, downloadStudentOffenseRecords,
   getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
   saveReportConferenceFindings,
   getUnconfirmedSignups, resendConfirmationEmail,
@@ -104,6 +105,13 @@ function formatReportNumber(id) {
   return Number.isInteger(numericId) && numericId >= 0
     ? `CNHS-${String(numericId).padStart(4, "0")}`
     : String(id ?? "—");
+}
+
+function formatOffenseAction(value) {
+  const action = String(value || "").trim();
+  if (/^(yes|true)$/i.test(action)) return "Intervention recorded";
+  if (/^(no|false)$/i.test(action)) return "No intervention recorded";
+  return action || "—";
 }
 
 /** Returns last N months as { label, count } from reports */
@@ -201,6 +209,14 @@ const TYPE_COLORS = {
 const PRIORITY_ACCENT = { High: "#ef4444", Medium: "#f59e0b", Low: "#16a34a" };
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
 const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
+const EXPORT_OFFENSE_TYPES = ["Verbal", "Physical", "Social", "Cyber"];
+const EXPORT_OFFENSE_LEVELS = [
+  ["", "All offenses"],
+  ["1", "First offense"],
+  ["2", "Second offense"],
+  ["3", "Third offense"],
+  ["4+", "Subsequent offenses"],
+];
 
 function nextExportSelection(selected, value, options) {
   return selected === null
@@ -373,10 +389,22 @@ export default function AdminDashboard() {
   const [exportMonthFilter, setExportMonthFilter] = useState(null);
   const [exportYearFilter, setExportYearFilter] = useState(null);
   const [analyticsView, setAnalyticsView] = useState("overview");
-  const [exportReportsSelected, setExportReportsSelected] = useState(true);
+  const [exportDataset, setExportDataset] = useState("incidents");
+  const exportReportsSelected = exportDataset === "incidents";
+  const exportOffensesSelected = exportDataset === "offenses";
   const [exportSearch, setExportSearch] = useState("");
+  const [exportOffenseFilters, setExportOffenseFilters] = useState({
+    search: "", grade: "", section: "", offenseNumber: "", type: "",
+    dateFrom: "", dateTo: "", action: "", sort: "recent",
+  });
+  const [exportOffensePreview, setExportOffensePreview] = useState({
+    records: [], total: 0, options: { grades: [], sections: [], actions: [] },
+  });
+  const [exportOffenseLoading, setExportOffenseLoading] = useState(false);
+  const [exportOffenseError, setExportOffenseError] = useState("");
   const [exportFormat, setExportFormat] = useState("xlsx");
   const [exportError, setExportError] = useState("");
+  const exportOffenseRequestRef = useRef(0);
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const trendCanvasRef = useRef(null);
@@ -429,6 +457,34 @@ export default function AdminDashboard() {
   const profileRef = useRef(null);
   const notifRef   = useRef(null);
   const adminContentRef = useRef(null);
+
+  useEffect(() => {
+    if (!exportOffensesSelected) return undefined;
+    const requestId = ++exportOffenseRequestRef.current;
+    let active = true;
+    setExportOffenseLoading(true);
+    setExportOffenseError("");
+    setExportOffensePreview((current) => ({ ...current, records: [], total: 0 }));
+    const timer = window.setTimeout(() => {
+      getStudentOffenseRecords({ ...exportOffenseFilters, limit: 10, offset: 0 })
+        .then((result) => {
+          if (!active || requestId !== exportOffenseRequestRef.current) return;
+          setExportOffensePreview(result);
+        })
+        .catch((error) => {
+          if (active && requestId === exportOffenseRequestRef.current) {
+            setExportOffenseError(error.message || "Could not load student offense records.");
+          }
+        })
+        .finally(() => {
+          if (active && requestId === exportOffenseRequestRef.current) setExportOffenseLoading(false);
+        });
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [exportOffensesSelected, exportOffenseFilters]);
 
   useEffect(() => {
     if (activeTab !== "dashboard" || conferencePanelPinned) return undefined;
@@ -728,6 +784,22 @@ export default function AdminDashboard() {
         .filter((report) => exportGradeFilter.includes(report.reporterGrade) && report.reporterSection)
         .map((report) => report.reporterSection),
     ])].sort((a, b) => a.localeCompare(b));
+  const exportOffenseSections = [...new Set(exportOffensePreview.options.sections
+    .filter((item) => !exportOffenseFilters.grade || item.grade === exportOffenseFilters.grade)
+    .map((item) => item.section)
+  )].sort((a, b) => a.localeCompare(b));
+  const activeIncidentExportFilters = [
+    exportSearch.trim(),
+    exportTypes !== null,
+    exportStatuses !== null,
+    exportGradeFilter !== null,
+    exportGenderFilter !== null,
+    exportSectionFilter !== null,
+    exportMonthFilter !== null,
+    exportYearFilter !== null,
+  ].filter(Boolean).length;
+  const activeOffenseExportFilters = Object.entries(exportOffenseFilters)
+    .filter(([key, value]) => key !== "sort" && Boolean(value)).length;
   const setExportGrades = (update) => {
     setExportGradeFilter(update);
     setExportSectionFilter(null);
@@ -1530,16 +1602,50 @@ export default function AdminDashboard() {
     setExportYearFilter(null);
   };
 
+  const clearExportOffenseFilters = () => {
+    setExportOffenseFilters({
+      search: "", grade: "", section: "", offenseNumber: "", type: "",
+      dateFrom: "", dateTo: "", action: "", sort: "recent",
+    });
+  };
+
+  const loadAllFilteredOffenses = async () => {
+    const records = [];
+    let total = 1;
+    while (records.length < total) {
+      const result = await getStudentOffenseRecords({
+        ...exportOffenseFilters,
+        limit: 100,
+        offset: records.length,
+      });
+      total = result.total;
+      const previousCount = records.length;
+      records.push(...result.records);
+      if (records.length >= total) break;
+      if (records.length === previousCount || records.length >= 100000) {
+        throw new Error("Could not retrieve all matching student offense records. Adjust the filters and try again.");
+      }
+    }
+    return records;
+  };
+
   const handleExport = async () => {
-    if (!exportReportsSelected || exportFilteredIncidents.length === 0) return;
+    if (exportOffensesSelected && exportOffenseError) return;
+    if ((exportReportsSelected && exportFilteredIncidents.length === 0)
+      || (exportOffensesSelected && exportOffensePreview.total === 0)) return;
     setExportError("");
     try {
-      if (exportFormat === "xlsx") await downloadXLSX(exportFilteredIncidents);
-      else if (exportFormat === "docx") await downloadDOCX(exportFilteredIncidents);
-      else downloadCSV(exportFilteredIncidents);
+      if (exportReportsSelected) {
+        if (exportFormat === "xlsx") await downloadXLSX(exportFilteredIncidents);
+        else if (exportFormat === "docx") await downloadDOCX(exportFilteredIncidents);
+        else downloadCSV(exportFilteredIncidents);
+      } else {
+        const offenseRecords = await loadAllFilteredOffenses();
+        await downloadStudentOffenseRecords(offenseRecords, exportFormat);
+      }
     } catch (error) {
-      console.error("Failed to export reports:", error);
-      setExportError("The export could not be created. Please try again.");
+      console.error("Failed to export selected data:", error);
+      setExportError(error.message || "The export could not be created. Please try again.");
     }
   };
 
@@ -2134,34 +2240,81 @@ export default function AdminDashboard() {
                   <div className="analytics-export-page-icon"><Database size={22} /></div>
                   <div>
                     <h2>Export data</h2>
-                    <p>Prepare and download incident reports from your system.</p>
+                    <p>Prepare and download incident reports and student offense records.</p>
                   </div>
                 </div>
                 <section className="analytics-export-card">
                   <div className="analytics-export-section-heading">
                     <span className="analytics-export-step">1</span>
-                    <div><h3>Choose data</h3><p>Select which system data to include.</p></div>
+                    <div><h3>Choose a dataset</h3><p>Select the records you want to export.</p></div>
                   </div>
-                  <label className={`analytics-export-dataset${exportReportsSelected ? " selected" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={exportReportsSelected}
-                      onChange={(event) => setExportReportsSelected(event.target.checked)}
-                    />
-                    <span className="analytics-export-dataset-icon"><FileText size={19} /></span>
-                    <span className="analytics-export-dataset-copy">
-                      <strong>Incident reports</strong>
-                      <small>Submitted reports, statuses, dates, and available student details</small>
-                    </span>
-                    <span className="analytics-export-dataset-count">{incidents.length} records</span>
-                  </label>
-                  <p className="analytics-export-note">Only data currently available in this system is shown here.</p>
+                  <div className="analytics-export-dataset-options" role="radiogroup" aria-label="Export dataset">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={exportReportsSelected}
+                      className={`analytics-export-dataset${exportReportsSelected ? " selected" : ""}`}
+                      onClick={() => {
+                        setExportDataset("incidents");
+                        setExportError("");
+                      }}
+                    >
+                      <span className="analytics-export-dataset-icon"><FileText size={19} /></span>
+                      <span className="analytics-export-dataset-copy">
+                        <strong>Incident reports</strong>
+                        <small>Submitted reports, statuses, dates, and reporter details</small>
+                      </span>
+                      <span className="analytics-export-dataset-count">{incidents.length} records</span>
+                      <span className="analytics-export-dataset-check" aria-hidden="true">
+                        {exportReportsSelected && <CheckCircle size={14} />}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={exportOffensesSelected}
+                      className={`analytics-export-dataset${exportOffensesSelected ? " selected" : ""}`}
+                      onClick={() => {
+                        setExportDataset("offenses");
+                        setExportError("");
+                      }}
+                    >
+                      <span className="analytics-export-dataset-icon"><ClipboardList size={19} /></span>
+                      <span className="analytics-export-dataset-copy">
+                        <strong>Student offense records</strong>
+                        <small>Student details, offense history, actions, and follow-up</small>
+                      </span>
+                      <span className="analytics-export-dataset-count">
+                        {exportOffenseLoading ? "Loading…" : `${exportOffensePreview.total} records`}
+                      </span>
+                      <span className="analytics-export-dataset-check" aria-hidden="true">
+                        {exportOffensesSelected && <CheckCircle size={14} />}
+                      </span>
+                    </button>
+                  </div>
                 </section>
 
                 <section className="analytics-export-card">
                   <div className="analytics-export-section-heading analytics-export-heading-row">
                     <span className="analytics-export-step">2</span>
-                    <div><h3>Filter records</h3><p>Narrow the incident reports included in your export.</p></div>
+                    <div>
+                      <h3>Filters <span className="analytics-export-optional">(optional)</span></h3>
+                      <p>Leave unchanged to include all available {exportReportsSelected ? "incident reports" : "student offense records"}.</p>
+                    </div>
+                  </div>
+                  <details className="analytics-export-advanced-filters">
+                    <summary>
+                      <span>{exportReportsSelected ? "Incident report filters" : "Student offense filters"}</span>
+                      <small>
+                        {exportReportsSelected
+                          ? activeIncidentExportFilters ? `${activeIncidentExportFilters} active` : "None active"
+                          : activeOffenseExportFilters ? `${activeOffenseExportFilters} active` : "None active"}
+                      </small>
+                    </summary>
+                    {exportReportsSelected ? (
+                      <>
+                  <div className="analytics-export-filter-toolbar">
+                    <span>Refine your incident report results</span>
                     <button type="button" className="analytics-export-clear-btn" onClick={clearExportFilters}>Clear filters</button>
                   </div>
                   <label className="analytics-export-search">
@@ -2207,18 +2360,128 @@ export default function AdminDashboard() {
                     </details>
                   </div>
                   <div className="analytics-export-preview-count">
-                    Showing <strong>{exportReportsSelected ? exportFilteredIncidents.length : 0}</strong> of {incidents.length} incident reports
+                    Showing <strong>{exportFilteredIncidents.length}</strong> of {incidents.length} incident reports
                   </div>
+                      </>
+                    ) : (
+                    <div className="analytics-export-offense-filters">
+                      <div className="analytics-export-section-heading analytics-export-heading-row">
+                        <div>
+                          <p>Filter by student, grade, offense type, action, or date.</p>
+                        </div>
+                        <button type="button" className="analytics-export-clear-btn" onClick={clearExportOffenseFilters}>
+                          Clear filters
+                        </button>
+                      </div>
+                      <label className="analytics-export-search">
+                        <Search size={16} />
+                        <input
+                          type="search"
+                          value={exportOffenseFilters.search}
+                          onChange={(event) => setExportOffenseFilters((current) => ({ ...current, search: event.target.value }))}
+                          placeholder="Search student name, student ID/LRN, or incident report ID"
+                        />
+                      </label>
+                      <div className="analytics-export-offense-filter-grid">
+                        <label>
+                          Grade level
+                          <select
+                            value={exportOffenseFilters.grade}
+                            onChange={(event) => setExportOffenseFilters((current) => ({
+                              ...current, grade: event.target.value, section: "",
+                            }))}
+                          >
+                            <option value="">All grades</option>
+                            {exportOffensePreview.options.grades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Section
+                          <select
+                            value={exportOffenseFilters.section}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, section: event.target.value }))}
+                          >
+                            <option value="">All sections</option>
+                            {exportOffenseSections.map((section) => <option key={section} value={section}>{section}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Offense number
+                          <select
+                            value={exportOffenseFilters.offenseNumber}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, offenseNumber: event.target.value }))}
+                          >
+                            {EXPORT_OFFENSE_LEVELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Bullying type
+                          <select
+                            value={exportOffenseFilters.type}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, type: event.target.value }))}
+                          >
+                            <option value="">All types</option>
+                            {EXPORT_OFFENSE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Date recorded from
+                          <input
+                            type="date"
+                            value={exportOffenseFilters.dateFrom}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, dateFrom: event.target.value }))}
+                          />
+                        </label>
+                        <label>
+                          Date recorded to
+                          <input
+                            type="date"
+                            value={exportOffenseFilters.dateTo}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, dateTo: event.target.value }))}
+                          />
+                        </label>
+                        <label>
+                          Disciplinary action
+                          <select
+                            value={exportOffenseFilters.action}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, action: event.target.value }))}
+                          >
+                            <option value="">All actions</option>
+                            {exportOffensePreview.options.actions.map((action) => (
+                              <option key={action} value={action}>{action === "yes" ? "Intervention recorded" : action === "no" ? "No intervention recorded" : action}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Sort by
+                          <select
+                            value={exportOffenseFilters.sort}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, sort: event.target.value }))}
+                          >
+                            <option value="recent">Most recent offense</option>
+                            <option value="oldest">Oldest offense</option>
+                            <option value="name_asc">Student name (A–Z)</option>
+                            <option value="name_desc">Student name (Z–A)</option>
+                            <option value="most_offenses">Highest number of offenses</option>
+                            <option value="least_offenses">Lowest number of offenses</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="analytics-export-preview-count">
+                        Showing <strong>{exportOffensePreview.records.length}</strong> of {exportOffensePreview.total} matching student offense records
+                      </div>
+                      {exportOffenseError && <p className="analytics-export-error" role="alert">{exportOffenseError}</p>}
+                    </div>
+                    )}
+                  </details>
                 </section>
 
                 <section className="analytics-export-card analytics-export-records">
                   <div className="analytics-export-records-heading">
-                    <div><h3>Export preview</h3><p>Showing up to 10 matching reports. Anonymous reporter details remain hidden.</p></div>
-                    <span>{exportReportsSelected ? exportFilteredIncidents.length : 0} total</span>
+                    <div><h3>Preview</h3><p>First 10 records matching your selection.</p></div>
+                    <span>{exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} total</span>
                   </div>
-                  {!exportReportsSelected || exportFilteredIncidents.length === 0 ? (
-                    <div className="analytics-export-empty">No reports match your selection. Choose the incident reports dataset or adjust your filters.</div>
-                  ) : (
+                  {exportReportsSelected && exportFilteredIncidents.length > 0 && (
                     <div className="analytics-export-table-wrap">
                       <table className="analytics-export-table">
                         <thead><tr><th>Report No.</th><th>Date</th><th>Type</th><th>Location</th><th>Status</th><th>Reporter</th><th>Reporter role</th></tr></thead>
@@ -2238,12 +2501,48 @@ export default function AdminDashboard() {
                       </table>
                     </div>
                   )}
+                  {exportOffensesSelected && (
+                    exportOffenseLoading ? (
+                      <div className="analytics-export-empty">Loading matching student offense records…</div>
+                    ) : exportOffenseError ? null : exportOffensePreview.records.length > 0 ? (
+                      <div className="analytics-export-table-wrap">
+                        <table className="analytics-export-table">
+                          <thead>
+                            <tr><th>Student</th><th>Student ID/LRN</th><th>Grade/Section</th><th>Offense</th><th>Incident</th><th>Action</th><th>Follow-up</th><th>Date recorded</th></tr>
+                          </thead>
+                          <tbody>
+                            {exportOffensePreview.records.map((record) => (
+                              <tr key={record.id}>
+                                <td>{record.studentName || "—"}</td>
+                                <td>{record.lrn || "—"}</td>
+                                <td>{[record.grade, record.section].filter(Boolean).join(" · ") || "—"}</td>
+                                <td>#{record.offenseNumber}</td>
+                                <td>
+                                  {(record.incidentReportIds || [record.incidentReportId])
+                                    .map((id) => formatReportNumber(id)).join(", ")}
+                                  <br />{record.incidentType || "—"} · {formatConferenceDate(record.incidentDate)}
+                                </td>
+                                <td>{formatOffenseAction(record.disciplinaryAction)}</td>
+                                <td>{record.followUpStatus || "—"}{record.followUpDate ? ` · ${formatConferenceDate(record.followUpDate)}` : ""}</td>
+                                <td>{formatConferenceDate(record.reviewedAt || record.approvedAt)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="analytics-export-empty">No student offense records match the selected filters.</div>
+                    )
+                  )}
+                  {exportReportsSelected && exportFilteredIncidents.length === 0 && (
+                    <div className="analytics-export-empty">No incident reports match these filters. Adjust or clear the filters.</div>
+                  )}
                 </section>
 
                 <section className="analytics-export-card">
                   <div className="analytics-export-section-heading">
                     <span className="analytics-export-step">3</span>
-                    <div><h3>Review and export</h3><p>Choose a file format and check the matching records.</p></div>
+                    <div><h3>Export file</h3><p>Choose a format and download your filtered {exportReportsSelected ? "incident reports" : "student offense records"}.</p></div>
                   </div>
                   <div className="analytics-export-format-options" role="radiogroup" aria-label="Export format">
                     {[
@@ -2269,8 +2568,20 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                   <div className="analytics-export-action-row">
-                    <span>{exportReportsSelected ? exportFilteredIncidents.length : 0} report{exportFilteredIncidents.length === 1 ? "" : "s"} ready to export</span>
-                    <button type="button" className="analytics-export-download" onClick={handleExport} disabled={!exportReportsSelected || exportFilteredIncidents.length === 0}>
+                    <span>
+                      {exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} records ready
+                    </span>
+                    <button
+                      type="button"
+                      className="analytics-export-download"
+                      onClick={handleExport}
+                      disabled={
+                        exportOffenseLoading ||
+                        (exportOffensesSelected && Boolean(exportOffenseError)) ||
+                        (exportReportsSelected && exportFilteredIncidents.length === 0) ||
+                        (exportOffensesSelected && exportOffensePreview.total === 0)
+                      }
+                    >
                       <Download size={16} /> Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "docx" ? "DOCS" : "CSV"}
                     </button>
                   </div>

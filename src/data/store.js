@@ -1245,3 +1245,109 @@ export async function downloadDOCX(reports) {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   );
 }
+
+export async function downloadStudentOffenseRecords(records, format) {
+  const actionDisplay = (value) => {
+    const action = String(value || "").trim();
+    if (/^(yes|true)$/i.test(action)) return "Intervention recorded";
+    if (/^(no|false)$/i.test(action)) return "No intervention recorded";
+    return action;
+  };
+  const headers = [
+    "Student Name", "Student ID/LRN", "Grade", "Section", "Offense Number",
+    "Incident Report IDs", "Bullying Type", "Incident Date", "Date Recorded",
+    "Disciplinary Action", "Follow-up Date", "Follow-up Status", "Approved By",
+  ];
+  const rows = records.map((record) => [
+    record.studentName,
+    record.lrn,
+    record.grade,
+    record.section,
+    record.offenseNumber,
+    (record.incidentReportIds || [record.incidentReportId]).map((id) => `CNHS-${String(id).padStart(4, "0")}`).join(", "),
+    record.incidentType,
+    record.incidentDate,
+    record.reviewedAt || record.approvedAt,
+    actionDisplay(record.disciplinaryAction),
+    record.followUpDate,
+    record.followUpStatus,
+    record.approvedBy,
+  ].map((value) => value == null || value === "" ? "—" : String(value)));
+  const filename = `CNHS_Student_Offense_Records_${new Date().toISOString().slice(0, 10)}`;
+
+  if (format === "csv") {
+    const escapeCell = (value) => {
+      const safeValue = /^[=+\-@]/.test(value) ? `'${value}` : value;
+      return `"${safeValue.replace(/"/g, '""')}"`;
+    };
+    const csv = [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\r\n");
+    downloadFile(`${filename}.csv`, csv, "text/csv;charset=utf-8");
+    return;
+  }
+
+  if (format === "xlsx") {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Student Offenses", {
+      pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+    });
+    worksheet.columns = headers.map((header) => ({ header, key: header, width: header === "Disciplinary Action" ? 48 : 20 }));
+    worksheet.addRows(rows);
+    worksheet.getRow(1).height = 28;
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF373085" } };
+      cell.alignment = { vertical: "middle", wrapText: true };
+    });
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell) => {
+        cell.font = { name: "Arial", size: 10, color: { argb: "FF1E293B" } };
+        cell.alignment = { vertical: "middle", wrapText: true };
+      });
+    });
+    worksheet.autoFilter = `A1:M${Math.max(1, worksheet.rowCount)}`;
+    worksheet.views = [{ state: "frozen", ySplit: 1 }];
+    workbook.creator = "CNHS Bullying & Incident Reporting System";
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadFile(
+      `${filename}.xlsx`,
+      buffer,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    return;
+  }
+
+  if (format === "docx") {
+    const { Document, HeadingLevel, Packer, Paragraph, TextRun } = await import("docx");
+    const children = [
+      new Paragraph({ text: "CNHS Student Offense Records", heading: HeadingLevel.TITLE }),
+      new Paragraph(`Generated ${new Date().toLocaleString("en-PH")} | ${records.length} matching records`),
+    ];
+    records.forEach((record, index) => {
+      const values = rows[index];
+      children.push(new Paragraph({
+        text: `${values[0]} — Offense #${values[4]}`,
+        heading: HeadingLevel.HEADING_2,
+      }));
+      headers.forEach((header, valueIndex) => {
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${header}: `, bold: true }),
+            new TextRun(values[valueIndex]),
+          ],
+        }));
+      });
+    });
+    const document = new Document({ sections: [{ children }] });
+    const blob = await Packer.toBlob(document);
+    downloadFile(
+      `${filename}.docx`,
+      blob,
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+    return;
+  }
+
+  throw new Error(`Unsupported student offense export format: ${format}`);
+}

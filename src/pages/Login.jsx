@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import logo from "../assets/logo.png";
 import cnhs from "../assets/cnhs.jpg";
 import "../styles/Login.css";
@@ -88,6 +88,8 @@ export default function Login() {
   const [regSection, setRegSection] = useState("");
   const [regStudentIdImages, setRegStudentIdImages] = useState({ front: null, back: null });
   const [processingIdImage, setProcessingIdImage] = useState(false);
+  const studentIdFileInputs = useRef({});
+  const [studentIdUploadSide, setStudentIdUploadSide] = useState(null);
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
   const resetPasswordStrength = getPasswordStrength(newPassword);
@@ -614,35 +616,100 @@ export default function Login() {
                     ].map(({ side, label }) => {
                       const image = regStudentIdImages[side];
                       return (
-                        <label className={`student-id-upload ${image ? "has-image" : ""}`} key={side}>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            capture="environment"
+                        <div className="student-id-upload-item" key={side}>
+                          <button
+                            type="button"
+                            className={`student-id-upload ${image ? "has-image" : ""}`}
                             disabled={processingIdImage || loading}
-                            onChange={(event) => {
-                              handleStudentIdImage(side, event.target.files?.[0]);
-                              event.target.value = "";
-                            }}
-                          />
-                          {image ? (
-                            <>
-                              <img src={image.dataUrl} alt={`${label} preview`} />
-                              <span>{label} — ready</span>
-                              <small>Tap to retake or choose another photo</small>
-                            </>
-                          ) : (
-                            <>
-                              <span className="student-id-upload-icon">+</span>
-                              <span>{label}</span>
-                              <small>Take a photo or choose an image</small>
-                            </>
-                          )}
-                        </label>
+                            onClick={() => setStudentIdUploadSide(side)}
+                          >
+                            {image ? (
+                              <>
+                                <img src={image.dataUrl} alt="" />
+                                <span>{label} — ready</span>
+                                <small>Tap to replace</small>
+                              </>
+                            ) : (
+                              <>
+                                <span className="student-id-upload-icon">+</span>
+                                <span>{label}</span>
+                                <small>Choose upload method</small>
+                              </>
+                            )}
+                          </button>
+                          <div className="student-id-file-inputs">
+                            <input
+                              ref={(element) => { studentIdFileInputs.current[`${side}-file`] = element; }}
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={processingIdImage || loading}
+                              onChange={(event) => {
+                                handleStudentIdImage(side, event.target.files?.[0]);
+                                event.target.value = "";
+                              }}
+                            />
+                            <input
+                              ref={(element) => { studentIdFileInputs.current[`${side}-camera`] = element; }}
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              capture="environment"
+                              disabled={processingIdImage || loading}
+                              onChange={(event) => {
+                                handleStudentIdImage(side, event.target.files?.[0]);
+                                event.target.value = "";
+                              }}
+                            />
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
                   {processingIdImage && <p className="student-id-upload-help">Preparing photo…</p>}
+                  {studentIdUploadSide && (
+                    <div className="student-id-modal-overlay" onClick={() => setStudentIdUploadSide(null)}>
+                      <section
+                        className="student-id-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="student-id-modal-title"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <h2 id="student-id-modal-title">
+                          Add {studentIdUploadSide === "front" ? "Front" : "Back"} of Student ID
+                        </h2>
+                        <p>Choose how you want to add this photo.</p>
+                        <div className="student-id-modal-actions">
+                          <button
+                            type="button"
+                            disabled={processingIdImage || loading}
+                            onClick={() => {
+                              studentIdFileInputs.current[`${studentIdUploadSide}-file`]?.click();
+                              setStudentIdUploadSide(null);
+                            }}
+                          >
+                            Open file
+                          </button>
+                          <button
+                            type="button"
+                            disabled={processingIdImage || loading}
+                            onClick={() => {
+                              studentIdFileInputs.current[`${studentIdUploadSide}-camera`]?.click();
+                              setStudentIdUploadSide(null);
+                            }}
+                          >
+                            Open camera
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="student-id-modal-cancel"
+                          onClick={() => setStudentIdUploadSide(null)}
+                        >
+                          Cancel
+                        </button>
+                      </section>
+                    </div>
+                  )}
                 </div>
                 <div className="input-group">
                   <label className="input-label">Password * (strong password required)</label>
