@@ -41,6 +41,7 @@ import {
 } from "../data/store";
 import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
 import { optimizeImageFile } from "../lib/imageOptimization";
+import { getYouTubeThumbnail } from "../lib/videoUtils";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
@@ -56,14 +57,29 @@ async function fileToDataUrl(file) {
 }
 
 async function prepareAwarenessMedia(file) {
-  const full = file.type.startsWith("image/")
-    ? await optimizeImageFile(file, { maxDimension: 1600, maxSizeBytes: 1_000_000, forceWebp: true })
-    : file;
-  const thumbnail = file.type.startsWith("image/")
-    ? await optimizeImageFile(full, { maxDimension: 400, maxSizeBytes: 120_000, forceWebp: true })
-    : full;
-  if (full.size + thumbnail.size > 1_800_000) {
-    throw new Error("The selected file is too large. Choose a smaller image or document.");
+  if (!file.type.startsWith("image/")) {
+    if (file.size > 800_000) {
+      throw new Error("Documents must be 800 KB or smaller. Compress the file or choose a smaller one.");
+    }
+    const data = await fileToDataUrl(file);
+    return { thumbnail: data, fullImage: data };
+  }
+
+  const full = await optimizeImageFile(file, {
+    maxDimension: 1280,
+    maxSizeBytes: 800_000,
+    forceWebp: true,
+  });
+  if (full.size > 800_000) {
+    throw new Error("The optimized image is still over 800 KB. Choose a smaller image.");
+  }
+  const thumbnail = await optimizeImageFile(full, {
+    maxDimension: 320,
+    maxSizeBytes: 100_000,
+    forceWebp: true,
+  });
+  if (thumbnail.size > 100_000) {
+    throw new Error("The image preview is still over 100 KB. Choose a smaller image.");
   }
   return {
     thumbnail: await fileToDataUrl(thumbnail),
@@ -2763,11 +2779,18 @@ export default function AdminDashboard() {
                     background: "#dcfce7", color: "#16a34a", border: "1.5px solid #86efac",
                   }}>{item.type}</span>
                   {item.type === "video" ? (
-                    <div style={{ marginTop: 10, borderRadius: 8, overflow: "hidden" }}>
-                      <iframe src={item.videoUrl} title={item.title} width="100%" height="120" frameBorder="0" style={{ display: "block" }} />
-                    </div>
+                    getYouTubeThumbnail(item.videoUrl) ? (
+                      <img src={getYouTubeThumbnail(item.videoUrl)} alt={`${item.title} video thumbnail`}
+                        loading="lazy" decoding="async"
+                        style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover", marginTop: 10 }} />
+                    ) : (
+                      <div style={{ minHeight: 80, marginTop: 10, borderRadius: 8, background: "#f8fafc", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
+                        Video thumbnail unavailable
+                      </div>
+                    )
                   ) : item.thumbnail ? (
                     <img src={item.thumbnail} alt={item.title}
+                      loading="lazy" decoding="async"
                       style={{ width: "100%", maxHeight: 120, borderRadius: 8, objectFit: "cover", marginTop: 10 }} />
                   ) : (
                     <div style={{ width: 40, height: 40, background: "#dcfce7", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 10, color: "#16a34a" }}>
@@ -3742,7 +3765,9 @@ export default function AdminDashboard() {
                         <>
                           <Upload size={22} color="#16a34a" style={{ marginBottom: 6 }} />
                           <p style={{ fontSize: 13, color: "#64748b", fontWeight: 600, margin: 0 }}>Click to upload image or file</p>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>JPG, PNG, PDF, DOCX accepted</span>
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                            Images are resized and compressed automatically. Images and documents must be 800 KB or smaller.
+                          </span>
                         </>
                       )}
                       <input id="a-file-input" type="file" style={{ display: "none" }}
@@ -3795,8 +3820,10 @@ export default function AdminDashboard() {
                     Tip: Use the embed URL from YouTube (Share → Embed → copy src)
                   </p>
                   {aForm.videoUrl && (
-                    <div style={{ marginTop: 10, borderRadius: 8, overflow: "hidden" }}>
-                      <iframe src={aForm.videoUrl} title="preview" width="100%" height="160" frameBorder="0" />
+                    <div style={{ marginTop: 10 }}>
+                      <a href={aForm.videoUrl} target="_blank" rel="noreferrer">
+                        Open video preview in a new tab
+                      </a>
                     </div>
                   )}
                 </div>

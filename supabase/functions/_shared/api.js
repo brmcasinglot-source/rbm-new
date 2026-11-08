@@ -185,6 +185,7 @@ async function uploadMedia(bucket, path, dataUrl) {
   const { contentType, bytes } = decodeMediaDataUrl(dataUrl);
   const { error } = await getDatabase().storage.from(bucket).upload(path, bytes, {
     contentType,
+    cacheControl: "31536000",
     upsert: false,
   });
   if (error) throw error;
@@ -1026,6 +1027,18 @@ async function runQuery(body, req) {
     if (table === "awareness_content") {
       values = { ...(values || {}) };
       const sharedMedia = values.thumbnailData && values.thumbnailData === values.fullImageData;
+      if (typeof values.fullImageData === "string" && values.fullImageData.startsWith("data:")) {
+        const { bytes } = decodeMediaDataUrl(values.fullImageData);
+        if (bytes.length > 800_000) {
+          throw Object.assign(new Error("Awareness files must be 800 KB or smaller after optimization."), { status: 413 });
+        }
+      }
+      if (!sharedMedia && typeof values.thumbnailData === "string" && values.thumbnailData.startsWith("data:")) {
+        const { bytes } = decodeMediaDataUrl(values.thumbnailData);
+        if (bytes.length > 100_000) {
+          throw Object.assign(new Error("Awareness thumbnails must be 100 KB or smaller."), { status: 413 });
+        }
+      }
       for (const [source, destination] of [["thumbnailData", "thumbnail_path"], ["fullImageData", "full_image_path"]]) {
         if (source === "fullImageData" && sharedMedia && values.thumbnail_path) {
           values.full_image_path = values.thumbnail_path;
@@ -1071,6 +1084,18 @@ async function runQuery(body, req) {
         if (!Object.hasOwn(values, "full_image_path")) values.full_image_path = existingRows[0].full_image_path;
       }
       const sharedMedia = values.thumbnailData && values.thumbnailData === values.fullImageData;
+      if (typeof values.fullImageData === "string" && values.fullImageData.startsWith("data:")) {
+        const { bytes } = decodeMediaDataUrl(values.fullImageData);
+        if (bytes.length > 800_000) {
+          throw Object.assign(new Error("Awareness files must be 800 KB or smaller after optimization."), { status: 413 });
+        }
+      }
+      if (!sharedMedia && typeof values.thumbnailData === "string" && values.thumbnailData.startsWith("data:")) {
+        const { bytes } = decodeMediaDataUrl(values.thumbnailData);
+        if (bytes.length > 100_000) {
+          throw Object.assign(new Error("Awareness thumbnails must be 100 KB or smaller."), { status: 413 });
+        }
+      }
       for (const [source, destination] of [["thumbnailData", "thumbnail_path"], ["fullImageData", "full_image_path"]]) {
         if (source === "fullImageData" && sharedMedia && values.thumbnail_path) {
           values.full_image_path = values.thumbnail_path;

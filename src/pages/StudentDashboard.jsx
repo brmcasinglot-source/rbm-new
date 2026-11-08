@@ -24,6 +24,7 @@ import {
 import { translateStudentUI } from "../lib/studentLocale";
 import { signOut } from "../lib/auth";
 import { optimizeImageFile } from "../lib/imageOptimization";
+import { getYouTubeThumbnail } from "../lib/videoUtils";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
@@ -736,12 +737,7 @@ export default function StudentDashboard() {
               ) : (
                 <div className="s-hub-grid">
                   {filteredHub.map((item) => {
-                    let ytThumb = null;
-                    if (item.type === "video" && item.videoUrl) {
-                      const match = item.videoUrl.match(/(?:embed\/|v=|vi=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-                      if (match) ytThumb = `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
-                    }
-                    const thumbSrc = item.thumbnail || ytThumb || null;
+                    const thumbSrc = item.thumbnail || (item.type === "video" ? getYouTubeThumbnail(item.videoUrl) : "") || null;
                     return (
                       <div className="s-hub-card s-hub-card-clickable" key={item.id}
                         onClick={() => openHubItem(item)}>
@@ -749,7 +745,7 @@ export default function StudentDashboard() {
                           {item.type === "video" ? (
                             <>
                               {thumbSrc
-                                ? <img src={thumbSrc} alt={item.title} className="s-hub-img" />
+                                ? <img src={thumbSrc} alt={item.title} className="s-hub-img" loading="lazy" decoding="async" />
                                 : <div className="s-hub-placeholder"><Play size={36} /></div>
                               }
                               <div className="s-hub-play-overlay">
@@ -759,9 +755,9 @@ export default function StudentDashboard() {
                               </div>
                             </>
                           ) : item.fileData ? (
-                            <img src={item.fileData} alt={item.title} className="s-hub-img" />
+                            <img src={item.fileData} alt={item.title} className="s-hub-img" loading="lazy" decoding="async" />
                           ) : thumbSrc ? (
-                            <img src={thumbSrc} alt={item.title} className="s-hub-img" />
+                            <img src={thumbSrc} alt={item.title} className="s-hub-img" loading="lazy" decoding="async" />
                           ) : (
                             <div className="s-hub-placeholder">
                               {item.type === "article"     && <FileText size={32} />}
@@ -1678,12 +1674,13 @@ export default function StudentDashboard() {
             <div className="s-modal-body">
               {hubViewItem.type === "video" && hubViewItem.videoUrl && (
                 <div className="s-modal-video">
-                  <iframe src={hubViewItem.videoUrl} title={hubViewItem.title} frameBorder="0" allowFullScreen
+                  <iframe src={hubViewItem.videoUrl} title={hubViewItem.title} frameBorder="0" allowFullScreen loading="lazy"
                     style={{ width: "100%", height: "360px", borderRadius: 10 }} />
                 </div>
               )}
               {hubViewItem.fileData && (
                 <img src={hubViewItem.fileData} alt={hubViewItem.title}
+                  decoding="async"
                   style={{ width: "100%", borderRadius: 10, marginBottom: 14, objectFit: "contain", maxHeight: 360 }} />
               )}
               {hubViewItem.imageLoading && <p>Loading image…</p>}
