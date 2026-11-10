@@ -661,6 +661,94 @@ async function handleAuth(action, body, req) {
     return { evidence };
   }
 
+  if (action === "report-offense-record") {
+    const session = await getSession(req);
+    const reportId = Number(body.reportId);
+    if (!Number.isSafeInteger(reportId) || reportId < 1) {
+      throw Object.assign(new Error("Invalid report."), { status: 400 });
+    }
+    const { data: report, error: reportError } = await db.from("reports")
+      .select("id,submitted_id").eq("id", reportId).maybeSingle();
+    if (reportError) throw reportError;
+    if (!report) throw Object.assign(new Error("Report not found."), { status: 404 });
+    if (session.role !== "admin" && report.submitted_id !== session.id) {
+      throw Object.assign(new Error("You are not authorized to view this case."), { status: 403 });
+    }
+
+    try {
+      const offenseRecordColumns = "id,incident_report_id,offense_number,disciplinary_action,conference_findings,admin_remarks,reviewed_at,follow_up_date,approved_at,student_name,student_lrn,student_grade,student_section,student_id";
+      const { data: directRecords, error: directRecordsError } = await db.from("student_offense_records")
+        .select(offenseRecordColumns)
+        .eq("incident_report_id", reportId)
+        .order("offense_number", { ascending: false })
+        .order("approved_at", { ascending: false });
+      if (directRecordsError) throw directRecordsError;
+
+      const { data: reportLinks, error: reportLinksError } = await db.from("student_offense_record_reports")
+        .select("offense_record_id")
+        .eq("report_id", reportId);
+      if (reportLinksError) throw reportLinksError;
+
+      const linkedRecordIds = [...new Set((reportLinks || [])
+        .map((link) => Number(link.offense_record_id))
+        .filter((id) => Number.isSafeInteger(id) && id > 0))];
+      let linkedRecords = [];
+      if (linkedRecordIds.length) {
+        const { data, error } = await db.from("student_offense_records")
+          .select(offenseRecordColumns)
+          .in("id", linkedRecordIds)
+          .order("offense_number", { ascending: false })
+          .order("approved_at", { ascending: false });
+        if (error) throw error;
+        linkedRecords = data || [];
+      }
+
+      const allRecords = [...new Map(
+        [...(directRecords || []), ...linkedRecords].map((record) => [record.id, record])
+      ).values()].sort((a, b) =>
+        b.offense_number - a.offense_number ||
+        new Date(b.approved_at).getTime() - new Date(a.approved_at).getTime()
+      );
+
+      if (session.role === "admin") {
+        return { offenseRecord: allRecords.length ? allRecords[0] : null };
+      }
+
+      const { data: studentProfile, error: studentProfileError } = await db.from("students")
+        .select("id,name,lrn,grade,section")
+        .eq("id", session.id)
+        .maybeSingle();
+      if (studentProfileError) throw studentProfileError;
+      if (!studentProfile) {
+        return { offenseRecord: null, hasCaseFollowUp: allRecords.length > 0 };
+      }
+
+      const normalize = (value) => String(value || "").trim().toLowerCase();
+      const matchedRecord = (allRecords || []).find((record) => {
+        const sameStudentId = record.student_id === session.id;
+        const sameLrn = normalize(record.student_lrn) && normalize(record.student_lrn) === normalize(studentProfile.lrn);
+        const sameName = normalize(record.student_name) === normalize(studentProfile.name);
+        const sameGrade = normalize(record.student_grade) === normalize(studentProfile.grade);
+        const sameSection = normalize(record.student_section) === normalize(studentProfile.section);
+        return sameStudentId || sameLrn || (sameName && sameGrade && sameSection);
+      }) || null;
+
+      return {
+        offenseRecord: matchedRecord,
+        hasCaseFollowUp: !matchedRecord && allRecords.length > 0,
+      };
+    } catch (error) {
+      if (
+        error?.code === "42P01" ||
+        error?.message?.includes("does not exist") ||
+        error?.message?.includes("relation \"student_offense_records\"")
+      ) {
+        return { offenseRecord: null };
+      }
+      throw error;
+    }
+  }
+
   if (action === "notification-unread-count") {
     const session = await getSession(req);
     let query = db.from("notifications")

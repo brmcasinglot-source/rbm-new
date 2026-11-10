@@ -18,10 +18,9 @@ import {
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
   requestConferenceChange,
-  LOCATION_META, getCustomLocations, getReportDetails, getReportEvidence, getAwarenessImage, getUnreadNotificationCount,
+  LOCATION_META, getCustomLocations,   getReportDetails, getReportEvidence, getCaseOffenseRecord, getAwarenessImage, getUnreadNotificationCount,
   GRADE_OPTIONS, getGradeSections,
-} from "../data/store";
-import { translateStudentUI } from "../lib/studentLocale";
+} from "../data/store";import { translateStudentUI } from "../lib/studentLocale";
 import { signOut } from "../lib/auth";
 import { optimizeImageFile } from "../lib/imageOptimization";
 import { getYouTubeThumbnail } from "../lib/videoUtils";
@@ -177,12 +176,19 @@ export default function StudentDashboard() {
   const openCaseDetails = async (report) => {
     setCaseViewItem({ ...report, evidenceLoading: true });
     try {
-      const [details, evidence] = await Promise.all([
+      const [details, evidence, offenseResult] = await Promise.all([
         getReportDetails(report.id),
         getReportEvidence(report.id),
+        getCaseOffenseRecord(report.id),
       ]);
       setCaseViewItem((current) => current?.id === report.id
-        ? { ...details, evidence, evidenceLoading: false }
+        ? {
+          ...details,
+          evidence,
+          offenseRecord: offenseResult.offenseRecord || null,
+          hasCaseFollowUp: !!offenseResult.hasCaseFollowUp,
+          evidenceLoading: false,
+        }
         : current);
     } catch (error) {
       setCaseViewItem((current) => current?.id === report.id
@@ -1450,6 +1456,33 @@ export default function StudentDashboard() {
                   <div className="s-admin-note" style={{ marginTop: 16 }}>
                     <Lock size={12} color="var(--s-accent)" />
                     <div><strong>Note from the Prefect:</strong> {r.adminNotes}</div>
+                  </div>
+                )}
+
+                {r.offenseRecord && (
+                  <div className="s-admin-note" style={{ marginTop: 16, background: "#fef3c7", borderColor: "#fbbf24" }}>
+                    <Shield size={12} style={{ color: "#b45309" }} />
+                    <div>
+                      <strong>Official Offense Record</strong>
+                      <div style={{ marginTop: 8 }} className="s-case-detail-grid">
+                        <div><label>Offense #</label><span>#{r.offenseRecord.offense_number || r.offenseRecord.id}</span></div>
+                        <div><label>Reviewed</label><span>{r.offenseRecord.reviewed_at || "—"}</span></div>
+                        <div><label>Disciplinary Action</label><span>{r.offenseRecord.disciplinary_action || "—"}</span></div>
+                        <div><label>Follow-up</label><span>{r.offenseRecord.follow_up_date || "Not scheduled"}</span></div>
+                        <div style={{ gridColumn: "1 / -1" }}><label>Findings</label><span>{r.offenseRecord.conference_findings || r.offenseRecord.admin_remarks || "No findings recorded."}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!r.offenseRecord && r.hasCaseFollowUp && (
+                  <div className="s-admin-note" style={{ marginTop: 16 }}>
+                    <Lock size={12} color="var(--s-accent)" />
+                    <div>
+                      <strong>Case Review Update</strong>
+                      <div style={{ marginTop: 6 }}>
+                        The school has reviewed this case and recorded follow-up. Individual student offense-record details are kept private.
+                      </div>
+                    </div>
                   </div>
                 )}
 

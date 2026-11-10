@@ -387,6 +387,10 @@ export async function getReportDetails(reportId) {
   return reportRowToObj(row);
 }
 
+export async function getCaseOffenseRecord(reportId) {
+  return authRequest("report-offense-record", { reportId });
+}
+
 export async function getReportEvidence(reportId) {
   const result = await authRequest("report-evidence", { reportId });
   return result.evidence || [];
