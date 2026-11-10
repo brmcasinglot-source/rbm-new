@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1940" role="img" aria-labelledby="title description">
+  <title id="title">CNHS Bullying Reporting and Management System flowchart</title>
+  <desc id="description">Student registration and email verification, administrator account approval, student and administrator sign-in, incident report review, status notifications, and the system services that support these processes.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 10 5 0 10z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 10 5 0 10z" fill="#2563eb"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 30px; font-weight: 700; letter-spacing: .2px; }
+      .subtitle { font-size: 15px; fill: #64748b; }
+      .lane-title { font-size: 16px; font-weight: 700; letter-spacing: 1.1px; fill: #475569; }
+      .node { fill: #fff; stroke: #64748b; stroke-width: 2; }
+      .node-accent { fill: #eff6ff; stroke: #2563eb; stroke-width: 2.2; }
+      .node-soft { fill: #f8fafc; stroke: #64748b; stroke-width: 2; }
+      .decision { fill: #fff; stroke: #64748b; stroke-width: 2; }
+      .node-text { font-size: 16px; font-weight: 600; text-anchor: middle; }
+      .small { font-size: 13px; font-weight: 400; fill: #475569; text-anchor: middle; }
+      .label { font-size: 13px; font-weight: 700; fill: #334155; }
+      .line { fill: none; stroke: #334155; stroke-width: 2; marker-end: url(#arrow); }
+      .line-blue { fill: none; stroke: #2563eb; stroke-width: 2.2; marker-end: url(#arrow-blue); }
+      .line-dashed { fill: none; stroke: #64748b; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow); }
+      .service { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.7; }
+      .service-text { font-size: 15px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="1940" fill="#fff"/>
+  <text class="title" x="720" y="46" text-anchor="middle">CNHS Bullying Reporting &amp; Management System</text>
+  <text class="subtitle" x="720" y="73" text-anchor="middle">System flowchart · Student and Administrator workflows</text>
+
+  <text class="lane-title" x="105" y="385">ACCOUNT REGISTRATION</text>
+  <text class="lane-title" x="260" y="875">STUDENT WORKFLOW</text>
+  <text class="lane-title" x="930" y="786">ADMINISTRATOR WORKFLOW</text>
+
+  <!-- Connectors are placed behind the flowchart nodes. -->
+  <path class="line" d="M720 145V170"/>
+  <path class="line" d="M720 240V247"/>
+  <path class="line" d="M630 300H42V445H80"/>
+  <path class="line" d="M810 300V440H850"/>
+  <path class="line" d="M265 490V535"/>
+  <path class="line" d="M265 615V635"/>
+  <path class="line" d="M265 745V780"/>
+  <path class="line" d="M180 690H48V575H80"/>
+  <path class="line" d="M450 820H760V980H930"/>
+  <path class="line" d="M1040 470V515"/>
+  <path class="line" d="M1040 585V625"/>
+  <path class="line" d="M945 680H720V942H700"/>
+  <path class="line" d="M1135 680H1150V810"/>
+  <path class="line-blue" d="M480 985V1010"/>
+  <path class="line-blue" d="M480 1100V1140"/>
+  <path class="line" d="M700 1177H820V1375H930"/>
+  <path class="line" d="M1150 895V950"/>
+  <path class="line" d="M1150 1035V1055"/>
+  <path class="line" d="M1235 1105H1370V440H1230"/>
+  <path class="line" d="M1150 1155V1170"/>
+  <path class="line" d="M1265 1240V1267"/>
+  <path class="line" d="M1370 852H1400V1375H1370"/>
+  <path class="line-blue" d="M1150 1415V1480"/>
+  <path class="line-blue" d="M930 1525H840V1565H800"/>
+  <path class="line-blue" d="M570 1565H490"/>
+  <path class="line-blue" d="M320 1605V1620"/>
+  <path class="line" d="M235 1665H205"/>
+  <path class="line" d="M405 1665H750V1375H930"/>
+
+  <!-- Entry and account decision -->
+  <ellipse cx="720" cy="120" rx="45" ry="25" fill="#fff" stroke="#64748b" stroke-width="2"/>
+  <text class="node-text" x="720" y="126">Start</text>
+  <rect class="node-accent" x="560" y="170" width="320" height="70" rx="8"/>
+  <text class="node-text" x="720" y="199">
+    <tspan x="720">Open the CNHS system</tspan>
+    <tspan class="small" x="720" dy="21">Public awareness page / login</tspan>
+  </text>
+  <polygon class="decision" points="720,247 810,300 720,353 630,300"/>
+  <text class="node-text" x="720" y="296">
+    <tspan x="720">Has an</tspan>
+    <tspan x="720" dy="20">account?</tspan>
+  </text>
+  <text class="label" x="55" y="288">No</text>
+  <text class="label" x="817" y="288">Yes</text>
+
+  <!-- Student registration -->
+  <rect class="node" x="80" y="400" width="370" height="90" rx="7"/>
+  <text class="node-text" x="265" y="431">
+    <tspan x="265">Register as a student</tspan>
+    <tspan class="small" x="265" dy="21">Profile details + front/back student ID</tspan>
+  </text>
+  <rect class="node" x="80" y="535" width="370" height="80" rx="7"/>
+  <text class="node-text" x="265" y="566">
+    <tspan x="265">Verify email with 6-digit code</tspan>
+    <tspan class="small" x="265" dy="21">Code is sent to the registered email</tspan>
+  </text>
+  <polygon class="decision" points="265,635 350,690 265,745 180,690"/>
+  <text class="node-text" x="265" y="696">Code valid?</text>
+  <text class="label" x="151" y="678">No · retry</text>
+  <text class="label" x="273" y="769">Yes</text>
+  <rect class="node-soft" x="80" y="780" width="370" height="80" rx="7"/>
+  <text class="node-text" x="265" y="812">
+    <tspan x="265">Await administrator approval</tspan>
+    <tspan class="small" x="265" dy="21">Account cannot sign in until approved</tspan>
+  </text>
+
+  <!-- Sign in and route by role -->
+  <rect class="node-accent" x="850" y="400" width="380" height="70" rx="8"/>
+  <text class="node-text" x="1040" y="442">Sign in with email and password</text>
+  <rect class="node" x="850" y="515" width="380" height="70" rx="7"/>
+  <text class="node-text" x="1040" y="544">
+    <tspan x="1040">Verify credentials and account session</tspan>
+    <tspan class="small" x="1040" dy="20">Unapproved student accounts are denied</tspan>
+  </text>
+  <polygon class="decision" points="1040,625 1135,680 1040,735 945,680"/>
+  <text class="node-text" x="1040" y="686">User role?</text>
+  <text class="label" x="745" y="666">Student</text>
+  <text class="label" x="1158" y="666">Admin</text>
+
+  <!-- Role dashboards -->
+  <rect class="node-accent" x="260" y="900" width="440" height="85" rx="8"/>
+  <text class="node-text" x="480" y="930">
+    <tspan x="480">Student dashboard</tspan>
+    <tspan class="small" x="480" dy="22">Awareness resources · reports · notifications</tspan>
+  </text>
+  <rect class="node-accent" x="930" y="810" width="440" height="85" rx="8"/>
+  <text class="node-text" x="1150" y="840">
+    <tspan x="1150">Administrator dashboard</tspan>
+    <tspan class="small" x="1150" dy="22">Accounts · cases · content · conferences</tspan>
+  </text>
+
+  <!-- Student report workflow -->
+  <rect class="node" x="260" y="1010" width="440" height="90" rx="7"/>
+  <text class="node-text" x="480" y="1041">
+    <tspan x="480">Complete an incident report</tspan>
+    <tspan class="small" x="480" dy="21">Anonymous option · incident details · evidence</tspan>
+  </text>
+  <rect class="node" x="260" y="1140" width="440" height="75" rx="7"/>
+  <text class="node-text" x="480" y="1171">
+    <tspan x="480">Report saved with status: Pending</tspan>
+    <tspan class="small" x="480" dy="20">Student can follow case updates</tspan>
+  </text>
+  <text class="label" x="728" y="1165">New report</text>
+
+  <!-- Administrator review and account approval -->
+  <rect class="node" x="930" y="950" width="440" height="85" rx="7"/>
+  <text class="node-text" x="1150" y="980">
+    <tspan x="1150">Review registration and student ID</tspan>
+    <tspan class="small" x="1150" dy="21">Approve or decline the pending account</tspan>
+  </text>
+  <polygon class="decision" points="1150,1055 1235,1105 1150,1155 1065,1105"/>
+  <text class="node-text" x="1150" y="1111">Approved?</text>
+  <text class="label" x="1245" y="1098">Yes</text>
+  <text class="label" x="1160" y="1177">No</text>
+  <rect class="node-soft" x="1150" y="1170" width="230" height="70" rx="7"/>
+  <text class="node-text" x="1265" y="1198">
+    <tspan x="1265">Account declined</tspan>
+    <tspan class="small" x="1265" dy="20">Student may register again</tspan>
+  </text>
+  <ellipse cx="1265" cy="1290" rx="42" ry="23" fill="#fff" stroke="#64748b" stroke-width="2"/>
+  <text class="node-text" x="1265" y="1296">End</text>
+
+  <rect class="node" x="930" y="1335" width="440" height="80" rx="7"/>
+  <text class="node-text" x="1150" y="1367">
+    <tspan x="1150">Review and investigate the report</tspan>
+    <tspan class="small" x="1150" dy="21">Authorized administrator manages the case</tspan>
+  </text>
+  <rect class="node" x="930" y="1480" width="440" height="90" rx="7"/>
+  <text class="node-text" x="1150" y="1512">
+    <tspan x="1150">Update report status and case notes</tspan>
+    <tspan class="small" x="1150" dy="21">Pending · Under Review / Investigation · Resolved</tspan>
+  </text>
+
+  <!-- Student receives updates and follows the case -->
+  <rect class="node-accent" x="570" y="1520" width="230" height="90" rx="8"/>
+  <text class="node-text" x="685" y="1552">
+    <tspan x="685">Status notification</tspan>
+    <tspan class="small" x="685" dy="21">Sent to the student</tspan>
+  </text>
+  <rect class="node" x="150" y="1520" width="340" height="90" rx="7"/>
+  <text class="node-text" x="320" y="1552">
+    <tspan x="320">Student views case updates</tspan>
+    <tspan class="small" x="320" dy="21">Dashboard and notifications</tspan>
+  </text>
+  <polygon class="decision" points="320,1620 405,1665 320,1710 235,1665"/>
+  <text class="node-text" x="320" y="1671">Resolved?</text>
+  <text class="label" x="193" y="1657">Yes</text>
+  <text class="label" x="414" y="1658">No · continue review</text>
+  <ellipse cx="163" cy="1665" rx="42" ry="23" fill="#fff" stroke="#64748b" stroke-width="2"/>
+  <text class="node-text" x="163" y="1671">End</text>
+
+  <!-- Supporting system services -->
+  <text class="lane-title" x="720" y="1760" text-anchor="middle">SYSTEM SERVICES</text>
+  <rect class="service" x="70" y="1790" width="280" height="85" rx="8"/>
+  <text class="service-text" x="210" y="1824">
+    <tspan x="210">CNHS Web App</tspan>
+    <tspan class="small" x="210" dy="22">Student and admin dashboards</tspan>
+  </text>
+  <rect class="service" x="420" y="1790" width="280" height="85" rx="8"/>
+  <text class="service-text" x="560" y="1824">
+    <tspan x="560">Supabase Edge Function API</tspan>
+    <tspan class="small" x="560" dy="22">Authentication and app requests</tspan>
+  </text>
+  <rect class="service" x="770" y="1790" width="280" height="85" rx="8"/>
+  <text class="service-text" x="910" y="1824">
+    <tspan x="910">Supabase Database + Storage</tspan>
+    <tspan class="small" x="910" dy="22">Accounts · reports · private evidence</tspan>
+  </text>
+  <rect class="service" x="1120" y="1790" width="250" height="85" rx="8"/>
+  <text class="service-text" x="1245" y="1824">
+    <tspan x="1245">Brevo Email</tspan>
+    <tspan class="small" x="1245" dy="22">Verification and reset codes</tspan>
+  </text>
+  <path class="line" d="M350 1832H420"/>
+  <path class="line" d="M700 1832H770"/>
+  <path class="line" d="M700 1854H1120"/>
+  <text class="subtitle" x="720" y="1910" text-anchor="middle">App requests pass through the Edge Function API; email codes are delivered through Brevo.</text>
+</svg>

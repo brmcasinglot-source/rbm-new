@@ -27,6 +27,7 @@ async function upload(bucket, path, value) {
 async function uploadBytes(bucket, path, bytes, contentType) {
   const { error } = await supabase.storage.from(bucket).upload(path, bytes, {
     contentType,
+    cacheControl: "31536000",
     upsert: false,
   });
   if (error) throw error;

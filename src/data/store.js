@@ -730,11 +730,43 @@ export async function deleteReport(reportId) {
 }
 
 // ─── AWARENESS API ──────────────────────────────────────────────────────────
+const AWARENESS_CONTENT_CACHE_KEY = "cnhsAwarenessContent";
+const AWARENESS_CONTENT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function clearAwarenessContentCache() {
+  sessionStorage.removeItem(AWARENESS_CONTENT_CACHE_KEY);
+}
+
 export async function getAwarenessContent() {
+  const cachedValue = sessionStorage.getItem(AWARENESS_CONTENT_CACHE_KEY);
+  if (cachedValue) {
+    let cached;
+    try {
+      cached = JSON.parse(cachedValue);
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+    }
+
+    if (
+      Array.isArray(cached?.data) &&
+      Number.isFinite(cached.cachedAt) &&
+      Date.now() >= cached.cachedAt &&
+      Date.now() - cached.cachedAt < AWARENESS_CONTENT_CACHE_TTL_MS
+    ) {
+      return cached.data;
+    }
+    clearAwarenessContentCache();
+  }
+
   const { data, error } = await supabase.from("awareness_content")
     .select("id,type,title,desc,link,thumbnail_path,full_image_path,video_url").order("id", { ascending: false });
   if (error) throw error;
-  return (data || []).map(awarenessRowToObj);
+  const content = (data || []).map(awarenessRowToObj);
+  sessionStorage.setItem(AWARENESS_CONTENT_CACHE_KEY, JSON.stringify({
+    cachedAt: Date.now(),
+    data: content,
+  }));
+  return content;
 }
 
 export async function addAwarenessContent(item) {
@@ -749,6 +781,7 @@ export async function addAwarenessContent(item) {
   const { data, error } = await supabase.from("awareness_content").insert(row).select().single();
   if (error) throw error;
 
+  clearAwarenessContentCache();
   await addStudentNotification({ title: `New Awareness Content: '${item.title}'`, type: "hub" }, null);
   return awarenessRowToObj(data);
 }
@@ -767,11 +800,13 @@ export async function updateAwarenessContent(id, updates) {
 
   const { error } = await supabase.from("awareness_content").update(row).eq("id", id);
   if (error) throw error;
+  clearAwarenessContentCache();
 }
 
 export async function deleteAwarenessContent(id) {
   const { error } = await supabase.from("awareness_content").delete().eq("id", id);
   if (error) throw error;
+  clearAwarenessContentCache();
 }
 
 // ─── NOTIFICATIONS API ──────────────────────────────────────────────────────

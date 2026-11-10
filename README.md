@@ -1,5 +1,15 @@
 # CNHS Bullying & Incident Reporting System
 
+## System flowchart
+
+[Open the editable draw.io diagram](./system-flowchart.drawio) in diagrams.net or import it into draw.io.
+
+![CNHS Bullying Reporting & Management System flowchart](./public/system-flowchart.svg)
+
+## Entity relationship diagram
+
+[Open the editable database ERD](./system-erd.drawio) in diagrams.net or import it into draw.io.
+
 ## Development
 
 1. Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from your Supabase project.
