@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "create-admin": "node supabase/create-admin.mjs",
-    "migrate:media": "node supabase/migrate-media.mjs"
+    "migrate:media": "node supabase/migrate-media.mjs",
+    "remove:articles": "node supabase/remove-articles.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.113.0",

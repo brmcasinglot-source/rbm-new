@@ -1002,6 +1002,14 @@ async function runQuery(body, req) {
   let oldAwarenessPaths = [];
   if (operation === "select") query = query.select(columns || "*");
   else if (operation === "insert") {
+    if (
+      table === "awareness_content" &&
+      (Array.isArray(values) ? values : [values]).some((item) =>
+        typeof item?.type === "string" && item.type.trim().toLowerCase() === "article"
+      )
+    ) {
+      throw Object.assign(new Error("Articles are no longer supported in the Awareness Hub."), { status: 400 });
+    }
     if (table === "reports" && role === "student") {
       const allowedFields = new Set([
         "type", "date", "time", "location", "description", "description_lead_up",
@@ -1065,6 +1073,13 @@ async function runQuery(body, req) {
     query = query.insert(values);
     if (returning || (table === "reports" && role === "student")) query = query.select(columns || "*");
   } else if (operation === "update") {
+    if (
+      table === "awareness_content" &&
+      typeof values?.type === "string" &&
+      values.type.trim().toLowerCase() === "article"
+    ) {
+      throw Object.assign(new Error("Articles are no longer supported in the Awareness Hub."), { status: 400 });
+    }
     if (table === "students" && Object.keys(values || {}).some((key) => key !== "approved")) {
       throw Object.assign(new Error("Student profile fields cannot be changed here."), { status: 403 });
     }

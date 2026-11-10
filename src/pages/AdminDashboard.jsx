@@ -414,7 +414,7 @@ export default function AdminDashboard() {
   const [showAwarenessModal, setShowAwarenessModal] = useState(false);
   const [editingAwareness,   setEditingAwareness]   = useState(null);
   const [aForm, setAForm] = useState({
-    type: "article", title: "", desc: "", link: "#", videoUrl: "",
+    type: "infographic", title: "", desc: "", link: "#", videoUrl: "",
     thumbnailData: "", fullImageData: "", thumbnailPath: "", fullImagePath: "",
   });
   const [aFilePreview, setAFilePreview] = useState(null);
@@ -1420,7 +1420,7 @@ export default function AdminDashboard() {
   const openNewAwareness = () => {
     setEditingAwareness(null);
     setAForm({
-      type: "article", title: "", desc: "", link: "#", videoUrl: "",
+      type: "infographic", title: "", desc: "", link: "#", videoUrl: "",
       thumbnailData: "", fullImageData: "", thumbnailPath: "", fullImagePath: "",
     });
     setAFilePreview(null);
@@ -3105,7 +3105,6 @@ export default function AdminDashboard() {
                       style={{ width: "100%", maxHeight: 120, borderRadius: 8, objectFit: "cover", marginTop: 10 }} />
                   ) : (
                     <div style={{ width: 40, height: 40, background: "#dcfce7", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 10, color: "#16a34a" }}>
-                      {item.type === "article" && <FileText size={18} />}
                       {item.type === "infographic" && <Image size={18} />}
                       {item.type === "resource" && <BookOpen size={18} />}
                     </div>
@@ -4035,7 +4034,6 @@ export default function AdminDashboard() {
                 <label>Content Type</label>
                 <select className="professional-select" style={{ width: "100%" }}
                   value={aForm.type} onChange={(e) => setAForm({ ...aForm, type: e.target.value })}>
-                  <option value="article">Article</option>
                   <option value="infographic">Infographic</option>
                   <option value="video">Video</option>
                   <option value="resource">Resource</option>

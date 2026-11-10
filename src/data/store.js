@@ -737,6 +737,10 @@ function clearAwarenessContentCache() {
   sessionStorage.removeItem(AWARENESS_CONTENT_CACHE_KEY);
 }
 
+function filterAwarenessArticles(items) {
+  return items.filter((item) => String(item.type || "").toLowerCase() !== "article");
+}
+
 export async function getAwarenessContent() {
   const cachedValue = sessionStorage.getItem(AWARENESS_CONTENT_CACHE_KEY);
   if (cachedValue) {
@@ -753,7 +757,7 @@ export async function getAwarenessContent() {
       Date.now() >= cached.cachedAt &&
       Date.now() - cached.cachedAt < AWARENESS_CONTENT_CACHE_TTL_MS
     ) {
-      return cached.data;
+      return filterAwarenessArticles(cached.data);
     }
     clearAwarenessContentCache();
   }
@@ -761,7 +765,7 @@ export async function getAwarenessContent() {
   const { data, error } = await supabase.from("awareness_content")
     .select("id,type,title,desc,link,thumbnail_path,full_image_path,video_url").order("id", { ascending: false });
   if (error) throw error;
-  const content = (data || []).map(awarenessRowToObj);
+  const content = filterAwarenessArticles((data || []).map(awarenessRowToObj));
   sessionStorage.setItem(AWARENESS_CONTENT_CACHE_KEY, JSON.stringify({
     cachedAt: Date.now(),
     data: content,
@@ -770,6 +774,10 @@ export async function getAwarenessContent() {
 }
 
 export async function addAwarenessContent(item) {
+  if (String(item.type || "").toLowerCase() === "article") {
+    throw new Error("Articles are no longer supported in the Awareness Hub.");
+  }
+
   const row = {
     type: item.type, title: item.title, desc: item.desc, link: item.link,
     thumbnailData: item.thumbnailData,
@@ -787,6 +795,10 @@ export async function addAwarenessContent(item) {
 }
 
 export async function updateAwarenessContent(id, updates) {
+  if (String(updates.type || "").toLowerCase() === "article") {
+    throw new Error("Articles are no longer supported in the Awareness Hub.");
+  }
+
   const row = {};
   if (updates.type      !== undefined) row.type      = updates.type;
   if (updates.title     !== undefined) row.title     = updates.title;

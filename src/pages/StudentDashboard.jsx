@@ -715,7 +715,6 @@ export default function StudentDashboard() {
                 <div className="s-filter-chips">
                   {[
                     { key: "all",         label: "All",          emoji: "📚" },
-                    { key: "article",     label: "Articles",     emoji: "📄" },
                     { key: "infographic", label: "Infographics", emoji: "🖼️" },
                     { key: "video",       label: "Videos",       emoji: "▶️" },
                     { key: "resource",    label: "Resources",    emoji: "🔗" },
@@ -760,7 +759,6 @@ export default function StudentDashboard() {
                             <img src={thumbSrc} alt={item.title} className="s-hub-img" loading="lazy" decoding="async" />
                           ) : (
                             <div className="s-hub-placeholder">
-                              {item.type === "article"     && <FileText size={32} />}
                               {item.type === "infographic" && <Image size={32} />}
                               {item.type === "resource"    && <BookOpen size={32} />}
                             </div>
