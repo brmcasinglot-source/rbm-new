@@ -2016,6 +2016,124 @@
   margin-top: 16px;
 }
 
+.admin-proof-request {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #f1dfbd;
+  border-left: 4px solid #d99018;
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.admin-proof-request-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 3px;
+}
+
+.admin-proof-request-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: #fff2d6;
+  color: #a45b08;
+}
+
+.admin-proof-request-heading h5 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.admin-proof-request-heading p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-proof-request > label {
+  color: #374151;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-proof-request textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 9px;
+  background: #fff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-proof-request textarea:focus {
+  border-color: #d99018;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(217, 144, 24, 0.14);
+}
+
+.admin-proof-request textarea::placeholder { color: #9aa4b2; }
+
+.admin-proof-request-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.admin-proof-request-hint { max-width: 470px; }
+.admin-proof-request-count { flex: 0 0 auto; color: #94a3b8; }
+
+.admin-proof-request-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  justify-self: start;
+  min-height: 39px;
+  padding: 9px 15px;
+  border: 0;
+  border-radius: 9px;
+  background: #a45b08;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.admin-proof-request-submit:hover:not(:disabled) {
+  background: #854d0e;
+  transform: translateY(-1px);
+}
+
+.admin-proof-request-submit:focus-visible {
+  outline: 3px solid rgba(217, 144, 24, 0.25);
+  outline-offset: 2px;
+}
+
+.admin-proof-request-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .title-stack h4 {
   font-size: 15px;
   font-weight: 800;

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, FileText, Shield, BookOpen, User, Image,
   ExternalLink, Upload, HelpCircle, Lock, Bell,
   CheckCircle, Clock, AlertTriangle, ArrowUpRight, X, Paperclip,
-  Eye, Play, AlertCircle, Calendar,
+  Eye, Play, AlertCircle, Calendar, Send,
   Menu, ChevronDown, LogOut,
 } from "lucide-react";
 
@@ -1664,40 +1664,45 @@ export default function StudentDashboard() {
                   )}
                 </div>
                 {status === "More Information Requested" && (
-                  <section className="s-case-details-box" style={{ marginTop: 14, borderColor: "#fbbf24", background: "#fffbeb" }}>
-                    <h4 className="s-case-tracker-title" style={{ marginBottom: 8, color: "#92400e" }}>
-                      <Upload size={15} /> Reply with More Information or Proof
-                    </h4>
-                    <div style={{ padding: 11, marginTop: 8, borderRadius: 8, background: "#fff", border: "1px solid #fcd34d" }}>
-                      <strong style={{ display: "block", color: "#92400e", fontSize: 12, marginBottom: 5 }}>Message from the Prefect</strong>
-                      <p className="s-case-detail-text" style={{ whiteSpace: "pre-wrap" }}>
+                  <section className="s-case-details-box s-followup-box" aria-labelledby="case-follow-up-title">
+                    <div className="s-followup-heading">
+                      <div className="s-followup-heading-icon"><Upload size={17} /></div>
+                      <div>
+                        <h4 id="case-follow-up-title">Additional information requested</h4>
+                        <p>Review the request and reply with details or supporting proof.</p>
+                      </div>
+                    </div>
+                    <div className="s-followup-request">
+                      <span className="s-followup-request-label">Message from the Prefect</span>
+                      <p>
                         {r.adminNotes?.trim() || "The Prefect requested more information but did not include a message. Please contact the school for clarification."}
                       </p>
                     </div>
-                    <p className="s-case-detail-text">
-                      Write a response, attach a photo or file as proof, or do both.
-                    </p>
-                    <label htmlFor="case-follow-up-response" className="s-case-detail-label" style={{ display: "block", marginTop: 12 }}>
-                      Your response
-                    </label>
+                    <div className="s-followup-form">
+                      <div className="s-followup-field-heading">
+                        <label htmlFor="case-follow-up-response">Your response <span>(optional if attaching proof)</span></label>
+                        <span>{followUpResponse.length}/2000</span>
+                      </div>
                     <textarea
                       id="case-follow-up-response"
                       rows={3}
                       maxLength={2000}
                       value={followUpResponse}
                       onChange={(event) => setFollowUpResponse(event.target.value)}
-                      placeholder="Add the information the Prefect requested…"
-                      style={{ width: "100%", marginTop: 6, padding: 10, border: "1px solid #fcd34d", borderRadius: 8, resize: "vertical", fontSize: 13 }}
+                      placeholder="Write the information the Prefect requested…"
                     />
-                    <label className="s-submit-btn" style={{ display: "inline-flex", width: "auto", marginTop: 10, cursor: "pointer" }}>
-                      <Upload size={14} /> Attach photos or files
-                      <input type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple hidden onChange={handleFollowUpEvidencePick} />
-                    </label>
+                    <div className="s-followup-attachments">
+                      <label htmlFor="case-follow-up-files" className="s-followup-attach-btn">
+                        <Paperclip size={15} /> Attach photos or files
+                        <input id="case-follow-up-files" type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple onChange={handleFollowUpEvidencePick} />
+                      </label>
+                      <span className="s-followup-file-help">Up to 1 MB per file · 1.8 MB total</span>
+                    </div>
                     {followUpEvidenceFiles.length > 0 && (
-                      <div className="s-evidence-row">
+                      <div className="s-evidence-row s-followup-files" aria-label="Files ready to send">
                         {followUpEvidenceFiles.map((file, index) => (
                           <span className="s-file-chip" key={`${file.name}-${index}`}>
-                            <Paperclip size={11} /> {file.name}
+                            <Paperclip size={11} /> <span className="s-followup-file-name">{file.name}</span>
                             <button
                               type="button"
                               aria-label={`Remove ${file.name}`}
@@ -1710,17 +1715,19 @@ export default function StudentDashboard() {
                         ))}
                       </div>
                     )}
+                    {followUpError && <p className="s-followup-error" role="alert">{followUpError}</p>}
+                    <div className="s-followup-actions">
+                      <p>Your reply and attachments will be added to this case for review.</p>
                     <button
                       type="button"
-                      className="s-submit-btn"
+                      className="s-submit-btn s-followup-send-btn"
                       disabled={followUpSaving}
                       onClick={submitFollowUpResponse}
-                      style={{ width: "auto", marginTop: 12 }}
                     >
-                      {followUpSaving ? "Sending reply…" : "Send Reply"}
+                      {followUpSaving ? "Sending reply…" : <><Send size={15} /> Send reply</>}
                     </button>
-                    {followUpError && <p role="alert" style={{ color: "#b91c1c", fontSize: 12, marginTop: 8 }}>{followUpError}</p>}
-                    <p style={{ color: "#92400e", fontSize: 11, marginTop: 8 }}>Each file must be 1 MB or smaller. Total upload: up to 1.8 MB.</p>
+                    </div>
+                    </div>
                   </section>
                 )}
               </div>

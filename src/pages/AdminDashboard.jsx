@@ -21,8 +21,8 @@ import {
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen, Sparkles,
-  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database,
-  History, ClipboardList,
+  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database, Menu,
+  History, ClipboardList, Send,
 } from "lucide-react";
 
 import {
@@ -308,6 +308,7 @@ export default function AdminDashboard() {
   const hasLoadedInitialReportsRef = useRef(!!savedReportViewState);
   const reportRefreshRef = useRef({ refreshedAt: 0, completeList: false });
   const [activeTab,     setActiveTab]     = useState("dashboard");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [profileOpen,   setProfileOpen]   = useState(false);
   const [notifOpen,     setNotifOpen]     = useState(false);
   const [notifLoading,  setNotifLoading]  = useState(false);
@@ -325,6 +326,10 @@ export default function AdminDashboard() {
   const handleMultiFilterChange = (setter, value) => {
     setter(value);
     setRecordsPage(0);
+  };
+  const handleAdminTabSelect = (tab) => {
+    setActiveTab(tab);
+    setMobileNavOpen(false);
   };
 
   // Manage Incident modal
@@ -1710,7 +1715,7 @@ export default function AdminDashboard() {
   return (
     <div className="dashboard admin-theme" style={{ backgroundImage: `url(${bg})` }}>
       {/* ── SIDEBAR ── */}
-      <div className="sidebar">
+      <div className={`sidebar${mobileNavOpen ? " sidebar-open" : ""}`}>
         <div className="brand">
           <img src={logo} alt="logo" />
           <div>
@@ -1727,7 +1732,7 @@ export default function AdminDashboard() {
             { tab: "analytics",      icon: <FileBarChart size={16} />,    label: "Analytics" },
             { tab: "student-offenses", icon: <History size={16} />,       label: "Student Offense Records" },
           ].map(({ tab, icon, label }) => (
-            <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
+            <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => handleAdminTabSelect(tab)}>
               {icon} {label}
               {tab === "confirmations" && pendingAccountCount > 0 && (
                 <span style={{
@@ -1745,18 +1750,35 @@ export default function AdminDashboard() {
             { tab: "awareness", icon: <BookOpen size={16} />,      label: "Awareness Hub" },
             { tab: "sections",  icon: <GraduationCap size={16} />, label: "Grade & Sections" },
           ].map(({ tab, icon, label }) => (
-            <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
+            <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => handleAdminTabSelect(tab)}>
               {icon} {label}
             </button>
           ))}
         </nav>
       </div>
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className="admin-mobile-backdrop"
+          aria-label="Close navigation menu"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
 
       {/* ── MAIN ── */}
       <div className="main">
 
         {/* TOP BAR */}
         <div className={`header${profileOpen ? " profile-menu-open" : ""}`}>
+          <button
+            type="button"
+            className="admin-mobile-menu"
+            aria-label="Open navigation menu"
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen((open) => !open)}
+          >
+            <Menu size={20} />
+          </button>
           <div className="welcome">
             <h2><span className="welcome-dot" />System Overview</h2>
             <p>
@@ -3910,31 +3932,39 @@ export default function AdminDashboard() {
                     value={adminNotes} onChange={(e) => { setAdminNotes(e.target.value); setManageFieldErrors((p) => ({ ...p, adminNotes: false })); }} />
                   {manageFieldErrors.adminNotes && <span className="field-error-msg">Staff notes are required.</span>}
                 </div>
-                <div className="form-group" style={{ marginTop: 18, padding: 14, borderRadius: 10, border: "1px solid #fcd34d", background: "#fffbeb" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 7, color: "#92400e" }}>
-                    <Upload size={15} /> Request More Proof or Information
-                  </label>
-                  <p style={{ color: "#78350f", fontSize: 12, margin: "5px 0 9px" }}>
-                    Send a specific request to the student. They can reply with a message and attach photos or files.
-                  </p>
+                <section className="admin-proof-request" aria-labelledby="admin-proof-request-title">
+                  <div className="admin-proof-request-heading">
+                    <span className="admin-proof-request-icon"><Upload size={17} /></span>
+                    <div>
+                      <h5 id="admin-proof-request-title">Request more information</h5>
+                      <p>Ask the student for specific details or supporting evidence.</p>
+                    </div>
+                  </div>
+                  <label htmlFor="admin-proof-request-message">What should the student provide?</label>
                   <textarea
-                    placeholder="For example: Please attach a photo of the damaged item or explain when it happened."
+                    id="admin-proof-request-message"
+                    placeholder="Example: Please attach a photo of the damaged item and share when the incident happened."
                     maxLength={1000}
                     rows={3}
                     value={additionalInfoRequest}
                     onChange={(event) => setAdditionalInfoRequest(event.target.value)}
-                    style={{ width: "100%", fontSize: 13, padding: 10, borderRadius: 8, border: "1px solid #fcd34d", resize: "vertical" }}
                   />
+                  <div className="admin-proof-request-footer">
+                    <span className="admin-proof-request-hint">
+                      The student will see this message and can reply with details, photos, or files.
+                    </span>
+                    <span className="admin-proof-request-count">{additionalInfoRequest.length}/1000</span>
+                  </div>
                   <button
                     type="button"
-                    className="submit-btn"
+                    className="admin-proof-request-submit"
                     onClick={handleRequestMoreInfo}
                     disabled={additionalInfoSaving}
-                    style={{ marginTop: 10, background: "#b45309" }}
                   >
-                    {additionalInfoSaving ? "Sending request…" : "Send Request to Student"}
+                    <Send size={15} />
+                    {additionalInfoSaving ? "Sending request…" : "Send request"}
                   </button>
-                </div>
+                </section>
               </div>
             </div>
 
