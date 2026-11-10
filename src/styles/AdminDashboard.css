@@ -1312,6 +1312,7 @@
 .status-badge.pending             { background: #fef3c7; color: #d97706; }
 .status-badge.under-review        { background: #dbeafe; color: #2563eb; }
 .status-badge.under-investigation { background: #ede9fe; color: #7c3aed; }
+.status-badge.more-information-requested { background: #fef3c7; color: #92400e; }
 .status-badge.resolved            { background: #dcfce7; color: #16a34a; }
 
 /* =========================

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import {
-  getReports, submitReport,
+  getReports, submitReport, addReportEvidence,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
   requestConferenceChange,
@@ -33,6 +33,7 @@ const MAX_EVIDENCE_TOTAL_BYTES = 1_800_000;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusIcon(status) {
   if (status === "Resolved")           return <CheckCircle size={13} />;
+  if (status === "More Information Requested") return <Upload size={13} />;
   if (status === "Under Review" || status === "Under Investigation") return <Clock size={13} />;
   return <AlertTriangle size={13} />;
 }
@@ -77,7 +78,7 @@ function readBlobAsDataUrl(blob) {
 }
 async function readFile(file) {
   const optimizedFile = file.type.startsWith("image/")
-    ? await optimizeImageFile(file, { maxDimension: 1600, maxSizeBytes: 800_000 })
+    ? await optimizeImageFile(file, { maxDimension: 1280, maxSizeBytes: 500_000, forceWebp: true })
     : file;
   if (optimizedFile.size > MAX_EVIDENCE_FILE_BYTES) {
     throw new Error("Each evidence file must be no larger than 1 MB.");
@@ -119,6 +120,10 @@ export default function StudentDashboard() {
   // Hub content viewer modal
   const [hubViewItem, setHubViewItem] = useState(null);
   const [caseViewItem, setCaseViewItem] = useState(null);
+  const [followUpEvidenceFiles, setFollowUpEvidenceFiles] = useState([]);
+  const [followUpResponse, setFollowUpResponse] = useState("");
+  const [followUpError, setFollowUpError] = useState("");
+  const [followUpSaving, setFollowUpSaving] = useState(false);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
   const [conferenceRequestType, setConferenceRequestType] = useState(null);
   const [conferenceRequestReason, setConferenceRequestReason] = useState("");
@@ -174,24 +179,42 @@ export default function StudentDashboard() {
   };
 
   const openCaseDetails = async (report) => {
-    setCaseViewItem({ ...report, evidenceLoading: true });
+    setFollowUpEvidenceFiles([]);
+    setFollowUpResponse("");
+    setFollowUpError("");
+    setCaseViewItem({ ...report, evidence: [], evidenceLoaded: false, evidenceLoading: false });
     try {
-      const [details, evidence, offenseResult] = await Promise.all([
+      const [details, offenseResult] = await Promise.all([
         getReportDetails(report.id),
-        getReportEvidence(report.id),
         getCaseOffenseRecord(report.id),
       ]);
       setCaseViewItem((current) => current?.id === report.id
         ? {
           ...details,
-          evidence,
+          evidence: [],
+          evidenceLoaded: false,
           offenseRecord: offenseResult.offenseRecord || null,
           hasCaseFollowUp: !!offenseResult.hasCaseFollowUp,
-          evidenceLoading: false,
         }
         : current);
     } catch (error) {
       setCaseViewItem((current) => current?.id === report.id
+        ? { ...current, evidenceLoading: false, evidenceError: error.message }
+        : current);
+    }
+  };
+
+  const loadCaseEvidence = async () => {
+    if (!caseViewItem || caseViewItem.evidenceLoading || caseViewItem.evidenceLoaded) return;
+    const reportId = caseViewItem.id;
+    setCaseViewItem((current) => current?.id === reportId ? { ...current, evidenceLoading: true, evidenceError: "" } : current);
+    try {
+      const evidence = await getReportEvidence(reportId);
+      setCaseViewItem((current) => current?.id === reportId
+        ? { ...current, evidence, evidenceLoaded: true, evidenceLoading: false }
+        : current);
+    } catch (error) {
+      setCaseViewItem((current) => current?.id === reportId
         ? { ...current, evidenceLoading: false, evidenceError: error.message }
         : current);
     }
@@ -362,6 +385,67 @@ export default function StudentDashboard() {
 
   const removeEvidence = (idx) =>
     setEvidenceFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleFollowUpEvidencePick = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!files.length) return;
+    try {
+      const converted = await Promise.all(files.map(readFile));
+      const currentBytes = [...followUpEvidenceFiles, ...converted].reduce((total, item) => {
+        const base64 = item.data.split(",")[1] || "";
+        return total + Math.floor(base64.length * 3 / 4);
+      }, 0);
+      if (currentBytes > MAX_EVIDENCE_TOTAL_BYTES) {
+        setFollowUpError("Additional proof must total no more than 1.8 MB.");
+        return;
+      }
+      setFollowUpEvidenceFiles((current) => [...current, ...converted]);
+      setFollowUpError("");
+    } catch (error) {
+      setFollowUpError(error.message || "Could not read the selected files.");
+    }
+  };
+
+  const submitFollowUpResponse = async () => {
+    if (!caseViewItem || followUpSaving) return;
+    if (!followUpResponse.trim() && followUpEvidenceFiles.length === 0) {
+      setFollowUpError("Write a response or attach at least one photo or file.");
+      return;
+    }
+
+    setFollowUpSaving(true);
+    setFollowUpError("");
+    try {
+      const result = await addReportEvidence(
+        caseViewItem.id,
+        followUpEvidenceFiles,
+        followUpResponse.trim()
+      );
+      const updatedReport = {
+        ...caseViewItem,
+        status: result.status,
+        evidenceCount: result.evidenceCount,
+        adminNotes: [
+          caseViewItem.adminNotes || "",
+          followUpResponse.trim() ? `Student response: ${followUpResponse.trim()}` : "Student submitted additional proof.",
+        ].filter(Boolean).join("\n\n"),
+      };
+      setReports((current) => current.map((report) =>
+        report.id === updatedReport.id
+          ? { ...report, status: updatedReport.status, evidenceCount: updatedReport.evidenceCount, adminNotes: updatedReport.adminNotes }
+          : report
+      ));
+      setCaseViewItem(updatedReport);
+      setFollowUpEvidenceFiles([]);
+      setFollowUpResponse("");
+      showToast(result.notificationWarning || "Your response and proof have been sent. The case is back under review.", result.notificationWarning ? "error" : "success");
+    } catch (error) {
+      setFollowUpError(error.message || "Could not submit your response.");
+    } finally {
+      setFollowUpSaving(false);
+    }
+  };
 
   // ── Report submission ─────────────────────────────────────────────────────
   // ── Person list helpers ──────────────────────────────────────────────────
@@ -1382,11 +1466,13 @@ export default function StudentDashboard() {
           }] : []),
           {
             key: "review",
-            title: "Final Review",
-            desc: r.adminNotes
-              ? "The Prefect of Discipline has added notes — see below."
+            title: status === "More Information Requested" ? "More Proof or Information Needed" : "Final Review",
+            desc: status === "More Information Requested"
+              ? "Please review the request below and send a reply with the requested proof."
+              : r.adminNotes
+                ? "The Prefect of Discipline has added notes — see below."
               : "Reviewing actions and documentation.",
-            state: status === "Resolved" ? "completed" : (r.adminNotes ? "active" : "waiting"),
+            state: status === "Resolved" ? "completed" : (status === "More Information Requested" || r.adminNotes ? "active" : "waiting"),
           },
           {
             key: "resolved",
@@ -1400,6 +1486,7 @@ export default function StudentDashboard() {
         const statusDescriptions = {
           "Pending": "Your report has been received and is in queue for review by the Prefect of Discipline.",
           "Under Investigation": "Your report is currently being investigated by the Prefect of Discipline.",
+          "More Information Requested": "The Prefect requested more proof or information. Please reply to the request below.",
           "Resolved": "This case has been resolved. Thank you for speaking up.",
         };
         return (
@@ -1455,7 +1542,10 @@ export default function StudentDashboard() {
                 {r.adminNotes && (
                   <div className="s-admin-note" style={{ marginTop: 16 }}>
                     <Lock size={12} color="var(--s-accent)" />
-                    <div><strong>Note from the Prefect:</strong> {r.adminNotes}</div>
+                    <div>
+                      <strong>{status === "More Information Requested" ? "Request from the Prefect:" : "Note from the Prefect:"}</strong>
+                      <div style={{ marginTop: 5, whiteSpace: "pre-wrap" }}>{r.adminNotes}</div>
+                    </div>
                   </div>
                 )}
 
@@ -1548,15 +1638,20 @@ export default function StudentDashboard() {
                       </div>
                     );
                   })}
+                  {r.evidenceCount > 0 && !r.evidenceLoaded && !r.evidenceLoading && (
+                    <button type="button" className="s-submit-btn" onClick={loadCaseEvidence} style={{ width: "auto", marginTop: 12 }}>
+                      <Eye size={14} /> View {r.evidenceCount} attached file{r.evidenceCount === 1 ? "" : "s"}
+                    </button>
+                  )}
                   {r.evidenceLoading && <p className="s-case-detail-text">Loading attached evidence…</p>}
                   {r.evidenceError && <p className="s-case-detail-text" role="alert">Could not load evidence: {r.evidenceError}</p>}
-                  {r.evidence && r.evidence.length > 0 && (
+                  {r.evidenceLoaded && r.evidence && r.evidence.length > 0 && (
                     <div style={{ marginTop: 12 }}>
                       <label className="s-case-detail-label">Evidence</label>
                       <div className="s-evidence-row" style={{ marginTop: 6 }}>
                         {r.evidence.map((ev, idx) => (
                           ev.type && ev.type.startsWith("image/") ? (
-                            <img key={idx} src={ev.data} alt={ev.name}
+                            <img key={idx} src={ev.data} alt={ev.name} loading="lazy"
                               style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "2px solid #d1fae5" }} />
                           ) : (
                             <div key={idx} className="s-file-chip">
@@ -1568,6 +1663,66 @@ export default function StudentDashboard() {
                     </div>
                   )}
                 </div>
+                {status === "More Information Requested" && (
+                  <section className="s-case-details-box" style={{ marginTop: 14, borderColor: "#fbbf24", background: "#fffbeb" }}>
+                    <h4 className="s-case-tracker-title" style={{ marginBottom: 8, color: "#92400e" }}>
+                      <Upload size={15} /> Reply with More Information or Proof
+                    </h4>
+                    <div style={{ padding: 11, marginTop: 8, borderRadius: 8, background: "#fff", border: "1px solid #fcd34d" }}>
+                      <strong style={{ display: "block", color: "#92400e", fontSize: 12, marginBottom: 5 }}>Message from the Prefect</strong>
+                      <p className="s-case-detail-text" style={{ whiteSpace: "pre-wrap" }}>
+                        {r.adminNotes?.trim() || "The Prefect requested more information but did not include a message. Please contact the school for clarification."}
+                      </p>
+                    </div>
+                    <p className="s-case-detail-text">
+                      Write a response, attach a photo or file as proof, or do both.
+                    </p>
+                    <label htmlFor="case-follow-up-response" className="s-case-detail-label" style={{ display: "block", marginTop: 12 }}>
+                      Your response
+                    </label>
+                    <textarea
+                      id="case-follow-up-response"
+                      rows={3}
+                      maxLength={2000}
+                      value={followUpResponse}
+                      onChange={(event) => setFollowUpResponse(event.target.value)}
+                      placeholder="Add the information the Prefect requested…"
+                      style={{ width: "100%", marginTop: 6, padding: 10, border: "1px solid #fcd34d", borderRadius: 8, resize: "vertical", fontSize: 13 }}
+                    />
+                    <label className="s-submit-btn" style={{ display: "inline-flex", width: "auto", marginTop: 10, cursor: "pointer" }}>
+                      <Upload size={14} /> Attach photos or files
+                      <input type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple hidden onChange={handleFollowUpEvidencePick} />
+                    </label>
+                    {followUpEvidenceFiles.length > 0 && (
+                      <div className="s-evidence-row">
+                        {followUpEvidenceFiles.map((file, index) => (
+                          <span className="s-file-chip" key={`${file.name}-${index}`}>
+                            <Paperclip size={11} /> {file.name}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${file.name}`}
+                              onClick={() => setFollowUpEvidenceFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                              style={{ border: 0, background: "transparent", color: "#64748b", cursor: "pointer", padding: 0, display: "inline-flex" }}
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="s-submit-btn"
+                      disabled={followUpSaving}
+                      onClick={submitFollowUpResponse}
+                      style={{ width: "auto", marginTop: 12 }}
+                    >
+                      {followUpSaving ? "Sending reply…" : "Send Reply"}
+                    </button>
+                    {followUpError && <p role="alert" style={{ color: "#b91c1c", fontSize: 12, marginTop: 8 }}>{followUpError}</p>}
+                    <p style={{ color: "#92400e", fontSize: 11, marginTop: 8 }}>Each file must be 1 MB or smaller. Total upload: up to 1.8 MB.</p>
+                  </section>
+                )}
               </div>
             </div>
           </div>

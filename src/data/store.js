@@ -396,6 +396,10 @@ export async function getReportEvidence(reportId) {
   return result.evidence || [];
 }
 
+export async function addReportEvidence(reportId, evidenceFiles, responseText = "") {
+  return authRequest("add-report-evidence", { reportId, evidenceFiles, responseText });
+}
+
 export async function getUnreadNotificationCount() {
   const result = await authRequest("notification-unread-count");
   return result.count || 0;
@@ -448,6 +452,10 @@ export async function submitReport(reportData, evidenceFiles = []) {
 }
 
 export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
+  if (newStatus === "More Information Requested" && !adminNotes.trim()) {
+    throw new Error("Please explain what additional proof or information is needed.");
+  }
+
   const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
@@ -467,7 +475,12 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
     : "";
 
   await addStudentNotification(
-    { title: `Case #${reportId} status updated to '${newStatus}'${conferenceText}`, type: "status" },
+    {
+      title: newStatus === "More Information Requested"
+        ? `Additional proof or information requested for Case #${reportId}: ${adminNotes.trim()}`
+        : `Case #${reportId} status updated to '${newStatus}'${conferenceText}`,
+      type: "status",
+    },
     data.submitted_id
   );
 

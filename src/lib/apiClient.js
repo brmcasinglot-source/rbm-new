@@ -20,7 +20,12 @@ async function post(action, data = {}) {
   } catch {
     throw new Error("Supabase returned an invalid response. Check the Edge Function deployment.");
   }
-  if (!response.ok) throw new Error(payload.error || "The server could not complete the request.");
+  if (!response.ok) {
+    if (/^Unknown API action\.?$/i.test(payload.error || "")) {
+      throw new Error("The Supabase api Edge Function is out of date. Deploy the updated api function, then retry.");
+    }
+    throw new Error(payload.error || "The server could not complete the request.");
+  }
   return payload;
 }
 

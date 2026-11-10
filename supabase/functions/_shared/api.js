@@ -661,6 +661,86 @@ async function handleAuth(action, body, req) {
     return { evidence };
   }
 
+  if (action === "add-report-evidence") {
+    const session = await getSession(req);
+    if (session.role !== "student") {
+      throw Object.assign(new Error("Only the student who submitted this report can respond to the request."), { status: 403 });
+    }
+
+    const reportId = Number(body.reportId);
+    const responseText = String(body.responseText || "").trim().slice(0, 2000);
+    if (!Number.isSafeInteger(reportId) || reportId < 1) {
+      throw Object.assign(new Error("Invalid report."), { status: 400 });
+    }
+    if (!Array.isArray(body.evidenceFiles) || (body.evidenceFiles.length === 0 && !responseText)) {
+      throw Object.assign(new Error("Write a response or attach at least one photo or file as proof."), { status: 400 });
+    }
+
+    const { data: report, error: reportError } = await db.from("reports")
+      .select("id,status,submitted_id,admin_notes,evidence")
+      .eq("id", reportId)
+      .maybeSingle();
+    if (reportError) throw reportError;
+    if (!report || report.submitted_id !== session.id) {
+      throw Object.assign(new Error("You are not authorized to respond to this report."), { status: 403 });
+    }
+    if (report.status !== "More Information Requested") {
+      throw Object.assign(new Error("This report is not waiting for additional proof or information."), { status: 409 });
+    }
+
+    const { stored, uploaded } = await uploadReportEvidence(session.id, body.evidenceFiles);
+    const evidence = [...(Array.isArray(report.evidence) ? report.evidence : []), ...stored];
+    const adminNotes = [
+      report.admin_notes || "",
+      responseText ? `Student response: ${responseText}` : "Student submitted additional proof.",
+    ].filter(Boolean).join("\n\n");
+
+    let updatedReport;
+    try {
+      const { data, error } = await db.from("reports")
+        .update({
+          evidence,
+          admin_notes: adminNotes,
+          status: "Under Investigation",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", reportId)
+        .eq("submitted_id", session.id)
+        .eq("status", "More Information Requested")
+        .select("id,status,evidence_count")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        throw Object.assign(new Error("This request has already been answered. Refresh the case before trying again."), { status: 409 });
+      }
+      updatedReport = data;
+    } catch (error) {
+      try {
+        await removeMedia(REPORT_EVIDENCE_BUCKET, uploaded);
+      } catch (cleanupError) {
+        console.error("Could not clean up additional report evidence:", cleanupError.message);
+      }
+      throw error;
+    }
+
+    const { error: notificationError } = await db.from("notifications").insert({
+      audience: "admin",
+      student_id: null,
+      title: `Student submitted additional proof for Case #${reportId}`,
+      type: "report",
+      read: false,
+    });
+    if (notificationError) {
+      console.error("Could not notify admins about additional report proof:", notificationError.message);
+      return {
+        status: updatedReport.status,
+        evidenceCount: updatedReport.evidence_count,
+        notificationWarning: "The proof was submitted, but the Prefect could not be notified.",
+      };
+    }
+    return { status: updatedReport.status, evidenceCount: updatedReport.evidence_count };
+  }
+
   if (action === "report-offense-record") {
     const session = await getSession(req);
     const reportId = Number(body.reportId);

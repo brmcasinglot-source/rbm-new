@@ -708,6 +708,11 @@
   color: #7c3aed;
 }
 
+.s-status-badge.more-information-requested {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .s-status-badge.resolved {
   background: #dcfce7;
   color: #16a34a;
@@ -2821,6 +2826,7 @@
 .s-case-status-banner.resolved { background: #dcfce7; border-color: #86efac; }
 .s-case-status-banner.pending { background: #fef3c7; border-color: #fde68a; }
 .s-case-status-banner.under-investigation { background: #dbeafe; border-color: #93c5fd; }
+.s-case-status-banner.more-information-requested { background: #fef3c7; border-color: #fbbf24; }
 .s-case-status-banner p {
   font-size: 13px;
   color: #4b5563;

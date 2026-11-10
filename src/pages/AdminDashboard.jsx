@@ -208,7 +208,7 @@ const TYPE_COLORS = {
 
 const PRIORITY_ACCENT = { High: "#ef4444", Medium: "#f59e0b", Low: "#16a34a" };
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
-const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
+const EXPORT_STATUSES = ["Pending", "Under Investigation", "More Information Requested", "Resolved"];
 const EXPORT_OFFENSE_TYPES = ["Verbal", "Physical", "Social", "Cyber"];
 const EXPORT_OFFENSE_LEVELS = [
   ["", "All offenses"],
@@ -332,6 +332,8 @@ export default function AdminDashboard() {
   const [selectedReport,       setSelectedReport]       = useState(null);
   const [newStatus,            setNewStatus]            = useState("");
   const [adminNotes,           setAdminNotes]           = useState("");
+  const [additionalInfoRequest, setAdditionalInfoRequest] = useState("");
+  const [additionalInfoSaving, setAdditionalInfoSaving] = useState(false);
   const [conferenceDate,       setConferenceDate]       = useState("");
   const [conferenceTime,       setConferenceTime]       = useState("");
   const [conferenceLocation,   setConferenceLocation]   = useState("");
@@ -1191,11 +1193,12 @@ export default function AdminDashboard() {
         showToast("This report was opened, but its viewed status could not be saved.", "error");
       }
     }
-    setSelectedReport(report);
+    setSelectedReport({ ...report, evidence: [], evidenceLoaded: false, evidenceLoading: false, evidenceError: "" });
     // Skip the redundant "Pending" step — managing a pending report means it's
     // already being acted on, so jump straight to "Under Investigation".
     setNewStatus(report.status === "Pending" ? "Under Investigation" : report.status);
     setAdminNotes(report.adminNotes || "");
+    setAdditionalInfoRequest("");
     setConferenceDate(report.scheduledConference?.date || "");
     setConferenceTime(report.scheduledConference?.time || "");
     setConferenceLocation(report.scheduledConference?.location || "");
@@ -1207,20 +1210,40 @@ export default function AdminDashboard() {
     setManageFieldErrors({});
     setShowUpdateModal(true);
     try {
-      const [details, evidence] = await Promise.all([
-        getReportDetails(report.id),
-        getReportEvidence(report.id),
-      ]);
+      const details = await getReportDetails(report.id);
       setConferenceFindingsDraft(details.conferenceFindings || "");
-      setSelectedReport((current) => current?.id === report.id ? { ...details, evidence } : current);
+      setSelectedReport((current) => current?.id === report.id
+        ? { ...details, evidence: [], evidenceLoaded: false, evidenceLoading: false, evidenceError: "" }
+        : current);
     } catch (err) {
-      showToast(`Could not load report evidence: ${err.message}`, "error");
+      showToast(`Could not load report details: ${err.message}`, "error");
+    }
+  };
+
+  const loadManagedEvidence = async () => {
+    if (!selectedReport || selectedReport.evidenceLoading || selectedReport.evidenceLoaded) return;
+    const reportId = selectedReport.id;
+    setSelectedReport((current) => current?.id === reportId
+      ? { ...current, evidenceLoading: true, evidenceError: "" }
+      : current);
+    try {
+      const evidence = await getReportEvidence(reportId);
+      setSelectedReport((current) => current?.id === reportId
+        ? { ...current, evidence, evidenceLoaded: true, evidenceLoading: false }
+        : current);
+    } catch (error) {
+      setSelectedReport((current) => current?.id === reportId
+        ? { ...current, evidenceLoading: false, evidenceError: error.message }
+        : current);
     }
   };
 
   const refreshManagedIncident = async (updatedReport) => {
-    const evidence = await getReportEvidence(updatedReport.id);
-    const report = { ...updatedReport, evidence };
+    const report = {
+      ...updatedReport,
+      evidence: selectedReport?.id === updatedReport.id ? selectedReport.evidence : [],
+      evidenceLoaded: selectedReport?.id === updatedReport.id && !!selectedReport.evidenceLoaded,
+    };
     setIncidents((current) => current.map((item) => item.id === report.id ? report : item));
     setSelectedReport(report);
     setConferenceFindingsDraft(report.conferenceFindings || "");
@@ -1402,6 +1425,34 @@ export default function AdminDashboard() {
     setUnreadCount(await getUnreadNotificationCount());
     setShowUpdateModal(false);
     showToast("Incident updated successfully.");
+  };
+
+  const handleRequestMoreInfo = async () => {
+    if (!selectedReport || additionalInfoSaving) return;
+    const request = additionalInfoRequest.trim();
+    if (!request) {
+      showToast("Explain what proof or information the student should provide.", "error");
+      return;
+    }
+
+    setAdditionalInfoSaving(true);
+    try {
+      const updatedReport = await updateReportStatus(selectedReport.id, "More Information Requested", request);
+      setIncidents((current) => current.map((item) => item.id === updatedReport.id ? updatedReport : item));
+      setSelectedReport((current) => current?.id === updatedReport.id ? updatedReport : current);
+      setIncidents(await getReports());
+      const refreshedNotifications = await getAdminNotifications();
+      setNotifications(refreshedNotifications);
+      setHasMoreNotifications(refreshedNotifications.length === 30);
+      setUnreadCount(await getUnreadNotificationCount());
+      setAdditionalInfoRequest("");
+      setShowUpdateModal(false);
+      showToast("Request sent. The student can now reply with information and proof.");
+    } catch (error) {
+      showToast(`Could not send request: ${error.message}`, "error");
+    } finally {
+      setAdditionalInfoSaving(false);
+    }
   };
 
   const handleDeleteReport = async (id) => {
@@ -1804,10 +1855,10 @@ export default function AdminDashboard() {
                 {/* Summary Cards */}
                 <div className="summary-grid admin-summary">
                   {[
-                    { label: "Total Reports",         val: incidents.length,       icon: <FileText size={18} />,      color: "m-green",  badge: "muted", sub: "all submissions" },
-                    { label: "Pending",               val: pendingCases.length,    icon: <AlertTriangle size={18} />, color: "m-amber",  badge: "warn",  sub: "needs review" },
-                    { label: "Under Investigation",   val: inProgressCases.length, icon: <Clock size={18} />,         color: "m-blue",   badge: "info",  sub: "being handled" },
-                    { label: "Resolved",              val: resolvedCases.length,   icon: <CheckCircle size={18} />,   color: "m-green2", badge: "up",    sub: "closed cases" },
+                    { label: "Total Reports",               val: incidents.length,       icon: <FileText size={18} />,      color: "m-green",  badge: "muted", sub: "all submissions" },
+                    { label: "Pending",                     val: pendingCases.length,    icon: <AlertTriangle size={18} />, color: "m-amber",  badge: "warn",  sub: "needs review" },
+                    { label: "Under Investigation",         val: inProgressCases.length, icon: <Clock size={18} />,         color: "m-blue",   badge: "info",  sub: "being handled" },
+                    { label: "Resolved",                    val: resolvedCases.length,   icon: <CheckCircle size={18} />,   color: "m-green2", badge: "up",    sub: "closed cases" },
                   ].map(({ label, val, icon, color, badge, sub }) => (
                     <div className={`summary-card-modern ${color}`} key={label}>
                       <div className="summary-header">
@@ -2700,7 +2751,7 @@ export default function AdminDashboard() {
                       <div className="mf-filter-row">
                         <span className="mf-filter-label">Status</span>
                         <div className="mf-type-chips">
-                          {["Pending","Under Investigation","Resolved","All"].map(s => (
+                          {["Pending","Under Investigation","More Information Requested","Resolved","All"].map(s => (
                             <button
                               key={s}
                               className={`filter-tab filter-tab-${s.toLowerCase().replace(/\s/g,"-")} ${mfStatus === s ? "active" : ""}`}
@@ -3806,14 +3857,23 @@ export default function AdminDashboard() {
               </div>
 
               {/* Evidence */}
-              {selectedReport.evidence && selectedReport.evidence.length > 0 && (
+              {selectedReport.evidenceCount > 0 && !selectedReport.evidenceLoaded && (
+                <div className="detail-group full-width" style={{ marginBottom: 14 }}>
+                  <label>Evidence Attached ({selectedReport.evidenceCount} file{selectedReport.evidenceCount > 1 ? "s" : ""})</label>
+                  <button type="button" className="read-btn tiny" onClick={loadManagedEvidence} disabled={selectedReport.evidenceLoading}>
+                    {selectedReport.evidenceLoading ? "Loading evidence…" : "View attached evidence"}
+                  </button>
+                  {selectedReport.evidenceError && <p role="alert" style={{ color: "#b91c1c", fontSize: 12, marginTop: 7 }}>{selectedReport.evidenceError}</p>}
+                </div>
+              )}
+              {selectedReport.evidenceLoaded && selectedReport.evidence && selectedReport.evidence.length > 0 && (
                 <div className="detail-group full-width" style={{ marginBottom: 14 }}>
                   <label>Evidence Attached ({selectedReport.evidence.length} file{selectedReport.evidence.length > 1 ? "s" : ""})</label>
                   <div className="s-evidence-row">
                     {selectedReport.evidence.map((ev, idx) =>
                       ev.type && ev.type.startsWith("image/") ? (
                         <div key={idx} style={{ position: "relative", cursor: "zoom-in" }} onClick={() => setLightboxSrc(ev.data)}>
-                          <img src={ev.data} alt={ev.name}
+                          <img src={ev.data} alt={ev.name} loading="lazy"
                             style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, border: "2px solid #d1fae5" }} />
                           <ZoomIn size={14} style={{ position: "absolute", bottom: 4, right: 4, color: "white", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }} />
                         </div>
@@ -3838,6 +3898,7 @@ export default function AdminDashboard() {
                     value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
                     <option value="Pending">Pending</option>
                     <option value="Under Investigation">Under Investigation</option>
+                    <option value="More Information Requested">More Information Requested</option>
                     <option value="Resolved">Resolved</option>
                   </select>
                 </div>
@@ -3849,7 +3910,31 @@ export default function AdminDashboard() {
                     value={adminNotes} onChange={(e) => { setAdminNotes(e.target.value); setManageFieldErrors((p) => ({ ...p, adminNotes: false })); }} />
                   {manageFieldErrors.adminNotes && <span className="field-error-msg">Staff notes are required.</span>}
                 </div>
-
+                <div className="form-group" style={{ marginTop: 18, padding: 14, borderRadius: 10, border: "1px solid #fcd34d", background: "#fffbeb" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 7, color: "#92400e" }}>
+                    <Upload size={15} /> Request More Proof or Information
+                  </label>
+                  <p style={{ color: "#78350f", fontSize: 12, margin: "5px 0 9px" }}>
+                    Send a specific request to the student. They can reply with a message and attach photos or files.
+                  </p>
+                  <textarea
+                    placeholder="For example: Please attach a photo of the damaged item or explain when it happened."
+                    maxLength={1000}
+                    rows={3}
+                    value={additionalInfoRequest}
+                    onChange={(event) => setAdditionalInfoRequest(event.target.value)}
+                    style={{ width: "100%", fontSize: 13, padding: 10, borderRadius: 8, border: "1px solid #fcd34d", resize: "vertical" }}
+                  />
+                  <button
+                    type="button"
+                    className="submit-btn"
+                    onClick={handleRequestMoreInfo}
+                    disabled={additionalInfoSaving}
+                    style={{ marginTop: 10, background: "#b45309" }}
+                  >
+                    {additionalInfoSaving ? "Sending request…" : "Send Request to Student"}
+                  </button>
+                </div>
               </div>
             </div>
 
