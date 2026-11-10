@@ -910,7 +910,6 @@ function StudentOffenseRecords() {
                                 <div><small>What happened?</small><p>{reportReview.description || "No incident description provided."}</p></div>
                                 <div><small>Events leading up to the incident</small><p>{reportReview.descriptionLeadUp || "No prior events or context provided."}</p></div>
                                 <div><small>Impact on the victim</small><p>{reportReview.descriptionImpact || "No impact details provided."}</p></div>
-                                <div><small>Actions taken</small><p>{reportReview.descriptionActions || "No actions taken were provided."}</p></div>
                               </section>
 
                               <section className="student-offense-report-section student-offense-report-followup">
@@ -1096,9 +1095,37 @@ function StudentOffenseRecords() {
               {reportDetails.loading ? <div className="student-offense-state"><LoaderCircle className="student-offense-spinner" size={22} />Loading report…</div>
                 : reportDetails.error ? <p className="student-offense-error">{reportDetails.error}</p> : (
                   <>
-                    <div className="student-offense-report-meta"><span><strong>Type</strong>{reportDetails.type}</span><span><strong>Incident date</strong>{formatDate(reportDetails.date)}</span><span><strong>Status</strong>{reportDetails.status}</span><span><strong>Location</strong>{reportDetails.location || "—"}</span></div>
-                    <p className="student-offense-report-description">{reportDetails.description || "No description provided."}</p>
-                    <p><strong>Reporter:</strong> {reportDetails.isAnonymous ? "Anonymous" : reportDetails.submittedBy || "—"}</p>
+                    <div className="student-offense-report-meta">
+                      <span><strong>Type</strong>{reportDetails.type || "—"}</span>
+                      <span><strong>Incident date</strong>{formatDate(reportDetails.date)}</span>
+                      <span><strong>Status</strong>{reportDetails.status || "—"}</span>
+                      <span><strong>Location</strong>{reportDetails.location || "—"}</span>
+                    </div>
+
+                    <div className="student-offense-report-narrative">
+                      <div className="student-offense-report-story">
+                        <span className="student-offense-report-label">What happened?</span>
+                        <p>{reportDetails.description || "No incident description provided."}</p>
+                      </div>
+                      <div className="student-offense-report-story">
+                        <span className="student-offense-report-label">Events leading up to the incident</span>
+                        <p>{reportDetails.descriptionLeadUp || "No prior events or context provided."}</p>
+                      </div>
+                      <div className="student-offense-report-story">
+                        <span className="student-offense-report-label">Impact on the victim</span>
+                        <p>{reportDetails.descriptionImpact || "No impact details provided."}</p>
+                      </div>
+                      <div className="student-offense-report-story">
+                        <span className="student-offense-report-label">Actions taken</span>
+                        <p>{reportDetails.descriptionActions || "No actions taken were provided."}</p>
+                      </div>
+                    </div>
+
+                    <div className="student-offense-report-footer">
+                      <span><strong>Reporter</strong>{reportDetails.isAnonymous ? "Anonymous" : reportDetails.submittedBy || "—"}</span>
+                      {reportDetails.submittedAt && <span><strong>Submitted</strong>{formatDate(reportDetails.submittedAt)}</span>}
+                    </div>
+
                     {reportDetails.conferenceFindings && <p className="student-offense-findings"><strong>Conference findings:</strong> {reportDetails.conferenceFindings}</p>}
                     <button type="button" className="student-offense-secondary" onClick={() => loadHistoryReportEvidence(reportDetails.id)} disabled={evidenceLoading || !reportDetails.evidenceCount}>
                       {evidenceLoading ? "Loading evidence…" : `Review attached evidence (${reportDetails.evidenceCount || 0})`}

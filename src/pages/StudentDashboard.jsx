@@ -1509,10 +1509,6 @@ export default function StudentDashboard() {
                     <label className="s-case-detail-label">Impact on the Victim</label>
                     <p className="s-case-detail-text">{r.descriptionImpact || "No impact details provided."}</p>
                   </div>
-                  <div style={{ marginTop: 12 }}>
-                    <label className="s-case-detail-label">Actions Taken</label>
-                    <p className="s-case-detail-text">{r.descriptionActions || "No actions taken were provided."}</p>
-                  </div>
                   {[
                     ["Victim Information", r.victims],
                     ["Alleged Offender Information", r.offenders],
