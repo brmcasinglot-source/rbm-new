@@ -27,7 +27,7 @@ import {
 
 import {
   getReports, updateReportStatus, reviewConferenceRequest,
-  updateConferenceOutcome, updateConferenceSchedule, cancelConference, deleteReport,
+  updateConferenceSchedule, cancelConference, deleteReport,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, LOCATION_ZONE_COLORS, getCustomLocations, addCustomLocation, deleteCustomLocation,
@@ -41,6 +41,7 @@ import {
   downloadCSV, downloadDOCX, downloadXLSX,
 } from "../data/store";
 import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
+import ConferenceManagement from "../components/admin/ConferenceManagement";
 import { optimizeImageFile } from "../lib/imageOptimization";
 import { getYouTubeThumbnail } from "../lib/videoUtils";
 
@@ -347,22 +348,14 @@ export default function AdminDashboard() {
   const [conferenceFindingsSaving, setConferenceFindingsSaving] = useState(false);
   const [manageFieldErrors,    setManageFieldErrors]    = useState({});
   const [conferenceEditing,    setConferenceEditing]    = useState(false);
+  const [conferenceRescheduleReason, setConferenceRescheduleReason] = useState("");
   const [conferenceCanceling,  setConferenceCanceling]  = useState(false);
   const [conferenceCancelReason, setConferenceCancelReason] = useState("");
   const [toast,                setToast]                = useState(null);
 
   // Evidence lightbox
   const [lightboxSrc, setLightboxSrc] = useState(null);
-  const [conferenceViewItem, setConferenceViewItem] = useState(null);
-  const [conferenceManagementFilter, setConferenceManagementFilter] = useState("All");
   const [conferenceActionSaving, setConferenceActionSaving] = useState(false);
-  const [conferenceRescheduleDate, setConferenceRescheduleDate] = useState("");
-  const [conferenceRescheduleTime, setConferenceRescheduleTime] = useState("");
-  const [conferenceRescheduleLocation, setConferenceRescheduleLocation] = useState("");
-  const [conferenceRescheduleNotes, setConferenceRescheduleNotes] = useState("");
-  const [conferenceNoShowConfirm, setConferenceNoShowConfirm] = useState(false);
-  const [conferencePanelHidden, setConferencePanelHidden] = useState(false);
-  const [conferencePanelPinned, setConferencePanelPinned] = useState(false);
 
   // Incident Type Breakdown pagination
   const TYPE_BREAKDOWN_PAGE_SIZE = 4;
@@ -492,33 +485,6 @@ export default function AdminDashboard() {
       window.clearTimeout(timer);
     };
   }, [exportOffensesSelected, exportOffenseFilters]);
-
-  useEffect(() => {
-    if (activeTab !== "dashboard" || conferencePanelPinned) return undefined;
-
-    const scrollContainer = adminContentRef.current;
-    if (!scrollContainer) return undefined;
-
-    let previousScrollTop = scrollContainer.scrollTop;
-    const handleScroll = () => {
-      const currentScrollTop = scrollContainer.scrollTop;
-      if (window.innerWidth <= 1100) {
-        setConferencePanelHidden(false);
-      } else if (currentScrollTop <= 80) {
-        setConferencePanelHidden(false);
-      } else if (Math.abs(currentScrollTop - previousScrollTop) > 5) {
-        setConferencePanelHidden(currentScrollTop > previousScrollTop);
-      }
-      previousScrollTop = currentScrollTop;
-    };
-
-    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
-    return () => {
-      scrollContainer.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, [activeTab, conferencePanelPinned]);
 
   // Refresh only the data used by the active admin tab, without overlapping requests.
   useEffect(() => {
@@ -726,37 +692,6 @@ export default function AdminDashboard() {
   const inProgressCases = incidents.filter((c) => c.status === "Under Investigation");
   const resolvedCases   = incidents.filter((c) => c.status === "Resolved");
 
-  const conferenceManagementList = incidents
-    .filter((r) => r.scheduledConference && (r.scheduledConference.date || r.scheduledConference.time || r.scheduledConference.location))
-    .map((r) => {
-      const conference = r.scheduledConference;
-      return {
-        id: r.id,
-        type: r.type,
-        status: conference.status || (conference.completed ? "Completed" : "Scheduled"),
-        date: conference.date || "Date TBD",
-        rawTime: conference.time || "",
-        time: to12Hour(conference.time) || "Time TBD",
-        location: conference.location || "Location TBD",
-        notes: conference.notes || "",
-        request: conference.request || null,
-        previousSchedule: conference.previousSchedule || null,
-        reporterName: r.isAnonymous ? "Anonymous" : (r.submittedBy || "Unknown reporter"),
-      };
-    })
-    .filter((conference) => ["Scheduled", "Rescheduled", "Reschedule Requested", "Cancellation Requested"].includes(conference.status))
-    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-  const filteredConferenceManagementList = conferenceManagementFilter === "All"
-    ? conferenceManagementList
-    : conferenceManagementList.filter((conference) => {
-      if (conferenceManagementFilter === "Requests") {
-        return ["Reschedule Requested", "Cancellation Requested"].includes(conference.status);
-      }
-      return conference.status === conferenceManagementFilter;
-    });
-  const activeConferenceViewItem = conferenceViewItem
-    ? conferenceManagementList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
-    : null;
   const selectedConference = selectedReport?.scheduledConference || {};
   const selectedConferenceStatus = selectedConference.status || (selectedConference.completed ? "Completed" : "Scheduled");
   const hasSelectedConference = !!(
@@ -1120,68 +1055,6 @@ export default function AdminDashboard() {
     return refreshedReports;
   };
 
-  const handleConferenceOutcome = async (status) => {
-    if (!activeConferenceViewItem || conferenceActionSaving) return;
-
-    setConferenceActionSaving(true);
-    try {
-      await updateConferenceOutcome(activeConferenceViewItem.id, status);
-      await refreshConferenceReports();
-      if (["Completed", "No-show"].includes(status)) setConferenceViewItem(null);
-      setConferenceNoShowConfirm(false);
-      showToast(`Conference marked as ${status}.`);
-    } catch (err) {
-      showToast(`Could not update conference: ${err.message}`, "error");
-    } finally {
-      setConferenceActionSaving(false);
-    }
-  };
-
-  const handleReviewConferenceRequest = async (decision) => {
-    if (!activeConferenceViewItem || conferenceActionSaving) return;
-    if (
-      decision === "approve" &&
-      activeConferenceViewItem.request?.type === "reschedule" &&
-      (!conferenceRescheduleDate || !conferenceRescheduleTime || !conferenceRescheduleLocation.trim())
-    ) {
-      showToast("Choose a new date, time, and location before approving the reschedule.", "error");
-      return;
-    }
-
-    setConferenceActionSaving(true);
-    try {
-      await reviewConferenceRequest(
-        activeConferenceViewItem.id,
-        decision,
-        decision === "approve"
-          ? {
-              date: conferenceRescheduleDate,
-              time: conferenceRescheduleTime,
-              location: conferenceRescheduleLocation,
-              notes: conferenceRescheduleNotes,
-            }
-          : undefined
-      );
-      await refreshConferenceReports();
-      if (decision === "approve" && activeConferenceViewItem.request?.type === "cancellation") {
-        setConferenceViewItem(null);
-      }
-      showToast(`Conference request ${decision === "approve" ? "approved" : "rejected"}.`);
-    } catch (err) {
-      showToast(`Could not review conference request: ${err.message}`, "error");
-    } finally {
-      setConferenceActionSaving(false);
-    }
-  };
-
-  const handleOpenConferenceView = (conference) => {
-    setConferenceViewItem(conference);
-    setConferenceRescheduleDate(conference.date === "Date TBD" ? "" : conference.date);
-    setConferenceRescheduleTime(conference.rawTime);
-    setConferenceRescheduleLocation(conference.location === "Location TBD" ? "" : conference.location);
-    setConferenceRescheduleNotes(conference.notes || "");
-  };
-
   const handleOpenManage = async (report) => {
     if (unseenReportIdsRef.current.has(report.id)) {
       const nextUnseenIds = new Set(unseenReportIdsRef.current);
@@ -1210,6 +1083,7 @@ export default function AdminDashboard() {
     setConferenceNotes(report.scheduledConference?.notes || "");
     setConferenceFindingsDraft(report.conferenceFindings || "");
     setConferenceEditing(false);
+    setConferenceRescheduleReason("");
     setConferenceCanceling(false);
     setConferenceCancelReason("");
     setManageFieldErrors({});
@@ -1313,37 +1187,27 @@ export default function AdminDashboard() {
       showToast("Choose a date, time, and location for the conference.", "error");
       return;
     }
+    if (hasSelectedConference && !conferenceRescheduleReason.trim()) {
+      showToast("Enter a reason for changing the conference schedule.", "error");
+      return;
+    }
 
     setConferenceActionSaving(true);
     try {
       const updatedReport = await updateConferenceSchedule(selectedReport.id, {
+        operation: hasSelectedConference ? "reschedule" : "schedule",
         date: conferenceDate,
         time: conferenceTime,
         location: conferenceLocation,
         notes: conferenceNotes,
+        reason: conferenceRescheduleReason,
       });
       await refreshManagedIncident(updatedReport);
       setConferenceEditing(false);
+      setConferenceRescheduleReason("");
       showToast(hasSelectedConference ? "Conference schedule updated." : "Conference scheduled.");
     } catch (err) {
       showToast(`Could not save conference schedule: ${err.message}`, "error");
-    } finally {
-      setConferenceActionSaving(false);
-    }
-  };
-
-  const handleManagedConferenceOutcome = async (status) => {
-    if (!selectedReport || conferenceActionSaving) return;
-    if (status === "No-show" && !window.confirm("Confirm that the student did not attend this conference?")) return;
-
-    setConferenceActionSaving(true);
-    try {
-      const updatedReport = await updateConferenceOutcome(selectedReport.id, status);
-      await refreshManagedIncident(updatedReport);
-      if (["Completed", "No-show"].includes(status)) setConferenceViewItem(null);
-      showToast(`Conference marked as ${status}.`);
-    } catch (err) {
-      showToast(`Could not update conference: ${err.message}`, "error");
     } finally {
       setConferenceActionSaving(false);
     }
@@ -2049,88 +1913,11 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              <aside className={`admin-conference-panel${conferencePanelHidden ? " is-scrolled-away" : ""}${conferencePanelPinned ? " is-pinned" : ""}`}>
-                <div
-                  className="admin-conference-header"
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={conferencePanelPinned}
-                  aria-label={conferencePanelPinned ? "Close scheduled conferences panel" : "Keep scheduled conferences panel open"}
-                  onClick={() => setConferencePanelPinned((pinned) => !pinned)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setConferencePanelPinned((pinned) => !pinned);
-                    }
-                  }}
-                >
-                  <Calendar size={16} />
-                  <span>Conference Management</span>
-                </div>
-
-                {conferenceManagementList.length > 0 && (
-                  <label className="admin-conference-filter">
-                    <span>Filter conferences</span>
-                    <select
-                      value={conferenceManagementFilter}
-                      onChange={(event) => setConferenceManagementFilter(event.target.value)}
-                    >
-                      <option value="All">All conferences</option>
-                      <option value="Scheduled">Scheduled</option>
-                      <option value="Rescheduled">Rescheduled</option>
-                      <option value="Requests">Pending requests</option>
-                    </select>
-                  </label>
-                )}
-
-                {conferenceManagementList.length === 0 ? (
-                  <div className="admin-conference-empty">
-                    No active conferences scheduled.
-                  </div>
-                ) : filteredConferenceManagementList.length === 0 ? (
-                  <div className="admin-conference-empty">
-                    No conferences match this filter.
-                  </div>
-                ) : (
-                  <div className="admin-conference-list">
-                    {filteredConferenceManagementList.map((conf) => (
-                      <div
-                        className="admin-conference-item"
-                        key={conf.id}
-                        onClick={() => handleOpenConferenceView(conf)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleOpenConferenceView(conf);
-                          }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`View conference details for case ${conf.id}`}
-                      >
-                        <div className="admin-conference-top">
-                          <span className="admin-conference-case">Case #{conf.id}</span>
-                          <span className={`admin-conference-status ${conf.status.toLowerCase().replace(/\s/g, "-")}`}>
-                            {conf.status}
-                          </span>
-                        </div>
-                        <div className="admin-conference-type-row">
-                          <span className="admin-conference-type">
-                            <span className="admin-conference-type-dot" style={{ background: TYPE_COLORS[conf.type] || "#64748b" }} />
-                            {conf.type}
-                          </span>
-                          <ChevronRight size={14} className="admin-conference-chevron" />
-                        </div>
-                        <div className="admin-conference-datetime">
-                          <Calendar size={11} /> {conf.date}
-                          <span className="admin-conference-dt-sep">•</span>
-                          <Clock size={11} /> {conf.time}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </aside>
+              <ConferenceManagement
+                reports={incidents}
+                onReportsUpdated={refreshConferenceReports}
+                onToast={showToast}
+              />
             </div>
           </div>
         )}
@@ -3646,6 +3433,11 @@ export default function AdminDashboard() {
                           <label>Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
                           <label className="wide">Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} placeholder="Prefect Office, Guidance Room, or virtual link" /></label>
                           <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} placeholder="What the meeting will cover or who should attend" /></label>
+                          {hasSelectedConference && (
+                            <label className="wide">Reschedule reason *
+                              <textarea value={conferenceRescheduleReason} onChange={(event) => setConferenceRescheduleReason(event.target.value)} rows={2} placeholder="Why is the meeting being rescheduled?" required />
+                            </label>
+                          )}
                         </div>
                         <div className="manage-conference-actions">
                           <button type="button" className="manage-conference-button" onClick={() => setConferenceEditing(false)} disabled={conferenceActionSaving}>Cancel</button>
@@ -3691,6 +3483,11 @@ export default function AdminDashboard() {
                             <div className="manage-conference-notes"><span>Agenda / Notes</span><strong>{selectedConference.notes || "—"}</strong></div>
                           )}
                         </div>
+                        {(selectedConference.rescheduledFrom || selectedConference.previousSchedule?.date) && (
+                          <p className="manage-conference-current-schedule">
+                            Rescheduled from {selectedConference.rescheduledFrom || selectedConference.previousSchedule.date}
+                          </p>
+                        )}
                         {selectedConferenceStatus === "Completed" && (
                           <>
                             <p className="manage-conference-completed-on">
@@ -3732,6 +3529,9 @@ export default function AdminDashboard() {
                           <label>Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
                           <label className="wide">Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} placeholder="Prefect Office, Guidance Room, or virtual link" /></label>
                           <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} placeholder="What the meeting will cover or who should attend" /></label>
+                          <label className="wide">Reschedule reason *
+                            <textarea value={conferenceRescheduleReason} onChange={(event) => setConferenceRescheduleReason(event.target.value)} rows={2} placeholder="Why is the meeting being rescheduled?" required />
+                          </label>
                         </div>
                         <div className="manage-conference-actions">
                           <button type="button" className="manage-conference-button" onClick={() => setConferenceEditing(false)} disabled={conferenceActionSaving}>Keep Current Schedule</button>
@@ -3803,12 +3603,6 @@ export default function AdminDashboard() {
                     {!conferenceEditing && selectedConferenceRequest?.state !== "Pending" && ["Scheduled", "Rescheduled"].includes(selectedConferenceStatus) && (
                       <div className="manage-conference-actions">
                         <button type="button" className="manage-conference-button" onClick={() => setConferenceEditing(true)}>Edit Schedule</button>
-                        <button type="button" className="manage-conference-button primary" onClick={() => handleManagedConferenceOutcome("Completed")} disabled={conferenceActionSaving}>
-                          Mark as Completed
-                        </button>
-                        <button type="button" className="manage-conference-button warning" onClick={() => handleManagedConferenceOutcome("No-show")} disabled={conferenceActionSaving}>
-                          Mark as No-show
-                        </button>
                         {!conferenceCanceling && (
                           <button type="button" className="manage-conference-button danger" onClick={() => setConferenceCanceling(true)}>Cancel Conference</button>
                         )}
@@ -3971,161 +3765,6 @@ export default function AdminDashboard() {
             <div className="modal-footer-bar">
               <button className="cancel-btn" onClick={() => setShowUpdateModal(false)}>Discard</button>
               <button className="submit-btn" onClick={handleConfirmUpdate}>Update Status</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── SCHEDULED CONFERENCE VIEW MODAL ── */}
-      {activeConferenceViewItem && (
-        <div className="admin-modal-overlay" onClick={() => setConferenceViewItem(null)}>
-          <div className="admin-modal" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-admin">
-              <div className="title-wrap">
-                <Calendar size={18} color="var(--accent-color)" />
-                <h3>Conference Details</h3>
-              </div>
-              <X size={20} className="close-modal-btn" onClick={() => setConferenceViewItem(null)} />
-            </div>
-            <div className="admin-modal-content">
-              <div className="admin-conference-view-banner">
-                <span className="admin-conference-case">Case #{activeConferenceViewItem.id}</span>
-                <p>Conference details and Prefect actions for this report.</p>
-              </div>
-
-              <div className="admin-case-detail-box" style={{ marginTop: 16 }}>
-                <div className="admin-details-grid">
-                  <div><label>Case</label><span>#{activeConferenceViewItem.id}</span></div>
-                  <div><label>Status</label><span className={`admin-conference-status ${activeConferenceViewItem.status.toLowerCase().replace(/\s/g, "-")}`}>{activeConferenceViewItem.status}</span></div>
-                  <div><label>Type</label><span>{activeConferenceViewItem.type}</span></div>
-                  <div><label>Reporter</label><span>{activeConferenceViewItem.reporterName}</span></div>
-                  <div><label>Date</label><span>{activeConferenceViewItem.date || "Date TBD"}</span></div>
-                  <div><label>Time</label><span>{activeConferenceViewItem.time || "Time TBD"}</span></div>
-                  <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
-                </div>
-                {activeConferenceViewItem.previousSchedule && activeConferenceViewItem.status === "Rescheduled" && (
-                  <p className="admin-conference-previous">
-                    Previously scheduled for {activeConferenceViewItem.previousSchedule.date} at {to12Hour(activeConferenceViewItem.previousSchedule.time)}.
-                  </p>
-                )}
-                {activeConferenceViewItem.notes && (
-                  <div style={{ marginTop: 14 }}>
-                    <label className="admin-case-detail-label">Agenda / Notes</label>
-                    <p className="admin-case-detail-text">{activeConferenceViewItem.notes}</p>
-                  </div>
-                )}
-                <div className="admin-conference-completion">
-                  {activeConferenceViewItem.request?.state === "Pending" ? (
-                    <div className="admin-conference-request">
-                      <h4>{activeConferenceViewItem.status}</h4>
-                      {activeConferenceViewItem.request.reason && (
-                        <p className="admin-conference-request-reason">
-                          <strong>Student's reason:</strong> {activeConferenceViewItem.request.reason}
-                        </p>
-                      )}
-                      {activeConferenceViewItem.request.type === "reschedule" && (
-                        <div className="admin-conference-reschedule-fields">
-                          <label>
-                            New date
-                            <input
-                              type="date"
-                              value={conferenceRescheduleDate}
-                              onChange={(event) => setConferenceRescheduleDate(event.target.value)}
-                            />
-                          </label>
-                          <label>
-                            New time
-                            <input
-                              type="time"
-                              value={conferenceRescheduleTime}
-                              onChange={(event) => setConferenceRescheduleTime(event.target.value)}
-                            />
-                          </label>
-                          <label>
-                            New location
-                            <input
-                              type="text"
-                              value={conferenceRescheduleLocation}
-                              onChange={(event) => setConferenceRescheduleLocation(event.target.value)}
-                            />
-                          </label>
-                          <label>
-                            Agenda / Notes
-                            <input
-                              type="text"
-                              value={conferenceRescheduleNotes}
-                              onChange={(event) => setConferenceRescheduleNotes(event.target.value)}
-                            />
-                          </label>
-                        </div>
-                      )}
-                      <div className="admin-conference-action-row">
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => handleReviewConferenceRequest("reject")}
-                          disabled={conferenceActionSaving}
-                        >
-                          Reject Request
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReviewConferenceRequest("approve")}
-                          disabled={conferenceActionSaving}
-                        >
-                          {conferenceActionSaving
-                            ? "Saving..."
-                            : activeConferenceViewItem.request.type === "reschedule"
-                              ? "Approve Reschedule"
-                              : "Approve Cancellation"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    ["Scheduled", "Rescheduled"].includes(activeConferenceViewItem.status) ? (
-                      <div className="admin-conference-action-row">
-                        <button
-                          type="button"
-                          onClick={() => handleConferenceOutcome("Completed")}
-                          disabled={conferenceActionSaving}
-                        >
-                          {conferenceActionSaving ? "Saving..." : "✓ Mark as Completed"}
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => setConferenceNoShowConfirm(true)}
-                          disabled={conferenceActionSaving}
-                        >
-                          Mark as No-show
-                        </button>
-                      </div>
-                    ) : (
-                      <p>This conference is {activeConferenceViewItem.status.toLowerCase()}.</p>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {conferenceNoShowConfirm && activeConferenceViewItem && (
-        <div className="admin-modal-overlay admin-conference-confirm-overlay" onClick={() => setConferenceNoShowConfirm(false)}>
-          <div className="admin-modal admin-conference-confirm" onClick={(event) => event.stopPropagation()}>
-            <h3>Confirm No-show</h3>
-            <p>Are you sure this student did not attend the scheduled conference?</p>
-            <div className="admin-conference-action-row">
-              <button type="button" className="secondary" onClick={() => setConferenceNoShowConfirm(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleConferenceOutcome("No-show")}
-                disabled={conferenceActionSaving}
-              >
-                {conferenceActionSaving ? "Saving..." : "Confirm No-show"}
-              </button>
             </div>
           </div>
         </div>

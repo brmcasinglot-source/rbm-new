@@ -37,6 +37,8 @@ supabase functions deploy api
 
 The function is configured with `verify_jwt = false` because it uses its own signed session token, not Supabase Auth JWTs. Its handler validates that session token and applies role checks before using the service-role key. Configure `ALLOWED_ORIGINS` before testing from a browser.
 
+Conference scheduling, rescheduling, outcomes, and request reviews are handled by the admin-only `manage_conference` API action. Deploy the updated `api` Edge Function after changing conference-management code. Conference history is stored with each report's `scheduled_conference` JSON and includes the acting admin and timestamp.
+
 ## Existing Supabase database
 
 1. Back up the database.

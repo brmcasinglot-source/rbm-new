@@ -165,7 +165,7 @@ const REPORT_LIST_COLUMNS = [
   "id", "type", "date", "time", "location", "description", "reporter_type", "status", "priority",
   "submitted_by", "submitted_id", "reporter_age", "reporter_sex", "reporter_grade",
   "reporter_section", "is_anonymous", "admin_notes", "evidence_count",
-  "scheduled_conference", "submitted_at", "updated_at",
+  "scheduled_conference", "conference_findings", "submitted_at", "updated_at",
 ].join(",");
 
 export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0 } = {}) {
@@ -488,71 +488,20 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
 }
 
 export async function updateConferenceSchedule(reportId, schedule) {
-  if (!schedule?.date || !schedule?.time || !schedule?.location?.trim()) {
-    throw new Error("A conference date, time, and location are required.");
+  if (!schedule?.date || !schedule?.time ||
+    (schedule.operation !== "reschedule" && !schedule?.location?.trim())) {
+    throw new Error("A conference date and time are required; a location is required when initially scheduling.");
   }
-
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
-  if (fetchError) throw fetchError;
-
-  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
-    ? currentRow.scheduled_conference
-    : {};
-  const currentStatus = existingConference.status || (existingConference.completed ? "Completed" : "Scheduled");
-  const hasExistingSchedule = !!(existingConference.date || existingConference.time || existingConference.location);
-
-  if (["Reschedule Requested", "Cancellation Requested"].includes(currentStatus)) {
-    throw new Error("Review the pending conference request before changing its schedule.");
-  }
-  if (
-    (hasExistingSchedule && !["Scheduled", "Rescheduled"].includes(currentStatus)) ||
-    (!hasExistingSchedule && existingConference.status && existingConference.status !== "Scheduled")
-  ) {
-    throw new Error("This conference schedule cannot be edited in its current status.");
-  }
-
-  const now = new Date().toISOString();
-  const scheduleChanged = hasExistingSchedule && (
-    schedule.date !== existingConference.date ||
-    schedule.time !== existingConference.time ||
-    schedule.location.trim() !== existingConference.location ||
-    (schedule.notes || "") !== (existingConference.notes || "")
-  );
-  const scheduleSnapshot = {
-    date: existingConference.date || "",
-    time: existingConference.time || "",
-    location: existingConference.location || "",
-    notes: existingConference.notes || "",
-  };
-  const updatedConference = {
-    ...existingConference,
-    date: schedule.date,
-    time: schedule.time,
-    location: schedule.location.trim(),
-    notes: (schedule.notes || "").trim(),
-    createdAt: existingConference.createdAt || now,
-    status: hasExistingSchedule && scheduleChanged ? "Rescheduled" : currentStatus,
-    originalSchedule: existingConference.originalSchedule || (hasExistingSchedule ? scheduleSnapshot : {
-      date: schedule.date,
-      time: schedule.time,
-      location: schedule.location.trim(),
-      notes: (schedule.notes || "").trim(),
-    }),
-    previousSchedule: scheduleChanged ? scheduleSnapshot : existingConference.previousSchedule || null,
-    completed: false,
-  };
-
-  const { data, error } = await supabase.from("reports")
-    .update({ scheduled_conference: updatedConference, updated_at: now })
-    .eq("id", reportId)
-    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
-    .single();
+  const { data, error } = await supabase.rpc("manage_conference", {
+    target_report_id: reportId,
+    operation: schedule.operation || "schedule",
+    new_date: schedule.date,
+    new_time: schedule.time,
+    new_location: schedule.location.trim(),
+    agenda_notes: (schedule.notes || "").trim(),
+    change_reason: (schedule.reason || "").trim(),
+  });
   if (error) throw error;
-
-  await addStudentNotification({
-    title: `A conference for Case #${reportId} is scheduled for ${updatedConference.date} at ${updatedConference.time}.`,
-    type: "status",
-  }, data.submitted_id);
   return reportRowToObj(data);
 }
 
@@ -560,45 +509,12 @@ export async function cancelConference(reportId, reason) {
   if (!reason?.trim()) {
     throw new Error("A cancellation reason is required.");
   }
-
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
-  if (fetchError) throw fetchError;
-
-  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
-    ? currentRow.scheduled_conference
-    : {};
-  const currentStatus = existingConference.status || (existingConference.completed ? "Completed" : "Scheduled");
-  if (!existingConference.date && !existingConference.time && !existingConference.location) {
-    throw new Error("No scheduled conference exists for this report.");
-  }
-  if (!["Scheduled", "Rescheduled"].includes(currentStatus)) {
-    throw new Error("This conference cannot be cancelled in its current status.");
-  }
-
-  const now = new Date().toISOString();
-  const updatedConference = {
-    ...existingConference,
-    status: "Cancelled",
-    completed: false,
-    cancellationReason: reason.trim(),
-    cancelledAt: now,
-    cancellationSchedule: {
-      date: existingConference.date || "",
-      time: existingConference.time || "",
-      location: existingConference.location || "",
-    },
-  };
-  const { data, error } = await supabase.from("reports")
-    .update({ scheduled_conference: updatedConference, updated_at: now })
-    .eq("id", reportId)
-    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
-    .single();
+  const { data, error } = await supabase.rpc("manage_conference", {
+    target_report_id: reportId,
+    operation: "cancel",
+    change_reason: reason.trim(),
+  });
   if (error) throw error;
-
-  await addStudentNotification({
-    title: `The conference for Case #${reportId} was cancelled.`,
-    type: "status",
-  }, data.submitted_id);
   return reportRowToObj(data);
 }
 
@@ -624,120 +540,45 @@ export async function requestConferenceChange(reportId, requestType, reason = ""
 }
 
 export async function reviewConferenceRequest(reportId, decision, reschedule = undefined) {
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
-  if (fetchError) throw fetchError;
-
-  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
-    ? currentRow.scheduled_conference
-    : {};
-  const request = existingConference.request;
-  if (!request || request.state !== "Pending") {
-    throw new Error("There is no pending conference request to review.");
-  }
-  if (!["reschedule", "cancellation"].includes(request.type)) {
-    throw new Error("The conference request type is invalid.");
-  }
   if (!["approve", "reject"].includes(decision)) {
     throw new Error("Invalid conference request decision.");
   }
-
-  const approved = decision === "approve";
-  const requestIsReschedule = request.type === "reschedule";
-  if (approved && requestIsReschedule && (!reschedule?.date || !reschedule?.time || !reschedule?.location?.trim())) {
+  if (decision === "approve" && reschedule && (!reschedule.date || !reschedule.time || !reschedule.location?.trim())) {
     throw new Error("A new date, time, and location are required to approve a reschedule.");
   }
-
-  const now = new Date().toISOString();
-  const updatedConference = {
-    ...existingConference,
-    status: approved
-      ? requestIsReschedule ? "Rescheduled" : "Cancelled"
-      : request.previousStatus || "Scheduled",
-    request: { ...request, state: approved ? "Approved" : "Rejected", reviewedAt: now },
-    completed: false,
-  };
-  if (approved && requestIsReschedule) {
-    updatedConference.previousSchedule = {
-      date: existingConference.date,
-      time: existingConference.time,
-      location: existingConference.location || "",
-      notes: existingConference.notes || "",
-    };
-    updatedConference.date = reschedule.date;
-    updatedConference.time = reschedule.time;
-    updatedConference.location = reschedule.location.trim();
-    updatedConference.notes = (reschedule.notes || "").trim();
-  } else if (approved) {
-    updatedConference.cancellationReason = request.reason || "";
-    updatedConference.cancelledAt = now;
-    updatedConference.cancellationSchedule = {
-      date: existingConference.date || "",
-      time: existingConference.time || "",
-      location: existingConference.location || "",
-    };
-  }
-
-  const { data, error } = await supabase.from("reports")
-    .update({ scheduled_conference: updatedConference, updated_at: now })
-    .eq("id", reportId)
-    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
-    .single();
+  const { data, error } = await supabase.rpc("manage_conference", {
+    target_report_id: reportId,
+    operation: "review-request",
+    decision,
+    new_date: reschedule?.date || "",
+    new_time: reschedule?.time || "",
+    new_location: reschedule?.location?.trim() || "",
+    agenda_notes: (reschedule?.notes || "").trim(),
+  });
   if (error) throw error;
-
-  const decisionText = approved ? "approved" : "rejected";
-  const requestLabel = requestIsReschedule ? "reschedule" : "cancellation";
-  const scheduleText = approved && requestIsReschedule
-    ? ` The new conference is scheduled for ${updatedConference.date} at ${updatedConference.time}.`
-    : "";
-  await addStudentNotification({
-    title: `Your conference ${requestLabel} request for Case #${reportId} was ${decisionText}.${scheduleText}`,
-    type: "status",
-  }, data.submitted_id);
-
   return reportRowToObj(data);
 }
 
-export async function updateConferenceOutcome(reportId, status) {
+export async function updateConferenceOutcome(reportId, status, details = {}) {
   if (!["Completed", "No-show"].includes(status)) {
     throw new Error("Invalid conference outcome.");
   }
-
-  const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
-  if (fetchError) throw fetchError;
-
-  const existingConference = currentRow.scheduled_conference && typeof currentRow.scheduled_conference === "object"
-    ? currentRow.scheduled_conference
-    : {};
-  if (!existingConference.date && !existingConference.time && !existingConference.location) {
-    throw new Error("No scheduled conference exists for this report.");
+  if (status === "Completed" && !details.outcomeNotes?.trim()) {
+    throw new Error("Outcome notes are required to complete the conference.");
   }
-  const currentStatus = existingConference.status || (existingConference.completed ? "Completed" : "Scheduled");
-  if (!["Scheduled", "Rescheduled"].includes(currentStatus)) {
-    throw new Error("This conference cannot be given an outcome in its current status.");
+  if (status === "No-show" && (!Array.isArray(details.missedBy) || details.missedBy.length === 0)) {
+    throw new Error("Choose who did not attend.");
   }
-
-  const now = new Date().toISOString();
-  const updatedConference = {
-    ...existingConference,
-    status,
-    completed: status === "Completed",
-    completedAt: status === "Completed" ? now : existingConference.completedAt || null,
-    noShowAt: status === "No-show" ? now : existingConference.noShowAt || null,
-  };
-
-  const { data, error } = await supabase.from("reports")
-    .update({ scheduled_conference: updatedConference, updated_at: now })
-    .eq("id", reportId)
-    .select(REPORT_COLUMNS_WITHOUT_EVIDENCE)
-    .single();
-
+  const { data, error } = await supabase.rpc("manage_conference", {
+    target_report_id: reportId,
+    operation: "outcome",
+    outcome_status: status,
+    outcome_notes: (details.outcomeNotes || "").trim(),
+    intervention: (details.intervention || "").trim(),
+    missed_by: details.missedBy || [],
+    change_reason: (details.reason || "").trim(),
+  });
   if (error) throw error;
-
-  await addStudentNotification({
-    title: `Conference for Case #${reportId} was marked as ${status}.`,
-    type: "status",
-  }, data.submitted_id);
-
   return reportRowToObj(data);
 }
 

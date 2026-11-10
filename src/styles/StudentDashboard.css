@@ -736,6 +736,16 @@
   color: #b45309;
 }
 
+.s-conference-status.today {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.s-conference-status.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .s-conference-status.completed {
   background: #dcfce7;
   color: #15803d;
@@ -2574,6 +2584,16 @@
 }
 
 .s-conference-status.no-show {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.s-conference-status.today {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.s-conference-status.overdue {
   background: #fee2e2;
   color: #b91c1c;
 }

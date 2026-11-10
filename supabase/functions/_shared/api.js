@@ -1401,6 +1401,257 @@ async function runQuery(body, req) {
 
 async function runRpc(functionName, args, req) {
     const db = getDatabase();
+    if (functionName === "manage_conference") {
+      const session = await getSession(req);
+      requireRole(session, "admin");
+
+      const reportId = Number(args.target_report_id);
+      if (!Number.isSafeInteger(reportId) || reportId < 1) {
+        throw Object.assign(new Error("Invalid report."), { status: 400 });
+      }
+
+      const { data: report, error: fetchError } = await db.from("reports")
+        .select("id,status,submitted_id,submitted_by,is_anonymous,scheduled_conference,conference_findings")
+        .eq("id", reportId).maybeSingle();
+      if (fetchError) throw fetchError;
+      if (!report) throw Object.assign(new Error("Report not found."), { status: 404 });
+
+      const { data: admin, error: adminError } = await db.from("admins")
+        .select("name").eq("id", session.id).maybeSingle();
+      if (adminError) throw adminError;
+      const actorName = admin?.name || session.email;
+      const now = new Date().toISOString();
+      const conference = report.scheduled_conference && typeof report.scheduled_conference === "object"
+        ? { ...report.scheduled_conference }
+        : {};
+      const history = Array.isArray(conference.history) ? [...conference.history] : [];
+      const hasSchedule = !!(conference.date || conference.time || conference.location);
+      const status = conference.status || (conference.completed ? "Completed" : "Scheduled");
+      const changeReason = String(args.change_reason || "").trim();
+      const historyEntry = (action, actionLabel, details = {}) => ({
+        action,
+        actionLabel,
+        at: now,
+        actorId: session.id,
+        actorName,
+        ...details,
+      });
+      let notificationTitle;
+      let updatedStatus = report.status;
+      let updatedFindings = report.conference_findings || "";
+
+      if (args.operation === "schedule") {
+        if (hasSchedule) {
+          throw Object.assign(new Error("This case already has a conference. Use Reschedule to change its date or time."), { status: 400 });
+        }
+        const date = String(args.new_date || "").trim();
+        const time = String(args.new_time || "").trim();
+        const location = String(args.new_location || "").trim();
+        if (!date || !time || !location) {
+          throw Object.assign(new Error("A conference date, time, and location are required."), { status: 400 });
+        }
+        conference.date = date;
+        conference.time = time;
+        conference.location = location;
+        conference.notes = String(args.agenda_notes || "").trim();
+        conference.status = "Scheduled";
+        conference.completed = false;
+        conference.createdAt = now;
+        conference.originalSchedule = { date, time, location, notes: conference.notes };
+        conference.history = [...history, historyEntry("scheduled", "Conference scheduled", {
+          schedule: { date, time, location },
+        })];
+        notificationTitle = `A conference for Case #${reportId} is scheduled for ${date} at ${time}.`;
+      } else if (args.operation === "reschedule") {
+        if (!hasSchedule || !["Scheduled", "Rescheduled", "No-show"].includes(status)) {
+          throw Object.assign(new Error("This conference cannot be rescheduled in its current status."), { status: 400 });
+        }
+        const date = String(args.new_date || "").trim();
+        const time = String(args.new_time || "").trim();
+        const location = String(args.new_location || "").trim() || String(conference.location || "").trim();
+        if (!date || !time || !changeReason) {
+          throw Object.assign(new Error("A new date, time, and reschedule reason are required."), { status: 400 });
+        }
+        const previousSchedule = {
+          date: conference.date || "",
+          time: conference.time || "",
+          location: conference.location || "",
+          notes: conference.notes || "",
+        };
+        conference.previousSchedule = previousSchedule;
+        conference.rescheduledFrom = previousSchedule.date;
+        conference.date = date;
+        conference.time = time;
+        conference.location = location;
+        conference.notes = String(args.agenda_notes || conference.notes || "").trim();
+        conference.status = "Scheduled";
+        conference.completed = false;
+        conference.noShow = null;
+        conference.history = [...history, historyEntry("rescheduled", "Conference rescheduled", {
+          from: previousSchedule,
+          to: { date, time, location },
+          reason: changeReason,
+        })];
+        notificationTitle = `The conference for Case #${reportId} was rescheduled for ${date} at ${time}.`;
+      } else if (args.operation === "outcome") {
+        const outcomeStatus = String(args.outcome_status || "");
+        if (!hasSchedule || !["Scheduled", "Rescheduled"].includes(status)) {
+          throw Object.assign(new Error("This conference cannot be given an outcome in its current status."), { status: 400 });
+        }
+        if (outcomeStatus === "Completed") {
+          const outcomeNotes = String(args.outcome_notes || "").trim();
+          if (!outcomeNotes) {
+            throw Object.assign(new Error("Outcome notes are required to complete the conference."), { status: 400 });
+          }
+          const intervention = String(args.intervention || "").trim();
+          conference.status = "Completed";
+          conference.completed = true;
+          conference.completedAt = now;
+          conference.intervention = intervention;
+          conference.outcomeNotes = outcomeNotes;
+          updatedFindings = outcomeNotes;
+          if (!["Under Investigation", "Resolved"].includes(report.status)) {
+            updatedStatus = "Under Investigation";
+          }
+          conference.history = [...history, historyEntry("completed", "Conference completed", {
+            intervention: intervention || null,
+          })];
+          notificationTitle = `The conference for Case #${reportId} was completed. The case is continuing through school review.`;
+        } else if (outcomeStatus === "No-show") {
+          const missedBy = Array.isArray(args.missed_by)
+            ? [...new Set(args.missed_by.map((value) => String(value)))]
+            : [];
+          if (!missedBy.length || missedBy.some((value) => !["reporter", "reported_student"].includes(value))) {
+            throw Object.assign(new Error("Choose whether the reporter, reported student, or both did not attend."), { status: 400 });
+          }
+          const reason = String(args.change_reason || "").trim();
+          conference.status = "No-show";
+          conference.completed = false;
+          conference.noShow = { missedBy, reason, at: now };
+          if (missedBy.includes("reporter") && report.status === "Resolved") {
+            updatedStatus = "Under Investigation";
+          }
+          conference.history = [...history, historyEntry("no-show", "No-show recorded", {
+            missedBy,
+            reason: reason || null,
+          })];
+          notificationTitle = `A conference no-show was recorded for Case #${reportId}. The case remains open.`;
+        } else {
+          throw Object.assign(new Error("Invalid conference outcome."), { status: 400 });
+        }
+      } else if (args.operation === "review-request") {
+        const request = conference.request;
+        const decision = String(args.decision || "");
+        if (!request || request.state !== "Pending") {
+          throw Object.assign(new Error("There is no pending conference request to review."), { status: 400 });
+        }
+        if (!["approve", "reject"].includes(decision) || !["reschedule", "cancellation"].includes(request.type)) {
+          throw Object.assign(new Error("The conference request is invalid."), { status: 400 });
+        }
+        const approved = decision === "approve";
+        const isReschedule = request.type === "reschedule";
+        const date = String(args.new_date || "").trim();
+        const time = String(args.new_time || "").trim();
+        const location = String(args.new_location || "").trim() || String(conference.location || "").trim();
+        if (approved && isReschedule && (!date || !time)) {
+          throw Object.assign(new Error("A new date, time, and location are required to approve a reschedule."), { status: 400 });
+        }
+        conference.request = {
+          ...request,
+          state: approved ? "Approved" : "Rejected",
+          reviewedAt: now,
+          reviewedBy: session.id,
+          reviewedByName: actorName,
+        };
+        if (approved && isReschedule) {
+          const previousSchedule = {
+            date: conference.date || "",
+            time: conference.time || "",
+            location: conference.location || "",
+            notes: conference.notes || "",
+          };
+          conference.previousSchedule = previousSchedule;
+          conference.rescheduledFrom = previousSchedule.date;
+          conference.date = date;
+          conference.time = time;
+          conference.location = location;
+          conference.notes = String(args.agenda_notes || conference.notes || "").trim();
+          conference.status = "Scheduled";
+          conference.noShow = null;
+          conference.history = [...history, historyEntry("request-approved", "Reschedule request approved", {
+            from: previousSchedule,
+            to: { date, time, location },
+            reason: request.reason || null,
+          })];
+          notificationTitle = `Your conference reschedule request for Case #${reportId} was approved. The new conference is scheduled for ${date} at ${time}.`;
+        } else if (approved) {
+          conference.status = "Cancelled";
+          conference.cancelledAt = now;
+          conference.cancellationReason = request.reason || "";
+          conference.cancellationSchedule = {
+            date: conference.date || "",
+            time: conference.time || "",
+            location: conference.location || "",
+          };
+          conference.history = [...history, historyEntry("request-approved", "Cancellation request approved", {
+            reason: request.reason || null,
+          })];
+          notificationTitle = `Your conference cancellation request for Case #${reportId} was approved.`;
+        } else {
+          conference.status = request.previousStatus || "Scheduled";
+          conference.history = [...history, historyEntry("request-rejected", "Conference request rejected", {
+            reason: request.reason || null,
+          })];
+          notificationTitle = `Your conference ${request.type} request for Case #${reportId} was rejected.`;
+        }
+      } else if (args.operation === "cancel") {
+        if (!hasSchedule || !["Scheduled", "Rescheduled"].includes(status) || !changeReason) {
+          throw Object.assign(new Error("A scheduled conference and cancellation reason are required."), { status: 400 });
+        }
+        conference.status = "Cancelled";
+        conference.completed = false;
+        conference.cancellationReason = changeReason;
+        conference.cancelledAt = now;
+        conference.cancellationSchedule = {
+          date: conference.date || "",
+          time: conference.time || "",
+          location: conference.location || "",
+        };
+        conference.history = [...history, historyEntry("cancelled", "Conference cancelled", { reason: changeReason })];
+        notificationTitle = `The conference for Case #${reportId} was cancelled.`;
+      } else {
+        throw Object.assign(new Error("Unknown conference management action."), { status: 400 });
+      }
+
+      const updates = {
+        scheduled_conference: conference,
+        updated_at: now,
+      };
+      if (updatedStatus !== report.status) updates.status = updatedStatus;
+      if (updatedFindings !== (report.conference_findings || "")) {
+        updates.conference_findings = updatedFindings;
+        updates.conference_findings_updated_by = session.id;
+        updates.conference_findings_updated_at = now;
+      }
+      const { data: updatedReport, error: updateError } = await db.from("reports")
+        .update(updates)
+        .eq("id", reportId)
+        .select("id,type,date,time,location,description,description_lead_up,description_impact,description_actions,reporter_type,victims,offenders,witnesses,status,priority,submitted_by,submitted_id,reporter_age,reporter_sex,reporter_grade,reporter_section,is_anonymous,admin_notes,evidence_count,scheduled_conference,conference_findings,conference_findings_updated_by,conference_findings_updated_at,submitted_at,updated_at")
+        .single();
+      if (updateError) throw updateError;
+
+      if (notificationTitle && report.submitted_id) {
+        const { error: notificationError } = await db.from("notifications").insert({
+          audience: "student",
+          student_id: report.submitted_id,
+          title: notificationTitle,
+          type: "status",
+          read: false,
+        });
+        if (notificationError) throw notificationError;
+      }
+      return updatedReport;
+    }
     if (functionName === "search_offense_reports") {
       const session = await getSession(req);
       requireRole(session, "admin");
@@ -1541,6 +1792,17 @@ async function runRpc(functionName, args, req) {
           previousStatus: status,
           state: "Pending",
         },
+        history: [
+          ...(Array.isArray(conference.history) ? conference.history : []),
+          {
+            action: "request-submitted",
+            actionLabel: type === "reschedule" ? "Reschedule requested" : "Cancellation requested",
+            at: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.email,
+            reason: String(reason).trim() || null,
+          },
+        ],
       };
       const { error: updateError } = await db.from("reports").update({
         scheduled_conference: updatedConference,

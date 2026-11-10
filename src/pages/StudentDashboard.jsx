@@ -59,7 +59,17 @@ function formatConferenceDate(dateStr, language = "en") {
       }).format(date);
 }
 function getConferenceStatus(conference) {
-  return conference.status || (conference.completed ? "Completed" : "Scheduled");
+  const status = conference.status || (conference.completed ? "Completed" : "Scheduled");
+  if (!["Scheduled", "Rescheduled"].includes(status)) return status;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(conference.date || "")) return status;
+  const [year, month, day] = conference.date.split("-").map(Number);
+  const scheduledDate = new Date(year, month - 1, day);
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+  const offset = scheduledDate.getTime() - currentDate.getTime();
+  if (offset < 0) return "Overdue";
+  if (offset === 0) return "Today";
+  return "Scheduled";
 }
 const CONFERENCE_TYPE_COLORS = {
   Physical: "#ef4444",
@@ -548,17 +558,21 @@ export default function StudentDashboard() {
       return {
         id: r.id,
         type: r.type,
-        status: getConferenceStatus(conference),
+        status: getConferenceStatus({
+          ...conference,
+          outcomeNotes: r.conferenceFindings || conference.outcomeNotes || "",
+        }),
         date: conference.date || "Date TBD",
         time: formatConferenceTime(conference.time),
         location: conference.location || "Location TBD",
         notes: conference.notes || "",
         request: conference.request || null,
         previousSchedule: conference.previousSchedule || null,
+        rescheduledFrom: conference.rescheduledFrom || null,
       };
     })
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-  const scheduledConferenceStatuses = ["Scheduled", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
+  const scheduledConferenceStatuses = ["Scheduled", "Today", "Overdue", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
   const scheduledConferenceList = conferenceList.filter((conference) => scheduledConferenceStatuses.includes(conference.status));
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
@@ -912,12 +926,9 @@ export default function StudentDashboard() {
                           <div className="s-conference-meta">📅 {formatConferenceDate(conf.date, language)}</div>
                           <div className="s-conference-meta">🕒 {conf.time}</div>
                           <div className="s-conference-meta">📍 {conf.location}</div>
-                          {conf.previousSchedule && conf.status === "Rescheduled" && (
+                          {(conf.rescheduledFrom || conf.previousSchedule?.date) && (
                             <div className="s-conference-previous">
-                              {language === "fil" ? "Dating itinakda noong " : "Previously scheduled for "}
-                              {formatConferenceDate(conf.previousSchedule.date, language)}
-                              {language === "fil" ? " nang " : " at "}
-                              {formatConferenceTime(conf.previousSchedule.time)}.
+                              Rescheduled from {conf.rescheduledFrom || conf.previousSchedule.date}
                             </div>
                           )}
                           {conf.notes && <div className="s-conference-note">{conf.notes}</div>}
@@ -1765,12 +1776,9 @@ export default function StudentDashboard() {
                   <div><label>Time</label><span>{formatConferenceTime(activeConferenceViewItem.time) || "Time TBD"}</span></div>
                   <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
-                {activeConferenceViewItem.previousSchedule && activeConferenceViewItem.status === "Rescheduled" && (
+                {(activeConferenceViewItem.rescheduledFrom || activeConferenceViewItem.previousSchedule?.date) && (
                   <p className="s-conference-previous">
-                    {language === "fil" ? "Dating itinakda noong " : "Previously scheduled for "}
-                    {formatConferenceDate(activeConferenceViewItem.previousSchedule.date, language)}
-                    {language === "fil" ? " nang " : " at "}
-                    {formatConferenceTime(activeConferenceViewItem.previousSchedule.time)}.
+                    Rescheduled from {activeConferenceViewItem.rescheduledFrom || activeConferenceViewItem.previousSchedule.date}
                   </p>
                 )}
                 {activeConferenceViewItem.notes && (
@@ -1785,9 +1793,13 @@ export default function StudentDashboard() {
                 {activeConferenceViewItem.status === "Cancellation Requested" && (
                   <p className="s-conference-info">Your cancellation request has been sent to the Prefect for review.</p>
                 )}
-                {["Scheduled", "Rescheduled"].includes(activeConferenceViewItem.status) && (
+                {["Scheduled", "Today", "Overdue", "Rescheduled"].includes(activeConferenceViewItem.status) && (
                   <>
-                    <p className="s-conference-info">Please attend the conference at the scheduled date and time.</p>
+                    <p className="s-conference-info">
+                      {activeConferenceViewItem.status === "Overdue"
+                        ? "This conference date has passed. Contact the Prefect if you need assistance."
+                        : "Please attend the conference at the scheduled date and time."}
+                    </p>
                     <div className="s-conference-actions">
                       <button type="button" onClick={() => { setConferenceRequestType("reschedule"); setConferenceRequestReason(""); }}>
                         Request Reschedule

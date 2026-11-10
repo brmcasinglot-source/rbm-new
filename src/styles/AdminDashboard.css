@@ -598,7 +598,7 @@
 ========================= */
 .admin-dashboard-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.9fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 18px;
   align-items: start;
 }
@@ -2199,7 +2199,7 @@
   .summary-grid.admin-summary { grid-template-columns: 1fr 1fr; }
   .db-grid-chart { grid-template-columns: 1fr; }
   .mc-detail-grid { grid-template-columns: 1fr 1fr; }
-  .admin-dashboard-layout { grid-template-columns: 1fr; }
+  .admin-dashboard-layout { grid-template-columns: minmax(0, 1fr) 300px; }
   .admin-conference-panel {
     max-width: none;
     width: 100%;

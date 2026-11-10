@@ -1,0 +1,634 @@
+.admin-dashboard-layout {
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+}
+
+.conference-manager-panel {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 300px;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  min-height: 260px;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, .08);
+}
+
+.conference-manager-panel-header,
+.conference-manager-panel-title,
+.conference-manager-modal-header,
+.conference-manager-modal-title,
+.conference-manager-banner-heading,
+.conference-manager-card-top {
+  display: flex;
+  align-items: center;
+}
+
+.conference-manager-panel-header {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.conference-manager-panel-title {
+  min-width: 0;
+  gap: 9px;
+  color: #166534;
+}
+
+.conference-manager-panel-title h2 {
+  margin: 0;
+  color: #172554;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.conference-manager-action-count {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.conference-manager-schedule,
+.conference-manager-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid #15803d;
+  border-radius: 9px;
+  background: #15803d;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conference-manager-schedule:hover,
+.conference-manager-actions button:hover:not(:disabled) {
+  background: #166534;
+}
+
+.conference-manager-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.conference-manager-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 29px;
+  padding: 5px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.conference-manager-filters button.active {
+  border-color: #166534;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.conference-manager-filters button span {
+  min-width: 16px;
+  text-align: center;
+  color: inherit;
+  font-weight: 800;
+}
+
+.conference-manager-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1px 3px 4px 1px;
+  overscroll-behavior: contain;
+}
+
+.conference-manager-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 28px 11px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.conference-manager-card:hover,
+.conference-manager-card:focus-visible {
+  border-color: #86efac;
+  box-shadow: 0 5px 15px rgba(22, 101, 52, .11);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.conference-manager-card.overdue {
+  border: 1.5px solid #dc2626;
+  background: #fffafa;
+}
+
+.conference-manager-card.today {
+  border-color: #eab308;
+  background: #fffbeb;
+}
+
+.conference-manager-card-top {
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.conference-manager-card-top > strong {
+  color: #1e293b;
+  font-size: 11px;
+}
+
+.conference-manager-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.conference-manager-status.scheduled {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.conference-manager-status.today {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.conference-manager-status.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.conference-manager-status.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.conference-manager-status.no-show {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.conference-manager-status.cancelled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.conference-manager-status.reschedule-requested {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.conference-manager-status.cancellation-requested {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.conference-manager-type {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conference-manager-date {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.conference-manager-days-ago {
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.conference-manager-today-note {
+  color: #854d0e;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.conference-manager-rescheduled,
+.conference-manager-request-note {
+  color: #475569;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.conference-manager-chevron {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  color: #94a3b8;
+  transform: translateY(-50%);
+}
+
+.conference-manager-empty {
+  padding: 14px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 11px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.conference-manager-overlay {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, .58);
+  backdrop-filter: blur(3px);
+}
+
+.conference-manager-modal {
+  width: min(100%, 620px);
+  max-height: min(88vh, 900px);
+  overflow: hidden;
+  border: 1px solid #dbe3ee;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+}
+
+.conference-manager-modal-header {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.conference-manager-modal-title {
+  gap: 9px;
+  color: #15803d;
+}
+
+.conference-manager-modal-title h2 {
+  margin: 0;
+  color: #172554;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.conference-manager-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.conference-manager-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.conference-manager-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(min(88vh, 900px) - 70px);
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+}
+
+.conference-manager-banner {
+  padding: 13px 15px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+}
+
+.conference-manager-banner.overdue {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.conference-manager-banner-heading {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.conference-manager-banner-heading > strong {
+  color: #1e293b;
+  font-size: 13px;
+}
+
+.conference-manager-banner p {
+  margin: 9px 0 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.conference-manager-overdue-alert,
+.conference-manager-follow-up {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fff1f2;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.conference-manager-follow-up {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #854d0e;
+}
+
+.conference-manager-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.conference-manager-details > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conference-manager-details > .wide,
+.conference-manager-fields > .wide {
+  grid-column: 1 / -1;
+}
+
+.conference-manager-details label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.conference-manager-details span {
+  overflow-wrap: anywhere;
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.conference-manager-recorded-outcome {
+  padding: 12px 14px;
+  border: 1px solid #bbf7d0;
+  border-radius: 11px;
+  background: #f0fdf4;
+}
+
+.conference-manager-recorded-outcome h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 7px;
+  color: #166534;
+  font-size: 13px;
+}
+
+.conference-manager-recorded-outcome p {
+  margin: 5px 0 0;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.conference-manager-history {
+  padding: 11px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 12px;
+}
+
+.conference-manager-history summary {
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conference-manager-history ol {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+
+.conference-manager-history li {
+  display: grid;
+  gap: 3px;
+  line-height: 1.4;
+}
+
+.conference-manager-history li span {
+  color: #64748b;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.conference-manager-action-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.conference-manager-action-form h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.conference-manager-action-form label,
+.conference-manager-fields label {
+  display: grid;
+  gap: 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.conference-manager-action-form textarea,
+.conference-manager-action-form input,
+.conference-manager-action-form select,
+.conference-manager-fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: 39px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 12px;
+}
+
+.conference-manager-action-form textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.conference-manager-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.conference-manager-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.conference-manager-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.conference-manager-checkboxes input {
+  width: 16px;
+  min-height: 16px;
+  accent-color: #15803d;
+}
+
+.conference-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conference-manager-actions button.secondary {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #475569;
+}
+
+.conference-manager-actions button.secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.conference-manager-actions button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.conference-manager-action-form > p {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .admin-dashboard-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .conference-manager-panel {
+    position: static;
+    width: 100%;
+    max-height: 620px;
+  }
+}
+
+@media (max-width: 600px) {
+  .conference-manager-overlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .conference-manager-modal {
+    max-height: 94vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .conference-manager-content {
+    max-height: calc(94vh - 68px);
+    padding: 14px;
+  }
+
+  .conference-manager-details,
+  .conference-manager-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .conference-manager-details > .wide,
+  .conference-manager-fields > .wide {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conference-manager-card {
+    transition: none;
+  }
+}
