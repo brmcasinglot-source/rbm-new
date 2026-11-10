@@ -1338,6 +1338,11 @@ export default function StudentDashboard() {
       {caseViewItem && (() => {
         const r = caseViewItem;
         const status = r.status;
+        const conference = r.scheduledConference;
+        const hasConferenceSchedule = conference && (
+          conference.date || conference.time || conference.location
+        );
+        const conferenceStatus = hasConferenceSchedule ? getConferenceStatus(conference) : null;
         const steps = [
           {
             key: "received",
@@ -1353,6 +1358,22 @@ export default function StudentDashboard() {
               : "A counselor has been assigned and is reviewing the case.",
             state: status === "Pending" ? "pending" : "completed",
           },
+          ...(hasConferenceSchedule ? [{
+            key: "conference",
+            title: conferenceStatus === "Rescheduled" ? "Conference Rescheduled" : "Conference Scheduled",
+            desc: [
+              conference.date && formatConferenceDate(conference.date, language),
+              conference.time && formatConferenceTime(conference.time),
+              conference.location,
+              conference.notes,
+            ].filter(Boolean).join(" • "),
+            state: conferenceStatus === "Completed" || conferenceStatus === "Cancelled" || conferenceStatus === "No-show"
+              ? "completed"
+              : conferenceStatus === "Reschedule Requested" || conferenceStatus === "Cancellation Requested"
+                ? "waiting"
+                : "active",
+            conferenceStatus,
+          }] : []),
           {
             key: "review",
             title: "Final Review",
@@ -1411,7 +1432,8 @@ export default function StudentDashboard() {
                           <p className="s-tracker-step-title">{step.title}</p>
                           <p className="s-tracker-step-desc">{step.desc}</p>
                           <span className="s-tracker-step-tag">
-                            {step.state === "completed" ? "COMPLETED"
+                            {step.conferenceStatus ? step.conferenceStatus.toUpperCase()
+                              : step.state === "completed" ? "COMPLETED"
                               : step.state === "active" ? "IN PROGRESS"
                               : step.state === "pending" ? "PENDING"
                               : step.state === "waiting" ? "WAITING"
@@ -1428,18 +1450,6 @@ export default function StudentDashboard() {
                   <div className="s-admin-note" style={{ marginTop: 16 }}>
                     <Lock size={12} color="var(--s-accent)" />
                     <div><strong>Note from the Prefect:</strong> {r.adminNotes}</div>
-                  </div>
-                )}
-
-                {r.scheduledConference && (
-                  <div className="s-admin-note" style={{ marginTop: 16, background: "#dbeafe", borderColor: "#93c5fd" }}>
-                    <Calendar size={12} color="#2563eb" />
-                    <div>
-                      <strong>Scheduled Conference:</strong> {r.scheduledConference.date || "Date TBD"}
-                      {r.scheduledConference.time ? ` at ${formatConferenceTime(r.scheduledConference.time)}` : ""}
-                      {r.scheduledConference.location ? ` • ${r.scheduledConference.location}` : ""}
-                      {r.scheduledConference.notes ? ` • ${r.scheduledConference.notes}` : ""}
-                    </div>
                   </div>
                 )}
 
