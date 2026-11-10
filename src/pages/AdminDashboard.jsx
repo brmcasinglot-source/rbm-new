@@ -2773,7 +2773,7 @@ export default function AdminDashboard() {
                       <div className="mf-filter-row">
                         <span className="mf-filter-label">Status</span>
                         <div className="mf-type-chips">
-                          {["Pending","Under Investigation","More Information Requested","Resolved","All"].map(s => (
+                          {["Pending","Under Investigation","Resolved","All"].map(s => (
                             <button
                               key={s}
                               className={`filter-tab filter-tab-${s.toLowerCase().replace(/\s/g,"-")} ${mfStatus === s ? "active" : ""}`}

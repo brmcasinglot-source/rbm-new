@@ -77,6 +77,10 @@ function formatActionDisplay(value) {
   return action || "—";
 }
 
+function normalizeStudentLrn(value) {
+  return String(value ?? "").replace(/\D/g, "").slice(0, 12);
+}
+
 function formatReportNumber(id) {
   const numericId = Number(id);
   return Number.isInteger(numericId) && numericId >= 0
@@ -507,8 +511,13 @@ function StudentOffenseRecords() {
   const submitDecision = async (event) => {
     event.preventDefault();
     const primaryReport = attachedReports[0];
+    const normalizedLrn = normalizeStudentLrn(studentForm.lrn);
     if (!studentForm.name.trim() || !studentForm.grade || !primaryReport || !decision) {
       setFormError("Complete the student information, choose a report, and select a decision.");
+      return;
+    }
+    if (normalizedLrn && normalizedLrn.length !== 12) {
+      setFormError("Student LRN must be exactly 12 digits.");
       return;
     }
     if (decision === "Established" && !followUpDate) {
@@ -525,7 +534,7 @@ function StudentOffenseRecords() {
       await saveOffenseDecision(primaryReport.id, {
         ...studentForm,
         name: studentForm.name.trim(),
-        lrn: studentForm.lrn.trim(),
+        lrn: normalizedLrn,
         section: studentForm.section.trim(),
       }, decision, "", {
         attachedReportIds: attachedReports.map((report) => report.id),
@@ -554,7 +563,12 @@ function StudentOffenseRecords() {
 
   const approveOffense = async () => {
     const primaryReport = attachedReports[0];
+    const normalizedLrn = normalizeStudentLrn(studentForm.lrn);
     if (!studentForm.name.trim() || !primaryReport || savedDecision !== "Established") return;
+    if (normalizedLrn && normalizedLrn.length !== 12) {
+      setFormError("Student LRN must be exactly 12 digits.");
+      return;
+    }
     if (otherInterventionSelected && !otherIntervention.trim()) {
       setFormError("Specify the other school intervention, or uncheck that option.");
       return;
@@ -574,7 +588,7 @@ function StudentOffenseRecords() {
       const reportStatuses = await Promise.all(attachedReports.map((report) => prepareReportForOffenseApproval(report.id)));
       const created = await createStudentOffenseRecord(
         primaryReport.id,
-        { ...studentForm, name: studentForm.name.trim(), lrn: studentForm.lrn.trim(), section: studentForm.section.trim() },
+        { ...studentForm, name: studentForm.name.trim(), lrn: normalizedLrn, section: studentForm.section.trim() },
         attachedReports.map((report) => report.id)
       );
       setApprovedStudents((current) => [...current, {
@@ -796,7 +810,17 @@ function StudentOffenseRecords() {
                         <input value={studentForm.name} onChange={(event) => { setStudentForm((current) => ({ ...current, name: event.target.value })); setSavedDecision(""); }} required autoComplete="off" />
                       </label>
                       <label className="student-offense-field">Student ID / LRN
-                        <input value={studentForm.lrn} onChange={(event) => { setStudentForm((current) => ({ ...current, lrn: event.target.value })); setSavedDecision(""); }} autoComplete="off" />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={studentForm.lrn}
+                          maxLength={12}
+                          onChange={(event) => {
+                            setStudentForm((current) => ({ ...current, lrn: normalizeStudentLrn(event.target.value) }));
+                            setSavedDecision("");
+                          }}
+                          autoComplete="off"
+                        />
                       </label>
                       <label className="student-offense-field">Grade level
                         <select value={studentForm.grade} onChange={(event) => { setStudentForm((current) => ({ ...current, grade: event.target.value, section: "" })); setSectionChoice(""); setSavedDecision(""); }} required>
