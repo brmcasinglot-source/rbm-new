@@ -773,7 +773,7 @@ export default function AdminDashboard() {
     () => mfTypes.map((t) => mfFiltered.filter((r) => r.type === t).length),
     [mfFiltered, mfTypes]
   );
-  const mfChartColors = useMemo(() => ["#16a34a", "#3b82f6", "#f59e0b", "#8b5cf6", "#f97316", "#64748b"], []);
+  const mfChartColors = useMemo(() => ["#4f8760", "#6484a0", "#b28a4f", "#85749b", "#b9785f", "#78847d"], []);
 
   const mfTopIdx   = mfChartData.indexOf(Math.max(...mfChartData));
   const mfTopType  = mfTypes[mfTopIdx];
@@ -2062,7 +2062,7 @@ export default function AdminDashboard() {
             ANALYTICS TAB
         ══════════════════════════════ */}
         {activeTab === "analytics" && (
-          <div className="admin-content">
+          <div className={`admin-content${analyticsView === "overview" ? " analytics-overview" : ""}`}>
             <div className="analytics-page-nav" role="tablist" aria-label="Analytics pages">
               <button
                 type="button"
@@ -2665,28 +2665,15 @@ export default function AdminDashboard() {
                         <p className="panel-subtitle">Where bullying is most reported</p>
                       </div>
                       <button
+                        className="analytics-add-place-btn"
                         onClick={openAddLocation}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 5, padding: "7px 12px",
-                          background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 8,
-                          color: "#15803d", fontSize: 12, fontWeight: 800, cursor: "pointer",
-                          fontFamily: "Nunito, sans-serif", flexShrink: 0, whiteSpace: "nowrap",
-                        }}
                       ><Plus size={13} /> Add Place</button>
                     </div>
 
                     {/* Zone legend */}
-                    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        fontSize: 11, fontWeight: 700, padding: "4px 11px", borderRadius: 20,
-                        background: "#dbeafe", color: LOCATION_ZONE_COLORS.inside, border: "1.5px solid #93c5fd",
-                      }}><Building2 size={12} /> Inside School</span>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        fontSize: 11, fontWeight: 700, padding: "4px 11px", borderRadius: 20,
-                        background: "#fee2e2", color: LOCATION_ZONE_COLORS.outside, border: "1.5px solid #fca5a5",
-                      }}><DoorOpen size={12} /> Outside / Other</span>
+                    <div className="analytics-zone-legend">
+                      <span className="analytics-zone-chip inside"><Building2 size={12} /> Inside School</span>
+                      <span className="analytics-zone-chip outside"><DoorOpen size={12} /> Outside / Other</span>
                     </div>
 
                     {/* Custom places are grouped by their configured zone. */}
@@ -2697,7 +2684,7 @@ export default function AdminDashboard() {
                             (loc.zone === "outside" ? "outside" : "inside") === zone
                           );
                           if (zoneLocations.length === 0) return null;
-                          const color = LOCATION_ZONE_COLORS[zone];
+                          const color = zone === "outside" ? "#a66f63" : "#63859a";
                           return (
                             <div key={zone}>
                               <p style={{ color, fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
@@ -2761,7 +2748,7 @@ export default function AdminDashboard() {
                                       {zone === "outside" && (
                                         <span style={{
                                           marginLeft: 6, fontSize: 10, fontWeight: 700,
-                                          color: "#ef4444", background: "#fee2e2",
+                                          color: "#965f54", background: "#f7ece9",
                                           padding: "1px 6px", borderRadius: 8,
                                         }}>Outside</span>
                                       )}
@@ -2912,15 +2899,15 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Recommendations */}
-                <div className="card-panel" style={{ marginTop: 4, border: "2px solid #fde68a", background: "#fef3c7" }}>
-                  <div className="title-group" style={{ marginBottom: 14 }}>
-                    <h3 style={{ color: "#92400e" }}>⚡ Recommended Next Steps</h3>
-                    <p className="panel-subtitle" style={{ color: "#a16207" }}>Based on current incident data — for the Prefect of Discipline</p>
+                <div className="card-panel analytics-recommendations">
+                  <div className="title-group">
+                    <h3>Recommended next steps</h3>
+                    <p className="panel-subtitle">Suggestions based on current incident data</p>
                   </div>
-                  <ul style={{ paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <ul>
                     {recs.map((rec, i) => (
-                      <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "white", border: "1.5px solid #fde68a", borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "#78350f", lineHeight: 1.55, fontWeight: 500 }}>
-                        <span style={{ fontWeight: 800, color: "#d97706", flexShrink: 0 }}>{i + 1}.</span>{rec}
+                      <li key={i}>
+                        <span>{i + 1}.</span>{rec}
                       </li>
                     ))}
                   </ul>

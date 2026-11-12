@@ -10,7 +10,7 @@ import {
   ExternalLink, Upload, HelpCircle, Lock, Bell,
   CheckCircle, Clock, AlertTriangle, ArrowUpRight, X, Paperclip,
   Eye, Play, AlertCircle, Calendar, Send,
-  Menu, ChevronDown, LogOut,
+  Menu, ChevronDown, LogOut, MapPin,
 } from "lucide-react";
 
 import {
@@ -977,7 +977,7 @@ export default function StudentDashboard() {
             CASE MONITORING TAB
         ══════════════════════ */}
         {activeTab === "cases" && (
-          <div className="s-content">
+          <div className="s-content s-case-monitoring">
             {myReports.length === 0 ? (
               <div className="s-panel s-empty-state">
                 <Shield size={48} color="#d1fae5" />
@@ -986,30 +986,36 @@ export default function StudentDashboard() {
                 <button className="s-submit-btn" onClick={() => setActiveTab("report")}>Submit a Report</button>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="s-case-list">
                 {myReports.map((r) => (
-                  <div className="s-panel s-case-card s-case-card-clickable" key={r.id} onClick={() => openCaseDetails(r)}>
+                  <button
+                    type="button"
+                    className="s-panel s-case-card s-case-card-clickable"
+                    key={r.id}
+                    onClick={() => openCaseDetails(r)}
+                    aria-label={`View details for case ${r.id}, ${r.status}`}
+                  >
                     <div className="s-case-top">
                       <div>
                         <span className="s-case-id">Case #{r.id}</span>
                         <span className="s-case-type">{r.type}</span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="s-case-status">
                         <span className={`s-status-badge ${r.status.toLowerCase().replace(/\s/g, "-")}`}>
                           {statusIcon(r.status)} {r.status}
                         </span>
-                        <ArrowUpRight size={15} color="#9ca3af" />
+                        <ArrowUpRight className="s-case-open-icon" size={15} aria-hidden="true" />
                       </div>
                     </div>
                     <p className="s-case-desc">{r.description}</p>
                     <div className="s-case-meta">
-                      <span>📅 {r.date}{r.time ? ` at ${r.time}` : ""}</span>
-                      {r.location && <span>📍 {r.location}</span>}
+                      <span><Calendar size={13} aria-hidden="true" /> {r.date}{r.time ? ` at ${r.time}` : ""}</span>
+                      {r.location && <span><MapPin size={13} aria-hidden="true" /> {r.location}</span>}
                       {r.evidenceCount > 0 && (
-                        <span><Paperclip size={12} /> {r.evidenceCount} evidence file{r.evidenceCount > 1 ? "s" : ""}</span>
+                        <span><Paperclip size={12} aria-hidden="true" /> {r.evidenceCount} evidence file{r.evidenceCount > 1 ? "s" : ""}</span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

@@ -284,7 +284,7 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
             <div>
               <h2>Conference Management</h2>
               <span className="conference-manager-action-count">
-                {needsAction.length} need action
+              {needsAction.length} {needsAction.length === 1 ? "needs" : "need"} review
               </span>
             </div>
           </div>

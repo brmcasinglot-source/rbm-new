@@ -4,6 +4,11 @@
   grid-auto-rows: max-content;
   gap: 16px;
   min-height: 0;
+  background: #fff;
+}
+
+.admin-theme .main:has(> .student-offense-page) {
+  background: #fff;
 }
 
 .student-offense-header,
@@ -2176,4 +2181,232 @@
   .student-offense-plan-history-item dl > div:nth-child(odd):not(:last-child) {
     border-right: 0;
   }
+}
+
+/* Warm, low-contrast accents keep the records page calm but easy to scan. */
+.student-offense-title,
+.student-offense-link {
+  color: #477656;
+}
+
+.student-offense-title h2,
+.student-offense-stat strong,
+.student-offense-table td > strong {
+  color: #263b2d;
+}
+
+.student-offense-header p,
+.student-offense-stat small,
+.student-offense-table td,
+.student-offense-table td > small,
+.student-offense-filter-panel summary small,
+.student-offense-pagination {
+  color: #69766d;
+}
+
+.student-offense-primary,
+.student-offense-search > button,
+.student-offense-select-list li > button {
+  border-color: #477656;
+  background: #477656;
+}
+
+.student-offense-primary:hover:not(:disabled),
+.student-offense-search > button:hover:not(:disabled),
+.student-offense-select-list li > button:hover:not(:disabled) {
+  border-color: #3b6549;
+  background: #3b6549;
+}
+
+.student-offense-secondary,
+.student-offense-pagination button {
+  border-color: #d9e2d9;
+  color: #46594b;
+}
+
+.student-offense-secondary:hover:not(:disabled),
+.student-offense-pagination button:hover:not(:disabled) {
+  border-color: #c7d8ca;
+  background: #f4f8f4;
+}
+
+.student-offense-stat,
+.student-offense-panel {
+  border-color: #e2e9e2;
+  box-shadow: 0 2px 8px rgba(41, 64, 47, 0.035);
+}
+
+.student-offense-stat {
+  position: relative;
+  overflow: hidden;
+  border-top: 3px solid #91b59a;
+  background: linear-gradient(135deg, #fff 62%, #f5faf5);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.student-offense-stat:hover {
+  box-shadow: 0 5px 14px rgba(41, 64, 47, 0.08);
+  transform: translateY(-2px);
+}
+
+.student-offense-stat > span,
+.student-offense-number {
+  background: #edf5ee;
+  color: #477656;
+}
+
+.student-offense-stat > span {
+  border: 1px solid #dce9de;
+}
+
+.student-offense-stat:nth-child(2) {
+  border-top-color: #91abc2;
+  background: linear-gradient(135deg, #fff 62%, #f4f8fb);
+}
+
+.student-offense-stat:nth-child(2) > span {
+  border-color: #dce6ee;
+  background: #eef4f8;
+  color: #597b97;
+}
+
+.student-offense-stat:nth-child(3) {
+  border-top-color: #d6b77c;
+  background: linear-gradient(135deg, #fff 62%, #fcf8f0);
+}
+
+.student-offense-stat:nth-child(3) > span {
+  border-color: #eee3cb;
+  background: #faf4e8;
+  color: #9a7944;
+}
+
+.student-offense-stat:nth-child(4) {
+  border-top-color: #b6a4c9;
+  background: linear-gradient(135deg, #fff 62%, #f8f5fb);
+}
+
+.student-offense-stat:nth-child(4) > span {
+  border-color: #e8e0ef;
+  background: #f3eff7;
+  color: #78688e;
+}
+
+.student-offense-number {
+  border: 1px solid #d7e6d9;
+}
+
+.student-offense-notice {
+  border-color: #d2e3d5;
+  background: #f2f8f2;
+  color: #42684d;
+}
+
+.student-offense-search,
+.student-offense-filter-panel {
+  border-color: #e0e8e1;
+}
+
+.student-offense-search {
+  color: #78877c;
+}
+
+.student-offense-search input,
+.student-offense-filter-grid select,
+.student-offense-filter-grid input,
+.student-offense-field select,
+.student-offense-field textarea,
+.student-offense-field input {
+  color: #35493a;
+}
+
+.student-offense-search:focus-within,
+.student-offense-filter-grid select:focus,
+.student-offense-filter-grid input:focus,
+.student-offense-field select:focus,
+.student-offense-field textarea:focus,
+.student-offense-field input:focus {
+  border-color: #91b49a;
+  box-shadow: 0 0 0 3px rgba(71, 118, 86, 0.12);
+}
+
+.student-offense-filter-panel summary,
+.student-offense-filter-grid label,
+.student-offense-field {
+  color: #4b5e50;
+}
+
+.student-offense-filter-panel summary:hover {
+  background: #f5f9f5;
+}
+
+.student-offense-table-wrap,
+.student-offense-pagination {
+  border-color: #e7ede8;
+}
+
+.student-offense-table th {
+  background: #f3f7f3;
+  color: #56685b;
+}
+
+.student-offense-table td {
+  border-top-color: #edf1ed;
+}
+
+.student-offense-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.student-offense-table tbody tr:hover {
+  background: #f7faf7;
+}
+
+.student-offense-follow-up-status {
+  border-color: #d3e2d7;
+  background: #f0f6f1;
+  color: #4b7156;
+}
+
+.student-offense-follow-up-status.monitoring {
+  border-color: #d6e2eb;
+  background: #f0f5f8;
+  color: #57758d;
+}
+
+.student-offense-follow-up-status.overdue {
+  border-color: #ead8d1;
+  background: #fbf3ef;
+  color: #9a6253;
+}
+
+.student-offense-follow-up-status.not-scheduled {
+  border-color: #e8e0ce;
+  background: #faf7ef;
+  color: #88744b;
+}
+
+.student-offense-history-btn {
+  border-color: #d5e3d7;
+  background: #f1f7f2;
+  color: #477656;
+}
+
+.student-offense-history-btn:hover {
+  border-color: #c3d8c8;
+  background: #eaf3ec;
+}
+
+.student-offense-state {
+  color: #69766d;
+}
+
+.student-offense-state small {
+  color: #829087;
+}
+
+.student-offense-state-error,
+.student-offense-error,
+.student-offense-follow-up-field > span {
+  color: #9a6253;
 }

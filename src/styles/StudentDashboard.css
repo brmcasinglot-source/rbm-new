@@ -3497,3 +3497,165 @@
     width: 100%;
   }
 }
+
+.s-header {
+  border-bottom-color: #e2e9e3;
+  box-shadow: 0 2px 8px rgba(37, 61, 43, .04);
+}
+
+.s-welcome h2 {
+  color: #263b2d;
+  letter-spacing: -.02em;
+}
+
+.s-welcome p {
+  color: #68766d;
+}
+
+.s-case-monitoring {
+  background: #fff;
+}
+
+.s-case-list {
+  display: grid;
+  gap: 12px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.s-content .s-case-list .s-case-card {
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid #e1e9e2;
+  border-left: 3px solid #8eaf96;
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 2px 8px rgba(38, 59, 45, .04);
+}
+
+.s-content .s-case-list .s-case-card:hover {
+  border-color: #c6d8c9;
+  border-left-color: #63866b;
+  background: #fcfefc;
+  box-shadow: 0 5px 14px rgba(38, 59, 45, .08);
+  transform: translateY(-1px);
+}
+
+.s-content .s-case-list .s-case-card:focus-visible {
+  border-color: #91b49a;
+  outline: 3px solid rgba(71, 118, 86, .18);
+  outline-offset: 2px;
+}
+
+.s-case-top {
+  margin-bottom: 9px;
+}
+
+.s-case-id {
+  color: #3e6748;
+}
+
+.s-case-type {
+  border: 1px solid #d5e4d8;
+  background: #eff6f0;
+  color: #4b7154;
+  font-size: 10.5px;
+}
+
+.s-case-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.s-case-open-icon {
+  flex: 0 0 auto;
+  color: #87958a;
+  transition: color .15s ease, transform .15s ease;
+}
+
+.s-case-card:hover .s-case-open-icon {
+  color: #477656;
+  transform: translate(1px, -1px);
+}
+
+.s-case-desc {
+  margin-bottom: 10px;
+  color: #4d5e52;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.s-case-meta {
+  gap: 8px 14px;
+  color: #6b796f;
+  font-size: 11px;
+}
+
+.s-case-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.s-case-meta svg {
+  flex: 0 0 auto;
+  color: #829589;
+}
+
+.s-status-badge {
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  letter-spacing: .15px;
+}
+
+.s-status-badge.pending,
+.s-status-badge.more-information-requested {
+  border-color: #eadfc8;
+  background: #f8f3e8;
+  color: #866e40;
+}
+
+.s-status-badge.under-review,
+.s-status-badge.under-investigation {
+  border-color: #d9e3eb;
+  background: #eef4f7;
+  color: #59768b;
+}
+
+.s-status-badge.resolved {
+  border-color: #d5e4d8;
+  background: #edf5ef;
+  color: #477052;
+}
+
+@media (max-width: 600px) {
+  .s-content .s-case-list .s-case-card {
+    padding: 14px;
+  }
+
+  .s-case-top {
+    align-items: flex-start;
+  }
+
+  .s-case-status {
+    gap: 6px;
+  }
+
+  .s-case-meta {
+    gap: 7px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s-content .s-case-list .s-case-card,
+  .s-case-open-icon {
+    transition: none;
+  }
+}
