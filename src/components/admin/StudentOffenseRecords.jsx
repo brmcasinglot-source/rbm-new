@@ -52,6 +52,65 @@ const INTERVENTION_PLAN_FIELDS = [
   { key: "resourcesNeeded", label: "Resources needed", placeholder: "What materials or support are needed?" },
   { key: "expectedOutcome", label: "Expected outcome", placeholder: "What change or result is expected?" },
 ];
+const INTERVENTION_TEMPLATES = [
+  {
+    value: "student-check-in",
+    label: "Supportive student check-in",
+    fields: {
+      objective: "Provide a supportive space for the student to share concerns and identify helpful support.",
+      strategy: "Meet privately with the student, discuss practical support options, and check whether the agreed support is helpful.",
+      timeFrame: "",
+      personsInvolved: "",
+      resourcesNeeded: "",
+      expectedOutcome: "The student knows whom to approach and can share whether the agreed support is helpful.",
+    },
+  },
+  {
+    value: "family-coordination",
+    label: "Family support coordination",
+    fields: {
+      objective: "Coordinate appropriate support between the school and the student's family.",
+      strategy: "Contact the parent or guardian through approved school channels to discuss supportive next steps.",
+      timeFrame: "",
+      personsInvolved: "",
+      resourcesNeeded: "",
+      expectedOutcome: "The school and family have agreed on a practical support plan.",
+    },
+  },
+  {
+    value: "safety-check-in",
+    label: "Student safety check-in",
+    fields: {
+      objective: "Identify appropriate school-based support that may help the student feel safe.",
+      strategy: "Meet privately with the student, ask what support would help, and coordinate proportionate school-based assistance.",
+      timeFrame: "",
+      personsInvolved: "",
+      resourcesNeeded: "",
+      expectedOutcome: "The student knows how to seek help and staff can review whether the support is working.",
+    },
+  },
+];
+const PLAN_TIMEFRAME_CHOICES = ["1 week", "2 weeks", "1 month", "3 months"];
+const PLAN_PERSON_CHOICES = ["Adviser", "Guidance counselor", "Parent/guardian", "Discipline prefect", "Student"];
+const PLAN_RESOURCE_CHOICES = ["Counseling session", "Parent conference", "Referral form", "Monitoring sheet"];
+const PLAN_STRATEGY_CHOICES = [
+  {
+    label: "Parent/Guardian Conference",
+    value: "Arrange a parent/guardian conference through approved school channels to agree on supportive next steps. Staff must schedule and document it separately.",
+  },
+  {
+    label: "School Community Service",
+    value: "If school policy permits and it is appropriate, agree on a supervised, age-appropriate school community service activity with a clear educational purpose. Do not use humiliating or unsafe tasks.",
+  },
+  {
+    label: "Written Apology",
+    value: "If appropriate and the student is willing, support a respectful written apology. Do not require direct contact or a response from the other student.",
+  },
+  {
+    label: "Weekly Behavior Monitoring",
+    value: "Arrange a brief, private weekly check-in using neutral observations; review support needs and adjust with the student. Keep notes confidential and share only with staff who need to know.",
+  },
+];
 const INITIAL_FILTERS = {
   search: "", grade: "", section: "", offenseNumber: "", type: "",
   dateFrom: "", dateTo: "", action: "", sort: "recent",
@@ -158,6 +217,7 @@ function StudentOffenseRecords() {
   const [scrollToDecision, setScrollToDecision] = useState(false);
   const [decision, setDecision] = useState("");
   const [interventionPlan, setInterventionPlan] = useState([createEmptyPlanItem()]);
+  const [selectedPlanTemplate, setSelectedPlanTemplate] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [savedDecision, setSavedDecision] = useState("");
   const [formLoading, setFormLoading] = useState(false);
@@ -175,6 +235,33 @@ function StudentOffenseRecords() {
   )].sort((a, b) => a.localeCompare(b)), [filterOptions.sections, filters.grade]);
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
   const disciplinaryAction = formatDisciplinaryAction(interventionPlan);
+  const updatePlanChoice = (itemIndex, fieldKey, choice, singleChoice = false, separator = ", ") => {
+    setInterventionPlan((current) => current.map((item, index) => {
+      if (index !== itemIndex) return item;
+      if (singleChoice) return { ...item, [fieldKey]: item[fieldKey] === choice ? "" : choice };
+      const currentChoices = item[fieldKey].split(separator).map((value) => value.trim()).filter(Boolean);
+      const nextChoices = currentChoices.includes(choice)
+        ? currentChoices.filter((value) => value !== choice)
+        : [...currentChoices, choice];
+      return { ...item, [fieldKey]: nextChoices.join(separator) };
+    }));
+    setSavedDecision("");
+    setFormError("");
+  };
+  const applyPlanTemplate = () => {
+    const template = INTERVENTION_TEMPLATES.find((item) => item.value === selectedPlanTemplate);
+    if (!template) return;
+    setInterventionPlan((current) => {
+      const firstItemIsEmpty = current.length === 1
+        && INTERVENTION_PLAN_FIELDS.every((field) => !current[0][field.key].trim());
+      return firstItemIsEmpty
+        ? [{ ...template.fields }]
+        : [...current, { ...template.fields }];
+    });
+    setSelectedPlanTemplate("");
+    setSavedDecision("");
+    setFormError("");
+  };
   const showReportPicker = attachedReports.length === 0
     || addingMoreReports
     || reviewingAttachedReport
@@ -315,6 +402,7 @@ function StudentOffenseRecords() {
     setAddingAnotherStudent(true);
     setDecision("");
     setInterventionPlan([createEmptyPlanItem()]);
+    setSelectedPlanTemplate("");
     setFollowUpDate("");
     setSavedDecision("");
     setScrollToDecision(false);
@@ -341,6 +429,7 @@ function StudentOffenseRecords() {
       if (!addingMoreReports) {
         setDecision("");
         setInterventionPlan([createEmptyPlanItem()]);
+        setSelectedPlanTemplate("");
         setFollowUpDate("");
         setSavedDecision("");
       }
@@ -360,6 +449,7 @@ function StudentOffenseRecords() {
     setSavedDecision("");
     setDecision("");
     setInterventionPlan([createEmptyPlanItem()]);
+    setSelectedPlanTemplate("");
     setFollowUpDate("");
     setFormError("");
     try {
@@ -391,6 +481,7 @@ function StudentOffenseRecords() {
     setSectionChoice("");
     setDecision("");
     setInterventionPlan([createEmptyPlanItem()]);
+    setSelectedPlanTemplate("");
     setFollowUpDate("");
     setSavedDecision("");
     setFormError("");
@@ -479,6 +570,7 @@ function StudentOffenseRecords() {
     setSectionChoice("");
     setDecision("");
     setInterventionPlan([createEmptyPlanItem()]);
+    setSelectedPlanTemplate("");
     setFollowUpDate("");
     setSavedDecision("");
     setFormError("");
@@ -573,6 +665,7 @@ function StudentOffenseRecords() {
       setSectionChoice("");
       setDecision("");
       setInterventionPlan([createEmptyPlanItem()]);
+      setSelectedPlanTemplate("");
       setFollowUpDate("");
       setSavedDecision("");
       const refreshedReports = attachedReports.map((report, index) => ({
@@ -954,6 +1047,7 @@ function StudentOffenseRecords() {
                             setFormError("");
                             if (option.value !== "Established") {
                               setInterventionPlan([createEmptyPlanItem()]);
+                              setSelectedPlanTemplate("");
                               setFollowUpDate("");
                             }
                           }} required />
@@ -988,37 +1082,76 @@ function StudentOffenseRecords() {
                     <div className="student-offense-plan-section">
                       <div className="student-offense-plan-section-heading">
                         <strong>Intervention details</strong>
-                        <small>Complete one row for each objective or coordinated intervention. All fields are required for final approval.</small>
+                        <small>Start with a suggested plan or complete the fields below. Edit all suggestions to fit this student.</small>
+                      </div>
+                      <div className="student-offense-plan-template">
+                        <label htmlFor="student-offense-plan-template">Suggested plan
+                          <select id="student-offense-plan-template" value={selectedPlanTemplate} onChange={(event) => setSelectedPlanTemplate(event.target.value)}>
+                            <option value="">Choose a starting point…</option>
+                            {INTERVENTION_TEMPLATES.map((template) => <option key={template.value} value={template.value}>{template.label}</option>)}
+                          </select>
+                        </label>
+                        <button type="button" className="student-offense-plan-template-apply" disabled={!selectedPlanTemplate} onClick={applyPlanTemplate}>Apply template</button>
                       </div>
                       {interventionPlan.map((item, index) => (
                         <fieldset className="student-offense-plan-item" key={index}>
                           <legend>
-                            <span>Plan item {index + 1}</span>
+                            <span>Plan item {index + 1}<small>{INTERVENTION_PLAN_FIELDS.filter((field) => item[field.key].trim()).length}/6 fields complete</small></span>
                             {interventionPlan.length > 1 && <button type="button" className="student-offense-plan-remove" onClick={() => {
                               setInterventionPlan((current) => current.filter((_, itemIndex) => itemIndex !== index));
                               setSavedDecision("");
                             }}>Remove</button>}
                           </legend>
                           <div className="student-offense-plan-fields">
-                            {INTERVENTION_PLAN_FIELDS.map((field) => (
-                              <label className="student-offense-plan-field" key={field.key}>
-                                <span>{field.label} <b aria-hidden="true">*</b></span>
-                                <textarea
-                                  rows={field.key === "strategy" || field.key === "expectedOutcome" ? 3 : 2}
-                                  value={item[field.key]}
-                                  placeholder={field.placeholder}
-                                  onChange={(event) => {
-                                    setInterventionPlan((current) => current.map((planItem, itemIndex) =>
-                                      itemIndex === index ? { ...planItem, [field.key]: event.target.value } : planItem
-                                    ));
-                                    setSavedDecision("");
-                                    setFormError("");
-                                  }}
-                                  aria-label={`Plan item ${index + 1}: ${field.label}`}
-                                />
-                              </label>
-                            ))}
+                            {["objective", "strategy", "timeFrame", "personsInvolved", "resourcesNeeded", "expectedOutcome"].map((key) => {
+                              const field = INTERVENTION_PLAN_FIELDS.find((itemField) => itemField.key === key);
+                              const choices = key === "strategy" ? PLAN_STRATEGY_CHOICES
+                                : key === "timeFrame" ? PLAN_TIMEFRAME_CHOICES
+                                : key === "personsInvolved" ? PLAN_PERSON_CHOICES
+                                  : key === "resourcesNeeded" ? PLAN_RESOURCE_CHOICES : [];
+                              const choiceSeparator = key === "strategy" ? "\n" : ", ";
+                              const currentChoices = item[key].split(choiceSeparator).map((value) => value.trim());
+                              return (
+                                <label className={`student-offense-plan-field student-offense-plan-field-${key}`} key={field.key}>
+                                  <span>{field.label} <b aria-hidden="true">*</b></span>
+                                  {choices.length > 0 && (
+                                    <div className={`student-offense-plan-quick-choices${key === "strategy" ? " student-offense-plan-quick-choices-strategy" : ""}`} aria-label={`${field.label} suggestions`}>
+                                      {choices.map((choice) => {
+                                        const choiceValue = typeof choice === "string" ? choice : choice.value;
+                                        const choiceLabel = typeof choice === "string" ? choice : choice.label;
+                                        return (
+                                        <button
+                                          type="button"
+                                          key={choiceValue}
+                                          className={currentChoices.includes(choiceValue) ? "selected" : ""}
+                                          aria-pressed={currentChoices.includes(choiceValue)}
+                                          onClick={() => updatePlanChoice(index, key, choiceValue, key === "timeFrame", choiceSeparator)}
+                                        >{choiceLabel}</button>
+                                      );})}
+                                    </div>
+                                  )}
+                                  <textarea
+                                    rows={key === "strategy" || key === "expectedOutcome" ? 3 : 2}
+                                    value={item[key]}
+                                    placeholder={field.placeholder}
+                                    onChange={(event) => {
+                                      setInterventionPlan((current) => current.map((planItem, itemIndex) =>
+                                        itemIndex === index ? { ...planItem, [key]: event.target.value } : planItem
+                                      ));
+                                      setSavedDecision("");
+                                      setFormError("");
+                                    }}
+                                    aria-label={`Plan item ${index + 1}: ${field.label}`}
+                                  />
+                                </label>
+                              );
+                            })}
                           </div>
+                          <button type="button" className="student-offense-plan-duplicate" onClick={() => {
+                            setInterventionPlan((current) => [...current.slice(0, index + 1), { ...current[index] }, ...current.slice(index + 1)]);
+                            setSavedDecision("");
+                            setFormError("");
+                          }}>Duplicate item</button>
                         </fieldset>
                       ))}
                       <button type="button" className="student-offense-plan-add" onClick={() => {
