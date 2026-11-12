@@ -152,6 +152,46 @@ function formatDisciplinaryAction(planItems) {
   ].join("\n");
 }
 
+function parseInterventionPlan(value) {
+  const fieldByLabel = new Map(INTERVENTION_PLAN_FIELDS.map((field) => [field.label.toLowerCase(), field.key]));
+  const items = [];
+  let currentItem = null;
+  let activeField = "";
+  let hasStructuredFields = false;
+
+  String(value || "").split(/\r?\n/).forEach((line) => {
+    const text = line.trim();
+    if (!text || text === "Learner Rights and Protection Intervention Plan") return;
+
+    if (/^Plan item(?:\s+\d+)?$/i.test(text)) {
+      currentItem = createEmptyPlanItem();
+      items.push(currentItem);
+      activeField = "";
+      return;
+    }
+
+    const separator = text.indexOf(":");
+    const label = separator === -1 ? "" : text.slice(0, separator).trim().toLowerCase();
+    const fieldKey = fieldByLabel.get(label);
+    if (fieldKey) {
+      if (!currentItem) {
+        currentItem = createEmptyPlanItem();
+        items.push(currentItem);
+      }
+      currentItem[fieldKey] = text.slice(separator + 1).trim();
+      activeField = fieldKey;
+      hasStructuredFields = true;
+      return;
+    }
+
+    if (currentItem && activeField) {
+      currentItem[activeField] = [currentItem[activeField], text].filter(Boolean).join("\n");
+    }
+  });
+
+  return hasStructuredFields ? items : [];
+}
+
 function currentDateInput() {
   const date = new Date();
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
@@ -222,6 +262,32 @@ function StudentOffenseRecords() {
     .map((item) => item.section)
   )].sort((a, b) => a.localeCompare(b)), [filterOptions.sections, filters.grade]);
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  const studentRecords = useMemo(() => {
+    const recordsByStudent = new Map();
+    result.records.forEach((record) => {
+      const studentKey = record.personKey
+        || record.studentId
+        || (record.lrn
+          ? `lrn:${normalizeStudentLrn(record.lrn)}`
+          : `name:${String(record.studentName || "").trim().toLowerCase()}`);
+      const existing = recordsByStudent.get(studentKey);
+      if (!existing) {
+        recordsByStudent.set(studentKey, { record, matchingRecordCount: 1 });
+        return;
+      }
+
+      existing.matchingRecordCount += 1;
+      const currentDate = new Date(existing.record.reviewedAt || existing.record.approvedAt || 0).getTime() || 0;
+      const candidateDate = new Date(record.reviewedAt || record.approvedAt || 0).getTime() || 0;
+      if (
+        candidateDate > currentDate
+        || (candidateDate === currentDate && Number(record.offenseNumber) > Number(existing.record.offenseNumber))
+      ) {
+        existing.record = record;
+      }
+    });
+    return [...recordsByStudent.values()];
+  }, [result.records]);
   const disciplinaryAction = formatDisciplinaryAction(interventionPlan);
   const updatePlanChoice = (itemIndex, fieldKey, choice, singleChoice = false, separator = ", ") => {
     setInterventionPlan((current) => current.map((item, index) => {
@@ -796,19 +862,18 @@ function StudentOffenseRecords() {
             <div className="student-offense-state"><ShieldCheck size={24} /><span>No established offense records match these filters.<small>Submitted reports and completed conferences are not offense records.</small></span></div>
           ) : (
             <table className="student-offense-table">
-              <thead><tr><th>Student</th><th>Offense</th><th>Incident</th><th>Action</th><th>Follow-up</th><th>Approved by</th><th>Date recorded</th><th>History</th></tr></thead>
+              <thead><tr><th>Student</th><th>Record summary</th><th>Latest incident</th><th>Follow-up</th><th>Last reviewed</th><th>Full history</th></tr></thead>
               <tbody>
-                {result.records.map((record) => (
+                {studentRecords.map(({ record, matchingRecordCount }) => (
                   <tr key={record.id}>
                     <td><strong>{record.studentName}</strong><small>{[record.lrn, record.grade, record.section].filter(Boolean).join(" · ") || "Student details unavailable"}</small></td>
-                    <td><span className="student-offense-number">#{record.offenseNumber}</span><small>{record.studentOffenseCount > 1 ? `${record.studentOffenseCount} total` : "First offense"}</small></td>
+                    <td><span className="student-offense-number">{record.studentOffenseCount || matchingRecordCount} {(record.studentOffenseCount || matchingRecordCount) === 1 ? "offense" : "offenses"}</span><small>Latest: #{record.offenseNumber}</small></td>
                     <td>
                       {(record.incidentReportIds || [record.incidentReportId]).map((reportId) => (
-                        <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>Report #{reportId}</button>
+                        <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>{formatReportNumber(reportId)}</button>
                       ))}
                       <small>{record.incidentType} · {formatDate(record.incidentDate)}</small>
                     </td>
-                    <td className="student-offense-action-cell">{formatActionDisplay(record.disciplinaryAction)}</td>
                     <td>
                       {record.followUpDate ? (
                         <>
@@ -819,9 +884,8 @@ function StudentOffenseRecords() {
                         </>
                       ) : <span className="student-offense-follow-up-status not-scheduled">Not scheduled</span>}
                     </td>
-                    <td>{record.approvedBy}</td>
-                    <td>{formatDate(record.reviewedAt)}</td>
-                    <td><button type="button" className="student-offense-history-btn" onClick={() => openHistory(record.personKey)} aria-label={`View ${record.studentName}'s offense history`}><History size={15} /></button></td>
+                    <td>{formatDate(record.reviewedAt || record.approvedAt)}</td>
+                    <td><button type="button" className="student-offense-history-btn" onClick={() => openHistory(record.personKey)} aria-label={`View ${record.studentName}'s full offense history`}><History size={15} /><span>View history</span></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -829,7 +893,7 @@ function StudentOffenseRecords() {
           )}
         </div>
         <div className="student-offense-pagination">
-          <span>{result.total ? `Showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, result.total)} of ${result.total}` : "0 matching records"}</span>
+          <span>{result.total ? `Showing records ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, result.total)} of ${result.total} · ${studentRecords.length} students on this page` : "0 matching records"}</span>
           <div>
             <button type="button" onClick={() => loadRecords(filters, page - 1)} disabled={loading || page === 0}><ChevronLeft size={15} /> Previous</button>
             <span>Page {page + 1} of {totalPages}</span>
@@ -1172,7 +1236,18 @@ function StudentOffenseRecords() {
       {history && (
         <div className="student-offense-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setHistory(null); }}>
           <section className="student-offense-modal student-offense-history-modal" role="dialog" aria-modal="true" aria-labelledby="student-offense-history-title">
-            <div className="student-offense-modal-header"><div><h3 id="student-offense-history-title">{history.student?.name || "Student"} — Offense History</h3><p>{[history.student?.lrn, history.student?.grade, history.student?.section].filter(Boolean).join(" · ")}</p></div><button type="button" onClick={() => setHistory(null)} aria-label="Close history"><X size={19} /></button></div>
+            <div className="student-offense-modal-header student-offense-history-header">
+              <div>
+                <h3 id="student-offense-history-title">{history.student?.name || "Student"}</h3>
+                <p>{history.records ? `${history.records.length} established offense${history.records.length === 1 ? "" : "s"}` : "Review approved offense records"}</p>
+                <div className="student-offense-history-student-meta">
+                  {history.student?.lrn && <span>LRN {history.student.lrn}</span>}
+                  {history.student?.grade && <span>{history.student.grade}</span>}
+                  {history.student?.section && <span>{history.student.section}</span>}
+                </div>
+              </div>
+              <button type="button" onClick={() => setHistory(null)} aria-label="Close history"><X size={19} /></button>
+            </div>
             <div className="student-offense-modal-content">
               {historyLoading || history.loading ? <div className="student-offense-state"><LoaderCircle className="student-offense-spinner" size={22} />Loading history…</div>
                 : history.error ? <p className="student-offense-error">{history.error}</p>
@@ -1181,21 +1256,85 @@ function StudentOffenseRecords() {
                       {history.records.map((record) => {
                         const decisionFindings = history.decisions
                           .find((decisionItem) => decisionItem.reportId === record.incidentReportId)?.findings;
+                        const reportIds = record.incidentReportIds || [record.incidentReportId];
+                        const followUpStatus = record.followUpDate ? getFollowUpStatus(record.followUpDate) : "Not scheduled";
+                        const planItems = parseInterventionPlan(record.disciplinaryAction);
                         return (
                           <li key={record.id}>
-                            <span className="student-offense-timeline-dot" />
-                            <div className="student-offense-timeline-card">
-                              <div className="student-offense-timeline-heading"><strong>Offense #{record.offenseNumber}</strong><span>{formatDate(record.approvedAt)}</span></div>
-                              <p><strong>{record.incidentType}</strong> · {formatDate(record.incidentDate)} · { (record.incidentReportIds || [record.incidentReportId]).map((reportId) => <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>Report #{reportId}</button>)}</p>
-                              <p><strong>Student ID/LRN:</strong> {history.student?.lrn || "—"} · <strong>Grade/Section:</strong> {[history.student?.grade, history.student?.section].filter(Boolean).join(" / ") || "—"}</p>
-                              {record.conferenceFindings && <p><strong>Conference findings:</strong> {record.conferenceFindings}</p>}
-                              {record.adminRemarks && <p><strong>Admin/Prefect remarks:</strong> {record.adminRemarks}</p>}
-                              {decisionFindings && <p><strong>Decision findings:</strong> {decisionFindings}</p>}
-                              <p className="student-offense-action-cell"><strong>Disciplinary action:</strong> {record.disciplinaryAction}</p>
-                              <p><strong>Approved by:</strong> {record.approvedBy || "Administrator"}</p>
-                              <p><strong>Date reviewed:</strong> {formatDate(record.reviewedAt)}</p>
-                              <p><strong>Follow-up:</strong> {record.followUpDate ? `${formatDate(record.followUpDate)} · ${getFollowUpStatus(record.followUpDate)}` : "Not scheduled"}</p>
-                            </div>
+                            <details className="student-offense-history-entry">
+                              <summary>
+                                <span className="student-offense-history-summary-main">
+                                  <span className="student-offense-number">Offense #{record.offenseNumber}</span>
+                                  <strong>{record.incidentType || "Incident"}</strong>
+                                  <span>{formatDate(record.incidentDate)}</span>
+                                </span>
+                                <span className="student-offense-history-summary-side">
+                                  <span className={`student-offense-follow-up-status ${followUpStatus.toLowerCase()}`}>{followUpStatus}</span>
+                                  <span className="student-offense-history-toggle"><span>View details</span><span>Hide details</span></span>
+                                </span>
+                              </summary>
+                              <div className="student-offense-history-details">
+                                <section className="student-offense-history-section">
+                                  <h4>Related incident reports</h4>
+                                  <div className="student-offense-history-reports">
+                                    {reportIds.map((reportId) => (
+                                      <button key={reportId} type="button" className="student-offense-link" onClick={() => openReport(reportId)}>
+                                        {formatReportNumber(reportId)}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </section>
+                                <div className="student-offense-history-facts">
+                                  <div><span>Approved by</span><strong>{record.approvedBy || "Administrator"}</strong></div>
+                                  <div><span>Date reviewed</span><strong>{formatDate(record.reviewedAt)}</strong></div>
+                                  <div><span>Follow-up date</span><strong>{record.followUpDate ? formatDate(record.followUpDate) : "Not scheduled"}</strong></div>
+                                </div>
+                                <section className="student-offense-history-section">
+                                  <h4>Intervention plan</h4>
+                                  {planItems.length ? (
+                                    <div className="student-offense-plan-history">
+                                      {planItems.map((item, index) => {
+                                        const completedFields = INTERVENTION_PLAN_FIELDS
+                                          .filter((field) => item[field.key].trim());
+                                        return (
+                                          <section className="student-offense-plan-history-item" key={`plan-${index + 1}`}>
+                                            <h5>Plan item {index + 1}</h5>
+                                            <dl>
+                                              {completedFields.map((field) => (
+                                                <div key={field.key}>
+                                                  <dt>{field.label}</dt>
+                                                  <dd>{item[field.key]}</dd>
+                                                </div>
+                                              ))}
+                                            </dl>
+                                          </section>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <p className="student-offense-history-text">{record.disciplinaryAction || "No intervention plan was recorded."}</p>
+                                  )}
+                                </section>
+                                {record.conferenceFindings && (
+                                  <section className="student-offense-history-section">
+                                    <h4>Conference findings</h4>
+                                    <p className="student-offense-history-text">{record.conferenceFindings}</p>
+                                  </section>
+                                )}
+                                {record.adminRemarks && (
+                                  <section className="student-offense-history-section">
+                                    <h4>Administrator / prefect remarks</h4>
+                                    <p className="student-offense-history-text">{record.adminRemarks}</p>
+                                  </section>
+                                )}
+                                {decisionFindings && (
+                                  <section className="student-offense-history-section">
+                                    <h4>Decision findings</h4>
+                                    <p className="student-offense-history-text">{decisionFindings}</p>
+                                  </section>
+                                )}
+                              </div>
+                            </details>
                           </li>
                         );
                       })}
