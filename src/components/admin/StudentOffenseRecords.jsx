@@ -44,18 +44,13 @@ const DECISION_CHOICES = [
   { value: "Needs Further Investigation", label: "Needs more evidence", description: "More information is needed before a decision." },
   { value: "Resolved Through Mediation", label: "Resolved through mediation", description: "The matter was resolved through mediation." },
 ];
-const INTERVENTION_OPTIONS = [
-  { label: "Student conference", detail: "Review the incident and expectations with the student." },
-  { label: "Parent conference", detail: "Discuss the incident and next steps with a parent." },
-  { label: "Behavior plan", detail: "Set expectations and agree on follow-up steps." },
-  { label: "Detention", detail: "Assign an appropriate school-supervised consequence." },
-];
-const RECOMMENDATION_OPTIONS = [
-  { label: "Guidance counseling referral", detail: "For the victim and offender" },
-  { label: "Restorative talk", detail: "Only if both parties agree" },
-  { label: "Written apology or reflection", detail: "Reviewed by the Prefect of Discipline" },
-  { label: "School-based community service", detail: "Supervised, in school" },
-  { label: "Referral to School Head", detail: "For serious or repeated cases" },
+const INTERVENTION_PLAN_FIELDS = [
+  { key: "objective", label: "Objective", placeholder: "What should this plan achieve?" },
+  { key: "strategy", label: "Intervention strategy", placeholder: "What action or support will be provided?" },
+  { key: "timeFrame", label: "Time frame", placeholder: "When or for how long?" },
+  { key: "personsInvolved", label: "Persons involved", placeholder: "Who will carry out or participate?" },
+  { key: "resourcesNeeded", label: "Resources needed", placeholder: "What materials or support are needed?" },
+  { key: "expectedOutcome", label: "Expected outcome", placeholder: "What change or result is expected?" },
 ];
 const INITIAL_FILTERS = {
   search: "", grade: "", section: "", offenseNumber: "", type: "",
@@ -92,17 +87,22 @@ function formatReporterRole(role) {
   return role === "Friend" ? "Friend of victim" : role || "—";
 }
 
-function formatDisciplinaryAction(interventions, recommendations, otherSelected, otherAction) {
-  const sections = [];
-  const selectedInterventions = [...interventions];
-  if (otherSelected) selectedInterventions.push(`Other: ${otherAction.trim() || "[specify]"}`);
-  if (selectedInterventions.length) {
-    sections.push(`School intervention plan:\n${selectedInterventions.map((item) => `- ${item}`).join("\n")}`);
-  }
-  if (recommendations.length) {
-    sections.push(`Recommended additions:\n${recommendations.map((item) => `- ${item}`).join("\n")}`);
-  }
-  return sections.join("\n\n");
+function createEmptyPlanItem() {
+  return INTERVENTION_PLAN_FIELDS.reduce((item, field) => ({ ...item, [field.key]: "" }), {});
+}
+
+function formatDisciplinaryAction(planItems) {
+  const completedItems = planItems.filter((item) =>
+    INTERVENTION_PLAN_FIELDS.some((field) => item[field.key].trim())
+  );
+  if (!completedItems.length) return "";
+  return [
+    "Learner Rights and Protection Intervention Plan",
+    ...completedItems.flatMap((item, index) => [
+      `Plan item ${index + 1}`,
+      ...INTERVENTION_PLAN_FIELDS.map((field) => `${field.label}: ${item[field.key].trim()}`),
+    ]),
+  ].join("\n");
 }
 
 function currentDateInput() {
@@ -157,10 +157,7 @@ function StudentOffenseRecords() {
   const [addingAnotherStudent, setAddingAnotherStudent] = useState(true);
   const [scrollToDecision, setScrollToDecision] = useState(false);
   const [decision, setDecision] = useState("");
-  const [schoolInterventions, setSchoolInterventions] = useState([]);
-  const [recommendedAdditions, setRecommendedAdditions] = useState([]);
-  const [otherInterventionSelected, setOtherInterventionSelected] = useState(false);
-  const [otherIntervention, setOtherIntervention] = useState("");
+  const [interventionPlan, setInterventionPlan] = useState([createEmptyPlanItem()]);
   const [followUpDate, setFollowUpDate] = useState("");
   const [savedDecision, setSavedDecision] = useState("");
   const [formLoading, setFormLoading] = useState(false);
@@ -177,12 +174,7 @@ function StudentOffenseRecords() {
     .map((item) => item.section)
   )].sort((a, b) => a.localeCompare(b)), [filterOptions.sections, filters.grade]);
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
-  const disciplinaryAction = formatDisciplinaryAction(
-    schoolInterventions,
-    recommendedAdditions,
-    otherInterventionSelected,
-    otherIntervention
-  );
+  const disciplinaryAction = formatDisciplinaryAction(interventionPlan);
   const showReportPicker = attachedReports.length === 0
     || addingMoreReports
     || reviewingAttachedReport
@@ -322,10 +314,7 @@ function StudentOffenseRecords() {
     setApprovedStudents([]);
     setAddingAnotherStudent(true);
     setDecision("");
-    setSchoolInterventions([]);
-    setRecommendedAdditions([]);
-    setOtherInterventionSelected(false);
-    setOtherIntervention("");
+    setInterventionPlan([createEmptyPlanItem()]);
     setFollowUpDate("");
     setSavedDecision("");
     setScrollToDecision(false);
@@ -351,10 +340,7 @@ function StudentOffenseRecords() {
       setReportEvidence(null);
       if (!addingMoreReports) {
         setDecision("");
-        setSchoolInterventions([]);
-        setRecommendedAdditions([]);
-        setOtherInterventionSelected(false);
-        setOtherIntervention("");
+        setInterventionPlan([createEmptyPlanItem()]);
         setFollowUpDate("");
         setSavedDecision("");
       }
@@ -373,10 +359,7 @@ function StudentOffenseRecords() {
     setReportEvidence(null);
     setSavedDecision("");
     setDecision("");
-    setSchoolInterventions([]);
-    setRecommendedAdditions([]);
-    setOtherInterventionSelected(false);
-    setOtherIntervention("");
+    setInterventionPlan([createEmptyPlanItem()]);
     setFollowUpDate("");
     setFormError("");
     try {
@@ -407,10 +390,7 @@ function StudentOffenseRecords() {
     setStudentForm({ name: "", lrn: "", grade: "", section: "" });
     setSectionChoice("");
     setDecision("");
-    setSchoolInterventions([]);
-    setRecommendedAdditions([]);
-    setOtherInterventionSelected(false);
-    setOtherIntervention("");
+    setInterventionPlan([createEmptyPlanItem()]);
     setFollowUpDate("");
     setSavedDecision("");
     setFormError("");
@@ -498,10 +478,7 @@ function StudentOffenseRecords() {
     setStudentForm({ name: "", lrn: "", grade: "", section: "" });
     setSectionChoice("");
     setDecision("");
-    setSchoolInterventions([]);
-    setRecommendedAdditions([]);
-    setOtherInterventionSelected(false);
-    setOtherIntervention("");
+    setInterventionPlan([createEmptyPlanItem()]);
     setFollowUpDate("");
     setSavedDecision("");
     setFormError("");
@@ -522,10 +499,6 @@ function StudentOffenseRecords() {
     }
     if (decision === "Established" && !followUpDate) {
       setFormError("Choose a follow-up date for an established decision.");
-      return;
-    }
-    if (decision === "Established" && otherInterventionSelected && !otherIntervention.trim()) {
-      setFormError("Specify the other school intervention, or uncheck that option.");
       return;
     }
     setFormLoading(true);
@@ -569,12 +542,11 @@ function StudentOffenseRecords() {
       setFormError("Student LRN must be exactly 12 digits.");
       return;
     }
-    if (otherInterventionSelected && !otherIntervention.trim()) {
-      setFormError("Specify the other school intervention, or uncheck that option.");
-      return;
-    }
-    if (!disciplinaryAction.trim()) {
-      setFormError("Select at least one school intervention or recommended addition before approval.");
+    const incompletePlanItem = interventionPlan.some((item) =>
+      INTERVENTION_PLAN_FIELDS.some((field) => !item[field.key].trim())
+    );
+    if (incompletePlanItem) {
+      setFormError("Complete all six fields for each intervention plan item before final approval.");
       return;
     }
     const pendingStatusNotice = attachedReports.some((report) => report.status === "Pending")
@@ -600,10 +572,7 @@ function StudentOffenseRecords() {
       setStudentForm({ name: "", lrn: "", grade: "", section: "" });
       setSectionChoice("");
       setDecision("");
-      setSchoolInterventions([]);
-      setRecommendedAdditions([]);
-      setOtherInterventionSelected(false);
-      setOtherIntervention("");
+      setInterventionPlan([createEmptyPlanItem()]);
       setFollowUpDate("");
       setSavedDecision("");
       const refreshedReports = attachedReports.map((report, index) => ({
@@ -790,7 +759,7 @@ function StudentOffenseRecords() {
 
       {formOpen && (
         <div className="student-offense-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !formLoading) resetForm(); }}>
-          <section className="student-offense-modal" role="dialog" aria-modal="true" aria-labelledby="student-offense-form-title">
+          <section className="student-offense-modal student-offense-form-modal" role="dialog" aria-modal="true" aria-labelledby="student-offense-form-title">
             <div className="student-offense-modal-header"><div><h3 id="student-offense-form-title">Add Offense Record</h3><p>Records are created only after an explicit established decision and approval.</p></div><button type="button" onClick={resetForm} aria-label="Close form"><X size={19} /></button></div>
             <div className="student-offense-modal-content">
               <section className="student-offense-form-step">
@@ -984,10 +953,7 @@ function StudentOffenseRecords() {
                             setSavedDecision("");
                             setFormError("");
                             if (option.value !== "Established") {
-                              setSchoolInterventions([]);
-                              setRecommendedAdditions([]);
-                              setOtherInterventionSelected(false);
-                              setOtherIntervention("");
+                              setInterventionPlan([createEmptyPlanItem()]);
                               setFollowUpDate("");
                             }
                           }} required />
@@ -998,61 +964,69 @@ function StudentOffenseRecords() {
                   </section>
 
                   {decision === "Established" && <section className="student-offense-intervention-plan" aria-labelledby="student-offense-intervention-title">
-                    <div className="student-offense-final-decision-heading">
-                      <span id="student-offense-intervention-title">SCHOOL INTERVENTION PLAN</span>
-                      <p>Select the actions agreed upon or recommended for this case.</p>
+                    <div className="student-offense-final-decision-heading student-offense-plan-heading">
+                      <span id="student-offense-intervention-title">LEARNER RIGHTS AND PROTECTION INTERVENTION PLAN</span>
+                      <p>Document clear objectives, assigned actions, timelines, and expected results for this case.</p>
                     </div>
-                    <label className="student-offense-field student-offense-follow-up-field">
-                      Follow-up date
-                      <input type="date" value={followUpDate} onChange={(event) => { setFollowUpDate(event.target.value); setSavedDecision(""); setFormError(""); }} required />
-                      <small>Choose when the intervention should be reviewed.</small>
-                    </label>
-                    <fieldset className="student-offense-action-options">
-                      <legend className="student-offense-visually-hidden">School intervention plan</legend>
-                      {INTERVENTION_OPTIONS.map((option) => (
-                        <label key={option.label} className={`student-offense-action-choice${schoolInterventions.includes(option.label) ? " selected" : ""}`}>
-                          <input type="checkbox" checked={schoolInterventions.includes(option.label)} onChange={() => {
-                            setSchoolInterventions((current) => current.includes(option.label)
-                              ? current.filter((item) => item !== option.label)
-                              : [...current, option.label]);
-                            setSavedDecision("");
-                          }} />
-                          <span><strong>{option.label}</strong><small>{option.detail}</small></span>
-                        </label>
-                      ))}
-                      <div className="student-offense-other-option">
-                        <label className={`student-offense-action-choice${otherInterventionSelected ? " selected" : ""}`}>
-                          <input type="checkbox" checked={otherInterventionSelected} onChange={(event) => {
-                            setOtherInterventionSelected(event.target.checked);
-                            if (!event.target.checked) setOtherIntervention("");
-                            setSavedDecision("");
-                            setFormError("");
-                          }} />
-                          <span><strong>Other (specify)</strong><small>Add another suitable intervention.</small></span>
-                        </label>
-                        {otherInterventionSelected && <input className="student-offense-other-input" value={otherIntervention} onChange={(event) => { setOtherIntervention(event.target.value); setSavedDecision(""); setFormError(""); }} placeholder="Specify school intervention" aria-label="Specify other school intervention" required />}
+                    <div className="student-offense-plan-case-summary">
+                      <div><small>School</small><strong>CNHS</strong></div>
+                      <div><small>Student</small><strong>{studentForm.name || "Student name not entered"}</strong></div>
+                      <div><small>Grade / Section</small><strong>{[studentForm.grade, studentForm.section].filter(Boolean).join(" / ") || "Not provided"}</strong></div>
+                      <div><small>Reported incident</small><strong>{[...new Set(attachedReports.map((report) => report.type).filter(Boolean))].join(", ") || "See attached report"}</strong></div>
+                      <div><small>Related reports</small><strong>{attachedReports.map((report) => formatReportNumber(report.id)).join(", ") || "None attached"}</strong></div>
+                    </div>
+                    <div className="student-offense-plan-section">
+                      <div className="student-offense-plan-section-heading">
+                        <strong>Plan review</strong>
+                        <small>Schedule when progress and the intervention plan will be reviewed.</small>
                       </div>
-                    </fieldset>
-
-                    <div className="student-offense-final-decision-heading student-offense-recommendations-heading">
-                      <span>RECOMMENDED ADDITIONS</span>
-                      <p>Optional supports may be selected in addition to the school intervention plan.</p>
+                      <label className="student-offense-field student-offense-follow-up-field">
+                        Follow-up date <span aria-hidden="true">*</span>
+                        <input type="date" value={followUpDate} onChange={(event) => { setFollowUpDate(event.target.value); setSavedDecision(""); setFormError(""); }} required />
+                      </label>
                     </div>
-                    <fieldset className="student-offense-action-options student-offense-recommendation-options">
-                      <legend className="student-offense-visually-hidden">Recommended additions</legend>
-                      {RECOMMENDATION_OPTIONS.map((option) => (
-                        <label key={option.label} className="student-offense-action-choice">
-                          <input type="checkbox" checked={recommendedAdditions.includes(option.label)} onChange={() => {
-                            setRecommendedAdditions((current) => current.includes(option.label)
-                              ? current.filter((item) => item !== option.label)
-                              : [...current, option.label]);
-                            setSavedDecision("");
-                          }} />
-                          <span><strong>{option.label}</strong><small>{option.detail}</small></span>
-                        </label>
+                    <div className="student-offense-plan-section">
+                      <div className="student-offense-plan-section-heading">
+                        <strong>Intervention details</strong>
+                        <small>Complete one row for each objective or coordinated intervention. All fields are required for final approval.</small>
+                      </div>
+                      {interventionPlan.map((item, index) => (
+                        <fieldset className="student-offense-plan-item" key={index}>
+                          <legend>
+                            <span>Plan item {index + 1}</span>
+                            {interventionPlan.length > 1 && <button type="button" className="student-offense-plan-remove" onClick={() => {
+                              setInterventionPlan((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                              setSavedDecision("");
+                            }}>Remove</button>}
+                          </legend>
+                          <div className="student-offense-plan-fields">
+                            {INTERVENTION_PLAN_FIELDS.map((field) => (
+                              <label className="student-offense-plan-field" key={field.key}>
+                                <span>{field.label} <b aria-hidden="true">*</b></span>
+                                <textarea
+                                  rows={field.key === "strategy" || field.key === "expectedOutcome" ? 3 : 2}
+                                  value={item[field.key]}
+                                  placeholder={field.placeholder}
+                                  onChange={(event) => {
+                                    setInterventionPlan((current) => current.map((planItem, itemIndex) =>
+                                      itemIndex === index ? { ...planItem, [field.key]: event.target.value } : planItem
+                                    ));
+                                    setSavedDecision("");
+                                    setFormError("");
+                                  }}
+                                  aria-label={`Plan item ${index + 1}: ${field.label}`}
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
                       ))}
-                    </fieldset>
-                    <p className="student-offense-help">If the report is Pending, approval moves it to Under Investigation automatically.</p>
+                      <button type="button" className="student-offense-plan-add" onClick={() => {
+                        setInterventionPlan((current) => [...current, createEmptyPlanItem()]);
+                        setSavedDecision("");
+                      }}>+ Add plan item</button>
+                    </div>
+                    <p className="student-offense-help">Use student-centered, appropriate supports. Any restorative process should be voluntary for everyone involved. If a report is Pending, approval moves it to Under Investigation automatically.</p>
                   </section>}
                   <button type="submit" className="student-offense-secondary" disabled={formLoading || !decision}>
                     {formLoading ? "Saving review…" : "Save review decision"}

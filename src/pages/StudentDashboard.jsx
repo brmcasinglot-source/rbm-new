@@ -1012,7 +1012,7 @@ export default function StudentDashboard() {
                 <div className="s-fake-report-warning">
                   <AlertCircle size={15} />
                   <div>
-                    <strong>Before you submit:</strong> Thank you for speaking up — please make sure everything you share here is accurate and truthful, since fabricated reports can hurt real victims and lead to disciplinary action.
+                    <strong>Before You Submit:</strong> Thank you for speaking up! Siguroa nga tinood ug accurate ang imong report. Ang paghimo ug false report mahimong makadaot sa mga tinuod nga biktima ug mahimong hinungdan sa disciplinary action. Ayaw kabalaka, ampingan ang imong identity ug report details. Ang authorized school personnel ra ang makakita ani. <strong>Speak up honestly, safe imong privacy!</strong>
                   </div>
                 </div>
 
@@ -1253,19 +1253,19 @@ export default function StudentDashboard() {
                   <div className="s-form-section-title" style={{ marginTop: 20 }}>Incident Description</div>
                   <div className="s-form-group">
                     <label>What happened? *</label>
-                    <textarea placeholder="Describe the incident in detail…" required
+                    <textarea placeholder="I-describe ang nahitabo nga insidente sa detalye..." required
                       value={reportForm.description}
                       onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })} />
                   </div>
                   <div className="s-form-group">
                     <label>Events leading to the incident</label>
-                    <textarea placeholder="What happened before the incident? Any prior conflicts or context…" style={{ minHeight: 80 }}
+                    <textarea placeholder="Unsa ang nahitabo sa wala pa ang insidente? Aduna bay previous conflicts o rason nga nakaingon ani?" style={{ minHeight: 80 }}
                       value={reportForm.descriptionLeadUp}
                       onChange={(e) => setReportForm({ ...reportForm, descriptionLeadUp: e.target.value })} />
                   </div>
                   <div className="s-form-group">
                     <label>Impact on the victim</label>
-                    <textarea placeholder="How was the victim affected? Physically, emotionally, socially…" style={{ minHeight: 80 }}
+                    <textarea placeholder="Unsa ang epekto ani sa biktima? Naunsa siya physically, emotionally," style={{ minHeight: 80 }}
                       value={reportForm.descriptionImpact}
                       onChange={(e) => setReportForm({ ...reportForm, descriptionImpact: e.target.value })} />
                   </div>

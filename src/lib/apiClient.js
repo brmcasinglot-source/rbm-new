@@ -5,15 +5,26 @@ async function post(action, data = {}) {
     throw new Error("Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the frontend environment.");
   }
   const sessionToken = localStorage.getItem("cnhsSessionToken");
-  const response = await fetch(`${projectUrl.replace(/\/$/, "")}/functions/v1/api`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: anonKey,
-      Authorization: `Bearer ${sessionToken || anonKey}`,
-    },
-    body: JSON.stringify({ action, ...data }),
-  });
+  let response;
+  try {
+    response = await fetch(`${projectUrl.replace(/\/$/, "")}/functions/v1/api`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
+        Authorization: `Bearer ${sessionToken || anonKey}`,
+      },
+      body: JSON.stringify({ action, ...data }),
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        `Could not reach the verification service from ${window.location.origin}. Check your connection, then retry. If the problem continues, add this exact site origin to the Supabase Edge Function ALLOWED_ORIGINS setting.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
   let payload;
   try {
     payload = await response.json();
