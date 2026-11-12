@@ -27,7 +27,7 @@ import {
 
 import {
   getReports, updateReportStatus, reviewConferenceRequest,
-  updateConferenceSchedule, cancelConference, deleteReport,
+  updateConferenceSchedule, cancelConference,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, LOCATION_ZONE_COLORS, getCustomLocations, addCustomLocation, deleteCustomLocation,
@@ -209,7 +209,7 @@ const TYPE_COLORS = {
 
 const PRIORITY_ACCENT = { High: "#ef4444", Medium: "#f59e0b", Low: "#16a34a" };
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
-const EXPORT_STATUSES = ["Pending", "Under Investigation", "More Information Requested", "Resolved"];
+const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
 const EXPORT_OFFENSE_TYPES = ["Verbal", "Physical", "Social", "Cyber"];
 const EXPORT_OFFENSE_LEVELS = [
   ["", "All offenses"],
@@ -426,8 +426,10 @@ export default function AdminDashboard() {
   // Grade & Section management panel
   const [sectionMgmtGrade, setSectionMgmtGrade] = useState("Grade 7");
   const [newSectionName,   setNewSectionName]   = useState("");
+  const [newSectionAdviser, setNewSectionAdviser] = useState("");
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingSectionName, setEditingSectionName] = useState("");
+  const [editingSectionAdviser, setEditingSectionAdviser] = useState("");
 
   // Live data
   const [incidents,        setIncidents]        = useState([]);
@@ -1324,19 +1326,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteReport = async (id) => {
-    if (!window.confirm("Delete this report? This cannot be undone.")) return;
-    try {
-      await deleteReport(id);
-      const loadedCount = Math.max(REPORT_PAGE_SIZE, incidents.length);
-      const refreshed = await getReports({ summaryOnly: true, limit: loadedCount });
-      setIncidents(refreshed);
-      setHasMoreIncidents(refreshed.length === loadedCount);
-    } catch (error) {
-      showToast(`Could not delete report: ${error.message}`, "error");
-    }
-  };
-
   const openNewAwareness = () => {
     setEditingAwareness(null);
     setAForm({
@@ -1406,11 +1395,16 @@ export default function AdminDashboard() {
   };
 
   const handleAddSection = async () => {
-    const result = await addGradeSection({ grade: sectionMgmtGrade, section: newSectionName });
+    const result = await addGradeSection({
+      grade: sectionMgmtGrade,
+      section: newSectionName,
+      adviser: newSectionAdviser,
+    });
     if (!result.success) { showToast(result.error, "error"); return; }
     setGradeSections(await getGradeSections());
     setNewSectionName("");
-    showToast(`"${result.section.section}" added to ${sectionMgmtGrade}.`);
+    setNewSectionAdviser("");
+    showToast(`"${result.section.section}" added to ${sectionMgmtGrade} with adviser ${result.section.adviser}.`);
   };
 
   const handleDeleteSection = async (id, name) => {
@@ -1420,11 +1414,12 @@ export default function AdminDashboard() {
   };
 
   const handleSaveSection = async (id, grade) => {
-    const result = await updateGradeSection(id, editingSectionName, grade);
+    const result = await updateGradeSection(id, editingSectionName, grade, editingSectionAdviser);
     if (!result.success) { showToast(result.error, "error"); return; }
     setGradeSections(await getGradeSections());
     setEditingSectionId(null);
     setEditingSectionName("");
+    setEditingSectionAdviser("");
     showToast(`Section renamed to "${result.section.section}".`);
   };
 
@@ -1997,9 +1992,6 @@ export default function AdminDashboard() {
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <span className={`status-badge ${r.status.toLowerCase().replace(/\s/g,"-")}`}>{r.status}</span>
                             <button className="read-btn tiny" onClick={() => handleOpenManage(r)}>Manage</button>
-                            <button className="delete-btn tiny" onClick={() => handleDeleteReport(r.id)}>
-                              <Trash2 size={12} />
-                            </button>
                           </div>
                         </div>
                         <p className="incident-desc" style={{ fontSize: 12.5, color: "#475569", margin: "4px 0 6px", lineHeight: 1.4 }}>
@@ -2686,32 +2678,6 @@ export default function AdminDashboard() {
                       ><Plus size={13} /> Add Place</button>
                     </div>
 
-                    {/* Custom places the admin has added */}
-                    {customLocations.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-                        {customLocations.map((loc) => (
-                          <span key={loc.key} style={{
-                            display: "inline-flex", alignItems: "center", gap: 5,
-                            fontSize: 11, fontWeight: 700, padding: "4px 6px 4px 10px", borderRadius: 20,
-                            background: hexToRgba(LOCATION_ZONE_COLORS[loc.zone === "outside" ? "outside" : "inside"], 0.12),
-                            color: LOCATION_ZONE_COLORS[loc.zone === "outside" ? "outside" : "inside"],
-                            border: `1.5px solid ${hexToRgba(LOCATION_ZONE_COLORS[loc.zone === "outside" ? "outside" : "inside"], 0.4)}`,
-                          }}>
-                            {loc.icon} {loc.key}
-                            <button
-                              onClick={() => handleDeleteLocation(loc.key)}
-                              aria-label={`Remove ${loc.key}`}
-                              style={{
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                width: 16, height: 16, borderRadius: "50%", border: "none",
-                                background: "rgba(0,0,0,0.08)", color: "inherit", cursor: "pointer", padding: 0,
-                              }}
-                            ><X size={10} /></button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
                     {/* Zone legend */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
                       <span style={{
@@ -2725,6 +2691,48 @@ export default function AdminDashboard() {
                         background: "#fee2e2", color: LOCATION_ZONE_COLORS.outside, border: "1.5px solid #fca5a5",
                       }}><DoorOpen size={12} /> Outside / Other</span>
                     </div>
+
+                    {/* Custom places are grouped by their configured zone. */}
+                    {customLocations.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+                        {["inside", "outside"].map((zone) => {
+                          const zoneLocations = customLocations.filter((loc) =>
+                            (loc.zone === "outside" ? "outside" : "inside") === zone
+                          );
+                          if (zoneLocations.length === 0) return null;
+                          const color = LOCATION_ZONE_COLORS[zone];
+                          return (
+                            <div key={zone}>
+                              <p style={{ color, fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
+                                Custom places — {zone === "outside" ? "Outside / Other" : "Inside School"}
+                              </p>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {zoneLocations.map((loc) => (
+                                  <span key={loc.key} style={{
+                                    display: "inline-flex", alignItems: "center", gap: 5,
+                                    fontSize: 11, fontWeight: 700, padding: "4px 6px 4px 10px", borderRadius: 20,
+                                    background: hexToRgba(color, 0.12),
+                                    color,
+                                    border: `1.5px solid ${hexToRgba(color, 0.4)}`,
+                                  }}>
+                                    {loc.icon} {loc.key}
+                                    <button
+                                      onClick={() => handleDeleteLocation(loc.key)}
+                                      aria-label={`Remove ${loc.key}`}
+                                      style={{
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        width: 16, height: 16, borderRadius: "50%", border: "none",
+                                        background: "rgba(0,0,0,0.08)", color: "inherit", cursor: "pointer", padding: 0,
+                                      }}
+                                    ><X size={10} /></button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {locationSorted.length === 0 ? (
                       <p style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.6 }}>
@@ -3216,12 +3224,23 @@ export default function AdminDashboard() {
               </div>
 
               {/* Add section */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              <div className="grade-sections-add-row">
                 <input
-                  style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14 }}
+                  className="grade-sections-add-input"
                   placeholder={`e.g. Rizal — new section under ${sectionMgmtGrade}`}
+                  aria-label="Section name"
+                  maxLength={100}
                   value={newSectionName}
                   onChange={(e) => setNewSectionName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddSection(); }}
+                />
+                <input
+                  className="grade-sections-add-input"
+                  placeholder="Adviser's name"
+                  aria-label="Section adviser"
+                  maxLength={100}
+                  value={newSectionAdviser}
+                  onChange={(e) => setNewSectionAdviser(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleAddSection(); }}
                 />
                 <button
@@ -3248,6 +3267,7 @@ export default function AdminDashboard() {
                     <thead>
                       <tr>
                         <th scope="col">Section Name</th>
+                        <th scope="col">Adviser</th>
                         <th scope="col">Actions</th>
                       </tr>
                     </thead>
@@ -3266,11 +3286,31 @@ export default function AdminDashboard() {
                                   if (event.key === "Escape") {
                                     setEditingSectionId(null);
                                     setEditingSectionName("");
+                                    setEditingSectionAdviser("");
                                   }
                                 }}
                                 autoFocus
                               />
                             ) : s.section}
+                          </td>
+                          <td>
+                            {editingSectionId === s.id ? (
+                              <input
+                                className="grade-section-edit-input"
+                                aria-label={`Adviser for ${s.section}`}
+                                value={editingSectionAdviser}
+                                onChange={(event) => setEditingSectionAdviser(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") handleSaveSection(s.id, s.grade);
+                                  if (event.key === "Escape") {
+                                    setEditingSectionId(null);
+                                    setEditingSectionName("");
+                                    setEditingSectionAdviser("");
+                                  }
+                                }}
+                                maxLength={100}
+                              />
+                            ) : s.adviser || "Unassigned"}
                           </td>
                           <td>
                             <div className="grade-sections-actions">
@@ -3279,13 +3319,13 @@ export default function AdminDashboard() {
                                   <button type="button" className="grade-section-action edit" aria-label={`Save ${s.section}`} title="Save" onClick={() => handleSaveSection(s.id, s.grade)}>
                                     <CheckCircle size={14} /> <span>Save</span>
                                   </button>
-                                  <button type="button" className="grade-section-action cancel" aria-label={`Cancel editing ${s.section}`} title="Cancel" onClick={() => { setEditingSectionId(null); setEditingSectionName(""); }}>
+                                  <button type="button" className="grade-section-action cancel" aria-label={`Cancel editing ${s.section}`} title="Cancel" onClick={() => { setEditingSectionId(null); setEditingSectionName(""); setEditingSectionAdviser(""); }}>
                                     <X size={14} /> <span>Cancel</span>
                                   </button>
                                 </>
                               ) : (
                                 <>
-                                  <button type="button" className="grade-section-action edit" aria-label={`Edit ${s.section}`} title="Edit" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.section); }}>
+                                  <button type="button" className="grade-section-action edit" aria-label={`Edit ${s.section}`} title="Edit" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.section); setEditingSectionAdviser(s.adviser || ""); }}>
                                     <Edit size={14} /> <span>Edit</span>
                                   </button>
                                   <button type="button" className="grade-section-action delete" aria-label={`Delete ${s.section}`} title="Delete" onClick={() => handleDeleteSection(s.id, s.section)}>

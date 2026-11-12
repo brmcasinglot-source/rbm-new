@@ -583,6 +583,84 @@
   padding: 17px 19px;
 }
 
+.student-offense-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 19px 19px;
+}
+
+.student-offense-confirm-modal {
+  width: min(560px, 100%);
+}
+
+.student-offense-confirmation-box {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #dfe7e2;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.student-offense-confirmation-badge {
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.student-offense-confirmation-box h4 {
+  margin: 0;
+  color: #172033;
+  font: 800 20px "Nunito", sans-serif;
+}
+
+.student-offense-confirmation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.student-offense-confirmation-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.student-offense-confirmation-item span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.student-offense-confirmation-item strong {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.student-offense-confirmation-note {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .student-offense-form-step {
   display: grid;
   gap: 11px;

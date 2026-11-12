@@ -757,7 +757,7 @@ export async function deleteCustomLocation(key) {
 export async function getGradeSections() {
   if (gradeSectionsCache) return gradeSectionsCache;
   if (!gradeSectionsRequest) {
-    gradeSectionsRequest = supabase.from("grade_sections").select("id,grade,section").order("grade").order("section")
+    gradeSectionsRequest = supabase.from("grade_sections").select("id,grade,section,adviser").order("grade").order("section")
       .then(({ data, error }) => {
         if (error) throw error;
         gradeSectionsCache = data || [];
@@ -768,31 +768,36 @@ export async function getGradeSections() {
   return gradeSectionsRequest;
 }
 
-export async function addGradeSection({ grade, section }) {
+export async function addGradeSection({ grade, section, adviser }) {
   const trimmed = (section || "").trim();
+  const trimmedAdviser = (adviser || "").trim();
   if (!grade)   return { success: false, error: "Grade level is required." };
   if (!trimmed) return { success: false, error: "Section name is required." };
+  if (!trimmedAdviser) return { success: false, error: "Adviser name is required." };
   const { data: existing, error: checkError } = await supabase
     .from("grade_sections").select("id").eq("grade", grade).ilike("section", trimmed);
   if (checkError) return { success: false, error: checkError.message };
   if (existing && existing.length > 0) return { success: false, error: `"${trimmed}" already exists under ${grade}.` };
 
-  const { data, error } = await supabase.from("grade_sections").insert({ grade, section: trimmed }).select().single();
+  const { data, error } = await supabase.from("grade_sections")
+    .insert({ grade, section: trimmed, adviser: trimmedAdviser }).select().single();
   if (error) return { success: false, error: error.message };
   gradeSectionsCache = null;
   return { success: true, section: data };
 }
 
-export async function updateGradeSection(id, section, grade) {
+export async function updateGradeSection(id, section, grade, adviser) {
   const trimmed = (section || "").trim();
+  const trimmedAdviser = (adviser || "").trim();
   if (!trimmed) return { success: false, error: "Section name is required." };
+  if (!trimmedAdviser) return { success: false, error: "Adviser name is required." };
   const { data: existing, error: checkError } = await supabase
     .from("grade_sections").select("id").eq("grade", grade).ilike("section", trimmed).neq("id", id);
   if (checkError) return { success: false, error: checkError.message };
   if (existing && existing.length > 0) return { success: false, error: `"${trimmed}" already exists under ${grade}.` };
 
   const { data, error } = await supabase
-    .from("grade_sections").update({ section: trimmed }).eq("id", id).select().maybeSingle();
+    .from("grade_sections").update({ section: trimmed, adviser: trimmedAdviser }).eq("id", id).select().maybeSingle();
   if (error) return { success: false, error: error.message };
   if (!data) {
     return {

@@ -138,6 +138,7 @@ create table grade_sections (
   id         bigint generated always as identity primary key,
   grade      text not null check (grade in ('Grade 7','Grade 8','Grade 9','Grade 10')),
   section    text not null,
+  adviser    text not null default '',
   created_at timestamptz default now(),
   unique (grade, section)
 );

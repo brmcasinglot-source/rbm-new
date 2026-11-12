@@ -2926,6 +2926,26 @@
   text-transform: uppercase;
 }
 
+.grade-sections-add-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.grade-sections-add-input {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font: 14px "Nunito", sans-serif;
+}
+
+.grade-sections-add-input:focus {
+  outline: 2px solid rgba(22, 163, 74, 0.2);
+  border-color: #16a34a;
+}
+
 .grade-sections-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -2936,7 +2956,7 @@
 
 .grade-sections-table {
   width: 100%;
-  min-width: 390px;
+  min-width: 520px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -3040,11 +3060,10 @@
 }
 
 @media (max-width: 600px) {
-  .grade-sections-table { min-width: 0; }
+  .grade-sections-add-row { flex-direction: column; }
+  .grade-sections-table { min-width: 520px; }
   .grade-sections-table th,
   .grade-sections-table td { padding: 9px 10px; }
-  .grade-sections-table th:last-child,
-  .grade-sections-table td:last-child { width: 94px; }
   .grade-sections-actions { gap: 5px; }
   .grade-section-action { width: 34px; min-width: 34px; height: 34px; padding: 0; }
   .grade-section-action span { display: none; }
