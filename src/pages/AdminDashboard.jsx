@@ -207,7 +207,6 @@ const TYPE_COLORS = {
   Others:   "#64748b",
 };
 
-const PRIORITY_ACCENT = { High: "#ef4444", Medium: "#f59e0b", Low: "#16a34a" };
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
 const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
 const EXPORT_OFFENSE_TYPES = ["Verbal", "Physical", "Social", "Cyber"];
@@ -1921,7 +1920,7 @@ export default function AdminDashboard() {
             INCIDENTS TAB
         ══════════════════════════════ */}
         {activeTab === "incidents" && (
-          <div className="admin-content">
+          <div className="admin-content admin-incidents-page">
             <div className="incidents-toolbar">
               <div className="search-bar-wrap">
                 <Search size={14} />
@@ -1965,7 +1964,7 @@ export default function AdminDashboard() {
               const pageItems = filteredIncidents.slice(pageStart, pageStart + INCIDENTS_PAGE_SIZE);
               return (
                 <>
-                  <p style={{ fontSize: 12.5, fontWeight: 700, color: "#94a3b8", margin: "0 0 12px" }}>
+                  <p className="incidents-result-count">
                     Showing {pageStart + 1}–{Math.min(pageStart + INCIDENTS_PAGE_SIZE, filteredIncidents.length)} of {filteredIncidents.length} incident{filteredIncidents.length !== 1 ? "s" : ""}
                   </p>
                   <div className="incidents-grid">
@@ -1973,7 +1972,6 @@ export default function AdminDashboard() {
                       <div
                         className={`card-panel incident-row${unseenReportIds.has(r.id) ? " incident-row-unseen" : ""}`}
                         key={r.id}
-                        style={{ borderLeft: `4px solid ${PRIORITY_ACCENT[r.priority] || "#e5e7eb"}` }}
                       >
                         <div className="incident-top">
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1994,7 +1992,7 @@ export default function AdminDashboard() {
                             <button className="read-btn tiny" onClick={() => handleOpenManage(r)}>Manage</button>
                           </div>
                         </div>
-                        <p className="incident-desc" style={{ fontSize: 12.5, color: "#475569", margin: "4px 0 6px", lineHeight: 1.4 }}>
+                        <p className="incident-desc">
                           {r.description}
                         </p>
                         <div className="incident-meta">
@@ -2013,9 +2011,8 @@ export default function AdminDashboard() {
                           )}
                         </div>
                         {r.adminNotes && (
-                          <div style={{ marginTop: 6, fontSize: 11.5, background: "#dcfce7", border: "1.5px solid #86efac",
-                            borderRadius: 7, padding: "6px 10px", color: "#16a34a" }}>
-                            <strong>Admin Note:</strong> {r.adminNotes}
+                          <div className="incident-admin-note">
+                            <strong>Staff note</strong><span>{r.adminNotes}</span>
                           </div>
                         )}
                       </div>
@@ -2993,9 +2990,9 @@ export default function AdminDashboard() {
             CONFIRMATIONS TAB
         ══════════════════════════════ */}
         {activeTab === "confirmations" && (
-          <div className="admin-content">
-            <div className="card-panel" style={{ marginBottom: 18 }}>
-              <div className="title-group" style={{ marginBottom: 20 }}>
+          <div className="admin-content admin-confirmations-page">
+            <section className="card-panel account-section">
+              <div className="title-group account-section-heading">
                 <h3>Awaiting Email Confirmation</h3>
                 <p className="panel-subtitle">
                   Signed up but haven't entered their Brevo verification code yet — they'll move to the queue below once verified.
@@ -3003,31 +3000,23 @@ export default function AdminDashboard() {
               </div>
 
               {unconfirmedError ? (
-                <p style={{ color: "#b91c1c", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 8, fontSize: 12.5, padding: "10px 12px", fontWeight: 600 }}>
+                <p className="account-alert account-alert-error">
                   Couldn't load this list: {unconfirmedError}
                 </p>
               ) : unconfirmedSignups.length === 0 ? (
-                <p style={{ color: "#94a3b8", fontSize: 13, padding: "8px 0 4px" }}>
+                <p className="account-empty-state">
                   No sign-ups waiting for email verification right now.
                 </p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="account-request-list">
                   {unconfirmedSignups.map((s) => (
-                    <div key={s.id} style={{
-                      border: "1.5px solid #bfdbfe", background: "#eff6ff", borderRadius: 12,
-                      padding: "16px 18px", display: "flex", alignItems: "flex-start",
-                      justifyContent: "space-between", gap: 16, flexWrap: "wrap",
-                    }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <strong style={{ fontSize: 15, color: "#111827" }}>{s.name || "(name unavailable)"}</strong>
-                          <span style={{
-                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase",
-                            color: "#1d4ed8", background: "#dbeafe", border: "1px solid #bfdbfe",
-                            padding: "2px 8px", borderRadius: 10,
-                          }}>Verifying Email</span>
+                    <div key={s.id} className="account-request-row">
+                      <div className="account-request-info">
+                        <div className="account-request-title">
+                          <strong>{s.name || "(name unavailable)"}</strong>
+                          <span className="account-request-status verifying">Verifying email</span>
                         </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 18px", fontSize: 12.5, color: "#57534e" }}>
+                        <div className="account-request-meta">
                           <span>{s.email}</span>
                           <span>LRN {s.lrn || "—"}</span>
                           <span>{s.grade || "—"} · {s.section || "—"}</span>
@@ -3035,22 +3024,18 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <button
+                        type="button"
+                        className="account-action-button resend"
                         onClick={() => handleResendConfirmation(s.email)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
-                          background: "#fff", border: "1.5px solid #93c5fd", borderRadius: 8,
-                          color: "#1d4ed8", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
-                          fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap", flexShrink: 0,
-                        }}
                       >Resend Code</button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
-            <div className="card-panel" style={{ marginBottom: 18 }}>
-              <div className="title-group" style={{ marginBottom: 20 }}>
+            <section className="card-panel account-section">
+              <div className="title-group account-section-heading">
                 <h3>Account Confirmations</h3>
                 <p className="panel-subtitle">
                   Verified student sign-ups land here — approve or decline before they can log in.
@@ -3058,72 +3043,52 @@ export default function AdminDashboard() {
               </div>
 
               {studentAccountsError && (
-                <p style={{ color: "#b91c1c", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 8, fontSize: 12.5, padding: "10px 12px", fontWeight: 600 }}>
+                <p className="account-alert account-alert-error">
                   Couldn't load student accounts: {studentAccountsError}
                 </p>
               )}
               {pendingAccountsError && (
-                <p style={{ color: "#b91c1c", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 8, fontSize: 12.5, padding: "10px 12px", fontWeight: 600 }}>
+                <p className="account-alert account-alert-error">
                   Couldn't load the approval queue: {pendingAccountsError}
                 </p>
               )}
               {studentAccountsLoading && pendingAccounts.length === 0 ? (
-                <p style={{ color: "#64748b", fontSize: 13, padding: "8px 0 4px" }}>Loading student accounts…</p>
+                <p className="account-empty-state">Loading student accounts…</p>
               ) : !pendingAccountsError && pendingAccounts.length === 0 && !hasMorePendingAccounts ? (
-                <p style={{ color: "#94a3b8", fontSize: 13, padding: "8px 0 4px" }}>
+                <p className="account-empty-state">
                   No accounts waiting for admin approval right now.
                 </p>
               ) : pendingAccounts.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="account-request-list">
                   {pendingAccounts.map((s) => (
-                    <div key={s.id} style={{
-                      border: "1.5px solid #fde68a", background: "#fffbeb", borderRadius: 12,
-                      padding: "16px 18px", display: "flex", alignItems: "flex-start",
-                      justifyContent: "space-between", gap: 16, flexWrap: "wrap",
-                    }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <strong style={{ fontSize: 15, color: "#111827" }}>{s.name}</strong>
-                          <span style={{
-                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase",
-                            color: "#a16207", background: "#fef3c7", border: "1px solid #fde68a",
-                            padding: "2px 8px", borderRadius: 10,
-                          }}>Pending</span>
+                    <div key={s.id} className="account-request-row">
+                      <div className="account-request-info">
+                        <div className="account-request-title">
+                          <strong>{s.name}</strong>
+                          <span className="account-request-status pending">Pending approval</span>
                         </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 18px", fontSize: 12.5, color: "#57534e" }}>
+                        <div className="account-request-meta">
                           <span>{s.email}</span>
                           <span>LRN {s.lrn || "—"}</span>
                           <span>{s.grade || "—"} · {s.section || "—"}</span>
                           <span>Registered {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+                      <div className="account-request-actions">
                         <button
+                          type="button"
+                          className="account-action-button view-id"
                           onClick={() => handleViewStudentId(s)}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6, padding: "8px 12px",
-                            background: "#fff", border: "1.5px solid #93c5fd", borderRadius: 8,
-                            color: "#1d4ed8", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
-                            fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap",
-                          }}
                         ><Image size={14} /> View ID Photos</button>
                         <button
+                          type="button"
+                          className="account-action-button approve"
                           onClick={() => handleApproveAccount(s.id, s.name)}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
-                            background: "#16a34a", border: "1.5px solid #16a34a", borderRadius: 8,
-                            color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
-                            fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap",
-                          }}
                         ><UserCheck size={14} /> Approve</button>
                         <button
+                          type="button"
+                          className="account-action-button decline"
                           onClick={() => handleDeclineAccount(s.id, s.name)}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
-                            background: "#fff", border: "1.5px solid #fca5a5", borderRadius: 8,
-                            color: "#dc2626", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
-                            fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap",
-                          }}
                         ><X size={14} /> Decline</button>
                       </div>
                     </div>
@@ -3131,49 +3096,49 @@ export default function AdminDashboard() {
                 </div>
               ) : null}
               {(pendingAccountPage > 0 || hasMorePendingAccounts) && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, fontSize: 12, color: "#64748b" }}>
+                <div className="account-pagination">
                   <span>Pending approvals · Page {pendingAccountPage + 1}</span>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="account-pagination-actions">
                     <button className="read-btn tiny" disabled={pendingAccountPage === 0} onClick={() => setPendingAccountPage((page) => page - 1)}>Previous</button>
                     <button className="read-btn tiny" disabled={!hasMorePendingAccounts} onClick={() => setPendingAccountPage((page) => page + 1)}>Next</button>
                   </div>
                 </div>
               )}
-            </div>
+            </section>
 
-            <div className="card-panel">
-              <div className="title-group" style={{ marginBottom: 12 }}>
+            <section className="card-panel account-section">
+              <div className="title-group account-section-heading">
                 <h3>All Student Accounts</h3>
                 <p className="panel-subtitle">
                   Verified student profiles, including pending and approved accounts.
                 </p>
               </div>
               {studentAccountsLoading && studentAccounts.length === 0 ? (
-                <p style={{ color: "#64748b", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                <p className="account-empty-state">
                   Loading student accounts…
                 </p>
               ) : studentAccountsError && studentAccounts.length === 0 ? (
-                <p style={{ color: "#b91c1c", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                <p className="account-alert account-alert-error">
                   Student accounts could not be loaded. Check the error above and try again.
                 </p>
               ) : studentAccounts.length === 0 ? (
-                <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                <p className="account-empty-state">
                   No verified student accounts yet. Sign-ups awaiting email verification are listed above.
                 </p>
               ) : (
                 <div className="table-container">
-                  <table className="cases-table compact">
+                  <table className="cases-table compact account-table">
                     <thead>
                       <tr><th>Name</th><th>Email</th><th>LRN</th><th>Grade</th><th>Section</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                       {studentAccounts.map((s) => (
                         <tr key={s.id}>
-                          <td style={{ fontSize: 12, fontWeight: 700 }}>{s.name}</td>
-                          <td style={{ fontSize: 12 }}>{s.email}</td>
-                          <td style={{ fontSize: 12 }}>{s.lrn || "—"}</td>
-                          <td style={{ fontSize: 12 }}>{s.grade || "—"}</td>
-                          <td style={{ fontSize: 12 }}>{s.section || "—"}</td>
+                          <td className="account-name-cell">{s.name}</td>
+                          <td title={s.email}>{s.email}</td>
+                          <td>{s.lrn || "—"}</td>
+                          <td>{s.grade || "—"}</td>
+                          <td>{s.section || "—"}</td>
                           <td>
                             <span className={`status-badge ${s.approved ? "resolved" : "pending"}`}>
                               {s.approved ? "Approved" : "Pending"}
@@ -3186,15 +3151,15 @@ export default function AdminDashboard() {
                 </div>
               )}
               {(studentAccountPage > 0 || hasMoreStudentAccounts) && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, fontSize: 12, color: "#64748b" }}>
+                <div className="account-pagination">
                   <span>Student accounts · Page {studentAccountPage + 1}</span>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="account-pagination-actions">
                     <button className="read-btn tiny" disabled={studentAccountPage === 0} onClick={() => setStudentAccountPage((page) => page - 1)}>Previous</button>
                     <button className="read-btn tiny" disabled={!hasMoreStudentAccounts} onClick={() => setStudentAccountPage((page) => page + 1)}>Next</button>
                   </div>
                 </div>
               )}
-            </div>
+            </section>
           </div>
         )}
 
