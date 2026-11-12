@@ -907,8 +907,8 @@ function StudentOffenseRecords() {
           <section className="student-offense-modal student-offense-form-modal" role="dialog" aria-modal="true" aria-labelledby="student-offense-form-title">
             <div className="student-offense-modal-header"><div><h3 id="student-offense-form-title">Add Offense Record</h3><p>Records are created only after an explicit established decision and approval.</p></div><button type="button" onClick={resetForm} aria-label="Close form"><X size={19} /></button></div>
             <div className="student-offense-modal-content">
-              <section className="student-offense-form-step">
-                <h4>1. Student information</h4>
+              <section className="student-offense-form-step student-offense-student-step">
+                <h4>Student details</h4>
                 {approvedStudents.length > 0 && (
                   <div className="student-offense-added-students">
                     <strong>Offense records already created in this form</strong>
@@ -951,7 +951,7 @@ function StudentOffenseRecords() {
                         {sectionChoice === "__manual__" && <input value={studentForm.section} onChange={(event) => { setStudentForm((current) => ({ ...current, section: event.target.value })); setSavedDecision(""); }} placeholder="Enter section" autoComplete="off" required />}
                       </label>
                     </div>
-                    <p className="student-offense-help">Each student gets an individual review and offense number. Sections update from the Grade & Sections module. No student account is required.</p>
+                    <p className="student-offense-help">Enter the student’s name and class. Choose a grade to load its available sections.</p>
                   </>
                 ) : (
                   <div className="student-offense-report-confirmed" role="status">
@@ -1114,12 +1114,15 @@ function StudentOffenseRecords() {
                       <span id="student-offense-intervention-title">LEARNER RIGHTS AND PROTECTION INTERVENTION PLAN</span>
                       <p>Document clear objectives, assigned actions, timelines, and expected results for this case.</p>
                     </div>
-                    <div className="student-offense-plan-case-summary">
-                      <div><small>School</small><strong>CNHS</strong></div>
-                      <div><small>Student</small><strong>{studentForm.name || "Student name not entered"}</strong></div>
-                      <div><small>Grade / Section</small><strong>{[studentForm.grade, studentForm.section].filter(Boolean).join(" / ") || "Not provided"}</strong></div>
-                      <div><small>Reported incident</small><strong>{[...new Set(attachedReports.map((report) => report.type).filter(Boolean))].join(", ") || "See attached report"}</strong></div>
-                      <div><small>Related reports</small><strong>{attachedReports.map((report) => formatReportNumber(report.id)).join(", ") || "None attached"}</strong></div>
+                    <div className="student-offense-plan-case">
+                      <h4>Case summary</h4>
+                      <div className="student-offense-plan-case-summary">
+                        <div><small>School</small><strong>CNHS</strong></div>
+                        <div><small>Student</small><strong>{studentForm.name || "—"}</strong></div>
+                        <div><small>Grade / Section</small><strong>{[studentForm.grade, studentForm.section].filter(Boolean).join(" / ") || "—"}</strong></div>
+                        <div><small>Incident type</small><strong>{[...new Set(attachedReports.map((report) => report.type).filter(Boolean))].join(", ") || "—"}</strong></div>
+                        <div><small>Related reports</small><strong>{attachedReports.map((report) => formatReportNumber(report.id)).join(", ") || "—"}</strong></div>
+                      </div>
                     </div>
                     <div className="student-offense-plan-section">
                       <div className="student-offense-plan-section-heading">
