@@ -112,6 +112,19 @@ function formatDate(value) {
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function formatIncidentTime(value) {
+  if (!value) return "—";
+  const raw = String(value).trim();
+  if (/AM|PM/i.test(raw)) return raw;
+  const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return raw;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return raw;
+  const period = hours >= 12 ? "PM" : "AM";
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
 function formatActionDisplay(value) {
   const action = String(value || "").trim();
   if (/^(yes|true)$/i.test(action)) return "Intervention recorded";
@@ -1023,10 +1036,10 @@ function StudentOffenseRecords() {
                               </header>
 
                               <section className="student-offense-report-section">
-                                <h5>Case summary</h5>
+                                <h5>Report summary</h5>
                                 <div className="student-offense-report-grid">
                                   <div><small>Incident date</small><strong>{formatDate(reportReview.date)}</strong></div>
-                                  <div><small>Incident time</small><strong>{reportReview.time || "—"}</strong></div>
+                                  <div><small>Incident time</small><strong>{formatIncidentTime(reportReview.time)}</strong></div>
                                   <div><small>Location</small><strong>{reportReview.location || "—"}</strong></div>
                                   <div><small>Date filed</small><strong>{formatDate(reportReview.submittedAt)}</strong></div>
                                   <div><small>Reporter</small><strong>{reportReview.isAnonymous ? "Anonymous" : reportReview.submittedBy || "—"}</strong></div>
@@ -1044,10 +1057,11 @@ function StudentOffenseRecords() {
                               </section>
 
                               <section className="student-offense-report-narrative">
-                                <h5>Incident description</h5>
+                                <h5>Incident details</h5>
                                 <div><small>What happened?</small><p>{reportReview.description || "No incident description provided."}</p></div>
-                                <div><small>Events leading up to the incident</small><p>{reportReview.descriptionLeadUp || "No prior events or context provided."}</p></div>
+                                <div><small>Events leading to the incident</small><p>{reportReview.descriptionLeadUp || "No prior events or context provided."}</p></div>
                                 <div><small>Impact on the victim</small><p>{reportReview.descriptionImpact || "No impact details provided."}</p></div>
+                                <div><small>Actions taken</small><p>{reportReview.descriptionActions || "No actions taken were provided."}</p></div>
                               </section>
 
                               <section className="student-offense-report-section student-offense-report-followup">
