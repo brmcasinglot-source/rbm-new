@@ -3372,7 +3372,7 @@ export default function AdminDashboard() {
       ══════════════════════════════ */}
       {showUpdateModal && selectedReport && (
         <div className="admin-modal-overlay">
-          <div className="admin-modal large">
+          <div className="admin-modal large admin-incident-modal">
             <div className="modal-header-admin">
               <div className="title-wrap">
                 <FileText size={18} color="var(--accent-color)" />
@@ -3382,6 +3382,8 @@ export default function AdminDashboard() {
             </div>
 
             <div className="admin-modal-content">
+              <section className="incident-info-section" aria-labelledby="incident-overview-title">
+                <h4 id="incident-overview-title">Incident overview</h4>
               <div className="modal-section-grid">
                 <div className="detail-group">
                   <label>Type of Incident</label>
@@ -3398,8 +3400,16 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <div className="detail-group">
+                  <label>Reporter role</label>
+                  <div className="detail-value">
+                    {selectedReport.reporterType === "Friend"
+                      ? "Friend of victim"
+                      : selectedReport.reporterType || "—"}
+                  </div>
+                </div>
+                <div className="detail-group">
                   <label>Date of Incident</label>
-                  <div className="detail-value">{selectedReport.date || "—"}</div>
+                  <div className="detail-value">{formatConferenceDate(selectedReport.date)}</div>
                 </div>
                 <div className="detail-group">
                   <label>Approximate Time</label>
@@ -3409,40 +3419,32 @@ export default function AdminDashboard() {
                   <label>Location</label>
                   <div className="detail-value">{selectedReport.location || "—"}</div>
                 </div>
-              </div>
-
-              {/* Reporter Profile */}
-              {!selectedReport.isAnonymous && (selectedReport.reporterAge || selectedReport.reporterGrade || selectedReport.reporterSex) && (
-                <div style={{ background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: "#15803d", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Reporter Profile</p>
-                  <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                    {selectedReport.reporterAge && (
-                      <div>
-                        <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 2px" }}>Age</p>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{selectedReport.reporterAge}</p>
-                      </div>
-                    )}
-                    {selectedReport.reporterSex && (
-                      <div>
-                        <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 2px" }}>Sex</p>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{selectedReport.reporterSex}</p>
-                      </div>
-                    )}
-                    {selectedReport.reporterGrade && (
-                      <div>
-                        <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 2px" }}>Grade Level</p>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{selectedReport.reporterGrade}</p>
-                      </div>
-                    )}
-                    {selectedReport.reporterSection && (
-                      <div>
-                        <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 2px" }}>Section</p>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{selectedReport.reporterSection}</p>
-                      </div>
-                    )}
+                {!selectedReport.isAnonymous && selectedReport.reporterAge && (
+                  <div className="detail-group">
+                    <label>Reporter age</label>
+                    <div className="detail-value">{selectedReport.reporterAge}</div>
                   </div>
-                </div>
-              )}
+                )}
+                {!selectedReport.isAnonymous && selectedReport.reporterSex && (
+                  <div className="detail-group">
+                    <label>Reporter sex</label>
+                    <div className="detail-value">{selectedReport.reporterSex}</div>
+                  </div>
+                )}
+                {!selectedReport.isAnonymous && selectedReport.reporterGrade && (
+                  <div className="detail-group">
+                    <label>Reporter grade</label>
+                    <div className="detail-value">{selectedReport.reporterGrade}</div>
+                  </div>
+                )}
+                {!selectedReport.isAnonymous && selectedReport.reporterSection && (
+                  <div className="detail-group">
+                    <label>Reporter section</label>
+                    <div className="detail-value">{selectedReport.reporterSection}</div>
+                  </div>
+                )}
+              </div>
+              </section>
 
               <section className="manage-conference-section">
                 <div className="manage-conference-heading">
@@ -3652,23 +3654,26 @@ export default function AdminDashboard() {
                 )}
               </section>
 
-              <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                <label>What Happened?</label>
-                <div className="description-display">{selectedReport.description || "No description provided."}</div>
-              </div>
+              <section className="incident-info-section" aria-labelledby="incident-details-title">
+                <h4 id="incident-details-title">Incident details</h4>
+                <div className="incident-narrative-grid">
+                  <div className="detail-group">
+                    <label>What happened?</label>
+                    <div className="description-display">{selectedReport.description || "No description provided."}</div>
+                  </div>
+                  <div className="detail-group">
+                    <label>Events leading to the incident</label>
+                    <div className="description-display">{selectedReport.descriptionLeadUp || "No prior events or context provided."}</div>
+                  </div>
+                  <div className="detail-group">
+                    <label>Impact on the victim</label>
+                    <div className="description-display">{selectedReport.descriptionImpact || "No impact details provided."}</div>
+                  </div>
+                </div>
+              </section>
 
-              <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                <label>Events Leading to the Incident</label>
-                <div className="description-display">{selectedReport.descriptionLeadUp || "No prior events or context provided."}</div>
-              </div>
-
-              <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                <label>Impact on the Victim</label>
-                <div className="description-display">{selectedReport.descriptionImpact || "No impact details provided."}</div>
-              </div>
-
-              <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                <label>People Involved</label>
+              <section className="incident-info-section" aria-labelledby="incident-people-title">
+                <h4 id="incident-people-title">People involved</h4>
                 <div className="involved-display">
                   {involvedGroups.length > 0 ? (
                     involvedGroups.map((group) => (
@@ -3710,21 +3715,21 @@ export default function AdminDashboard() {
                     ))
                   ) : cleanDisplayValue(selectedReport.involved) || "No people involved were specified."}
                 </div>
-              </div>
+              </section>
 
               {/* Evidence */}
               {selectedReport.evidenceCount > 0 && !selectedReport.evidenceLoaded && (
-                <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                  <label>Evidence Attached ({selectedReport.evidenceCount} file{selectedReport.evidenceCount > 1 ? "s" : ""})</label>
+                <section className="incident-info-section incident-evidence-section">
+                  <h4>Evidence ({selectedReport.evidenceCount} file{selectedReport.evidenceCount > 1 ? "s" : ""})</h4>
                   <button type="button" className="read-btn tiny" onClick={loadManagedEvidence} disabled={selectedReport.evidenceLoading}>
                     {selectedReport.evidenceLoading ? "Loading evidence…" : "View attached evidence"}
                   </button>
                   {selectedReport.evidenceError && <p role="alert" style={{ color: "#b91c1c", fontSize: 12, marginTop: 7 }}>{selectedReport.evidenceError}</p>}
-                </div>
+                </section>
               )}
               {selectedReport.evidenceLoaded && selectedReport.evidence && selectedReport.evidence.length > 0 && (
-                <div className="detail-group full-width" style={{ marginBottom: 14 }}>
-                  <label>Evidence Attached ({selectedReport.evidence.length} file{selectedReport.evidence.length > 1 ? "s" : ""})</label>
+                <section className="incident-info-section incident-evidence-section">
+                  <h4>Evidence ({selectedReport.evidence.length} file{selectedReport.evidence.length > 1 ? "s" : ""})</h4>
                   <div className="s-evidence-row">
                     {selectedReport.evidence.map((ev, idx) =>
                       ev.type && ev.type.startsWith("image/") ? (
@@ -3740,71 +3745,63 @@ export default function AdminDashboard() {
                       )
                     )}
                   </div>
-                </div>
+                </section>
               )}
 
-              <div className="admin-management-section">
+              <div className="admin-management-section incident-management">
                 <div className="title-stack">
-                  <h4>Administrative Oversight</h4>
-                  <p>Update the incident status and document staff notes.</p>
+                  <h4>Update incident</h4>
                 </div>
                 <div className="form-group">
-                  <label>Update Case Status</label>
+                  <label>Case status</label>
                   <select className="professional-select" style={{ width: "100%" }}
                     value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
                     <option value="Pending">Pending</option>
                     <option value="Under Investigation">Under Investigation</option>
-                    <option value="More Information Requested">More Information Requested</option>
                     <option value="Resolved">Resolved</option>
                   </select>
                 </div>
                 <div className="form-group" style={{ marginTop: 14 }}>
-                  <label>Staff Notes <span style={{ color: "#ef4444" }}>*</span> <span style={{ opacity: 0.5, textTransform: "none" }}>(visible to student)</span></label>
-                  <textarea placeholder="Document investigation steps or decisions…"
+                  <label>Staff notes <span style={{ color: "#ef4444" }}>*</span> <span className="incident-student-visible">(visible to student)</span></label>
+                  <textarea placeholder="Add investigation notes or next steps…"
                     className={manageFieldErrors.adminNotes ? "field-error" : ""}
                     style={{ minHeight: 90, fontSize: 13 }}
                     value={adminNotes} onChange={(e) => { setAdminNotes(e.target.value); setManageFieldErrors((p) => ({ ...p, adminNotes: false })); }} />
                   {manageFieldErrors.adminNotes && <span className="field-error-msg">Staff notes are required.</span>}
                 </div>
-                <section className="admin-proof-request" aria-labelledby="admin-proof-request-title">
-                  <div className="admin-proof-request-heading">
-                    <span className="admin-proof-request-icon"><Upload size={17} /></span>
-                    <div>
-                      <h5 id="admin-proof-request-title">Request more information</h5>
-                      <p>Ask the student for specific details or supporting evidence.</p>
+                <details className="incident-more-info">
+                  <summary>Request more information from the student</summary>
+                  <section className="admin-proof-request" aria-label="Request more information">
+                    <label htmlFor="admin-proof-request-message">What details or evidence are needed?</label>
+                    <textarea
+                      id="admin-proof-request-message"
+                      placeholder="Explain what the student should provide."
+                      maxLength={1000}
+                      rows={3}
+                      value={additionalInfoRequest}
+                      onChange={(event) => setAdditionalInfoRequest(event.target.value)}
+                    />
+                    <div className="admin-proof-request-footer">
+                      <span className="admin-proof-request-hint">The student will see this request.</span>
+                      <span className="admin-proof-request-count">{additionalInfoRequest.length}/1000</span>
                     </div>
-                  </div>
-                  <label htmlFor="admin-proof-request-message">What should the student provide?</label>
-                  <textarea
-                    id="admin-proof-request-message"
-                    placeholder="Example: Please attach a photo of the damaged item and share when the incident happened."
-                    maxLength={1000}
-                    rows={3}
-                    value={additionalInfoRequest}
-                    onChange={(event) => setAdditionalInfoRequest(event.target.value)}
-                  />
-                  <div className="admin-proof-request-footer">
-                    <span className="admin-proof-request-hint">
-                      The student will see this message and can reply with details, photos, or files.
-                    </span>
-                    <span className="admin-proof-request-count">{additionalInfoRequest.length}/1000</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="admin-proof-request-submit"
-                    onClick={handleRequestMoreInfo}
-                    disabled={additionalInfoSaving}
-                  >
-                    <Send size={15} />
-                    {additionalInfoSaving ? "Sending request…" : "Send request"}
-                  </button>
-                </section>
+                    <button
+                      type="button"
+                      className="admin-proof-request-submit"
+                      onClick={handleRequestMoreInfo}
+                      disabled={additionalInfoSaving}
+                    >
+                      <Send size={15} />
+                      {additionalInfoSaving ? "Sending…" : "Send request"}
+                    </button>
+                  </section>
+                </details>
               </div>
             </div>
 
             <div className="modal-footer-bar">
-              <button className="cancel-btn" onClick={() => setShowUpdateModal(false)}>Discard</button>
-              <button className="submit-btn" onClick={handleConfirmUpdate}>Update Status</button>
+              <button className="cancel-btn" onClick={() => setShowUpdateModal(false)}>Close</button>
+              <button className="submit-btn" onClick={handleConfirmUpdate}>Update incident</button>
             </div>
           </div>
         </div>

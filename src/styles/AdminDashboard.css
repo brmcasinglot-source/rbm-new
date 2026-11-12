@@ -2134,6 +2134,113 @@
   opacity: 0.7;
 }
 
+.incident-management {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.incident-management .title-stack h4 {
+  font-size: 14px;
+}
+
+.incident-management .title-stack p {
+  display: none;
+}
+
+.incident-management > .form-group {
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.incident-management > .form-group:nth-child(2) {
+  max-width: 360px;
+}
+
+.incident-management > .form-group label {
+  margin-bottom: 5px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.incident-management > .form-group textarea {
+  min-height: 76px !important;
+  font-size: 12px !important;
+}
+
+.incident-student-visible {
+  color: #64748b;
+  font-weight: 500;
+  text-transform: none;
+}
+
+.incident-management .incident-more-info {
+  border-top: 1px solid #e8edf2;
+}
+
+.incident-management .incident-more-info > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 0 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.incident-management .incident-more-info > summary::-webkit-details-marker {
+  display: none;
+}
+
+.incident-management .incident-more-info > summary::after {
+  content: "+";
+  margin-left: auto;
+  color: #64748b;
+  font-size: 16px;
+}
+
+.incident-management .incident-more-info[open] > summary::after {
+  content: "−";
+}
+
+.incident-management .admin-proof-request {
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid #e8edf2;
+  border-radius: 0;
+  background: transparent;
+}
+
+.incident-management .admin-proof-request > label {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.incident-management .admin-proof-request textarea {
+  min-height: 68px;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .incident-management {
+    padding: 13px;
+  }
+
+  .incident-management > .form-group:nth-child(2) {
+    max-width: none;
+  }
+}
+
 .title-stack h4 {
   font-size: 15px;
   font-weight: 800;
@@ -3274,6 +3381,233 @@
   .manage-conference-fields label.wide { grid-column: auto; }
   .manage-conference-actions { flex-direction: column; }
   .manage-conference-actions button { width: 100%; }
+}
+
+.admin-modal.large.admin-incident-modal {
+  width: min(900px, calc(100vw - 32px));
+  max-width: 900px;
+  max-height: 90vh;
+  border-radius: 14px;
+}
+
+.admin-incident-modal .modal-header-admin {
+  padding: 15px 20px;
+}
+
+.admin-incident-modal .admin-modal-content {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.admin-incident-modal .incident-info-section {
+  min-width: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5eaf0;
+}
+
+.admin-incident-modal .incident-info-section > h4 {
+  margin: 0 0 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-incident-modal .modal-section-grid {
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.admin-incident-modal .detail-group {
+  min-width: 0;
+  gap: 5px;
+}
+
+.admin-incident-modal .detail-group label {
+  color: #64748b;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.admin-incident-modal .detail-value {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-incident-modal .detail-value.highlighted {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.admin-incident-modal .manage-conference-section {
+  margin: 0;
+  padding: 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid #e5eaf0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.admin-incident-modal .manage-conference-heading {
+  margin-bottom: 8px;
+}
+
+.admin-incident-modal .manage-conference-heading h4 {
+  color: #334155;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-incident-modal .manage-conference-empty {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-incident-modal .manage-conference-empty > strong {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-incident-modal .manage-conference-empty p {
+  display: none;
+}
+
+.admin-incident-modal .manage-conference-empty .manage-conference-editor {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.admin-incident-modal .manage-conference-card {
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.admin-incident-modal .incident-narrative-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-incident-modal .incident-narrative-grid > .detail-group:first-child {
+  grid-column: 1 / -1;
+}
+
+.admin-incident-modal .description-display {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #e5eaf0;
+  border-radius: 7px;
+  background: #f8fafc;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.admin-incident-modal .involved-display {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-incident-modal .involved-person-card {
+  padding: 12px 14px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.admin-incident-modal .involved-group h5 {
+  margin-bottom: 7px;
+  color: #64748b;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.admin-incident-modal .involved-people-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.admin-incident-modal .involved-person-card h6 {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-incident-modal .involved-person-details {
+  gap: 5px 12px;
+  margin-top: 6px;
+}
+
+.admin-incident-modal .involved-person-details span {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #475569;
+  font-size: 11px;
+}
+
+.admin-incident-modal .involved-person-details b {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.admin-incident-modal .involved-guardian-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-color: #e8edf2;
+  font-size: 11px;
+}
+
+.admin-incident-modal .involved-guardian-label {
+  flex-basis: 100%;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.admin-incident-modal .incident-evidence-section {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.admin-incident-modal .incident-evidence-section > h4 {
+  margin-bottom: 0;
+}
+
+.admin-incident-modal .incident-management {
+  margin-top: 0;
+}
+
+@media (max-width: 600px) {
+  .admin-modal.large.admin-incident-modal {
+    width: calc(100vw - 20px);
+    max-height: 94vh;
+  }
+
+  .admin-incident-modal .incident-narrative-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-incident-modal .incident-narrative-grid > .detail-group:first-child {
+    grid-column: auto;
+  }
 }
 
 .export-preview-overlay { z-index: 1200; }
