@@ -94,22 +94,10 @@ const PLAN_TIMEFRAME_CHOICES = ["1 week", "2 weeks", "1 month", "3 months"];
 const PLAN_PERSON_CHOICES = ["Adviser", "Guidance counselor", "Parent/guardian", "Discipline prefect", "Student"];
 const PLAN_RESOURCE_CHOICES = ["Counseling session", "Parent conference", "Referral form", "Monitoring sheet"];
 const PLAN_STRATEGY_CHOICES = [
-  {
-    label: "Parent/Guardian Conference",
-    value: "Arrange a parent/guardian conference through approved school channels to agree on supportive next steps. Staff must schedule and document it separately.",
-  },
-  {
-    label: "School Community Service",
-    value: "If school policy permits and it is appropriate, agree on a supervised, age-appropriate school community service activity with a clear educational purpose. Do not use humiliating or unsafe tasks.",
-  },
-  {
-    label: "Written Apology",
-    value: "If appropriate and the student is willing, support a respectful written apology. Do not require direct contact or a response from the other student.",
-  },
-  {
-    label: "Weekly Behavior Monitoring",
-    value: "Arrange a brief, private weekly check-in using neutral observations; review support needs and adjust with the student. Keep notes confidential and share only with staff who need to know.",
-  },
+  { label: "Parent/Guardian Conference", value: "Parent/Guardian Conference" },
+  { label: "School Community Service", value: "School Community Service" },
+  { label: "Written Apology", value: "Written Apology" },
+  { label: "Weekly Behavior Monitoring", value: "Weekly Behavior Monitoring" },
 ];
 const INITIAL_FILTERS = {
   search: "", grade: "", section: "", offenseNumber: "", type: "",
