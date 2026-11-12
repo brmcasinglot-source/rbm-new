@@ -1319,14 +1319,14 @@
   overflow-wrap: anywhere;
 }
 
-.student-offense-report-narrative > div {
+.student-offense-report-review .student-offense-report-narrative > div {
   display: grid;
   gap: 3px;
   padding: 0 0 7px;
   border-bottom: 1px solid #eef2f6;
 }
 
-.student-offense-report-narrative > div:last-child {
+.student-offense-report-review .student-offense-report-narrative > div:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
