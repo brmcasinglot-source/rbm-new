@@ -179,6 +179,17 @@ export default function StudentDashboard() {
     return () => { cancelled = true; };
   }, [activeTab]);
 
+  useEffect(() => {
+    if (gradeSectionsList.length === 0) return;
+    setVictims((current) => current.map((victim) => {
+      if (victim.adviser || !victim.grade || !victim.section) return victim;
+      const assignedSection = gradeSectionsList.find((item) =>
+        item.grade === victim.grade && item.section === victim.section
+      );
+      return assignedSection?.adviser ? { ...victim, adviser: assignedSection.adviser } : victim;
+    }));
+  }, [gradeSectionsList]);
+
   const profileRef = useRef();
   const notifRef   = useRef();
   const welcomeNotificationChecked = useRef(false);
@@ -461,6 +472,21 @@ export default function StudentDashboard() {
   // ── Person list helpers ──────────────────────────────────────────────────
   const updatePerson = (setter, idx, field, val) =>
     setter(prev => prev.map((p, i) => i === idx ? { ...p, [field]: val } : p));
+  const handleVictimGradeChange = (idx, grade) => {
+    setVictims((current) => current.map((victim, i) =>
+      i === idx ? { ...victim, grade, section: "", adviser: "" } : victim
+    ));
+  };
+  const handleVictimSectionChange = (idx, sectionName) => {
+    const assignedSection = gradeSectionsList.find((item) =>
+      item.grade === victims[idx]?.grade && item.section === sectionName
+    );
+    setVictims((current) => current.map((victim, i) =>
+      i === idx
+        ? { ...victim, section: sectionName, adviser: assignedSection?.adviser || "" }
+        : victim
+    ));
+  };
   const addPerson    = (setter) => setter(prev => [...prev, emptyPerson()]);
   const removePerson = (setter, idx) => setter(prev => prev.filter((_, i) => i !== idx));
   const handleReporterTypeChange = (nextType) => {
@@ -477,6 +503,7 @@ export default function StudentDashboard() {
       age: profileAge,
       grade: normalizedGrade,
       section: matchingSection?.section || profileSection.trim(),
+      adviser: matchingSection?.adviser || "",
     };
 
     setReporterType(nextType);
@@ -1114,12 +1141,12 @@ export default function StudentDashboard() {
                         <input type="number" min="5" max="25" placeholder="e.g. 14" value={v.age} onChange={e => updatePerson(setVictims, idx, "age", e.target.value)} /></div>
                       <div className="s-form-row">
                         <div className="s-form-group"><label>Grade</label>
-                          <select value={v.grade} onChange={e => { updatePerson(setVictims, idx, "grade", e.target.value); updatePerson(setVictims, idx, "section", ""); }}>
+                          <select value={v.grade} onChange={e => handleVictimGradeChange(idx, e.target.value)}>
                             <option value="">Select grade</option>
                             {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
                           </select></div>
                         <div className="s-form-group"><label>Section</label>
-                          <select value={v.section} disabled={!v.grade} onChange={e => updatePerson(setVictims, idx, "section", e.target.value)}>
+                          <select value={v.section} disabled={!v.grade} onChange={e => handleVictimSectionChange(idx, e.target.value)}>
                             <option value="">{!v.grade ? "Select grade first" : "Select section"}</option>
                             {gradeSectionsList.filter((s) => s.grade === v.grade).map((s) => (
                               <option key={s.id} value={s.section}>{s.section}</option>
