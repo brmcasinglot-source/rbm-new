@@ -1348,7 +1348,14 @@ function StudentOffenseRecords() {
       {reportDetails && (
         <div className="student-offense-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setReportDetails(null); setReportEvidence(null); } }}>
           <section className="student-offense-modal student-offense-report-modal" role="dialog" aria-modal="true" aria-labelledby="student-offense-report-title">
-            <div className="student-offense-modal-header"><div><h3 id="student-offense-report-title">Incident Report #{reportDetails.id || ""}</h3><p>Original report details</p></div><button type="button" onClick={() => { setReportDetails(null); setReportEvidence(null); }} aria-label="Close report"><X size={19} /></button></div>
+            <div className="student-offense-modal-header student-offense-report-header">
+              <div>
+                <h3 id="student-offense-report-title">Incident Report</h3>
+                <p>Original report details</p>
+              </div>
+              <span className="student-offense-report-modal-id">{formatReportNumber(reportDetails.id)}</span>
+              <button type="button" onClick={() => { setReportDetails(null); setReportEvidence(null); }} aria-label="Close report"><X size={19} /></button>
+            </div>
             <div className="student-offense-modal-content">
               {reportDetails.loading ? <div className="student-offense-state"><LoaderCircle className="student-offense-spinner" size={22} />Loading report…</div>
                 : reportDetails.error ? <p className="student-offense-error">{reportDetails.error}</p> : (
@@ -1360,7 +1367,9 @@ function StudentOffenseRecords() {
                       <span><strong>Location</strong>{reportDetails.location || "—"}</span>
                     </div>
 
-                    <div className="student-offense-report-narrative">
+                    <section className="student-offense-report-narrative-section" aria-labelledby="student-offense-report-narrative-title">
+                      <h4 id="student-offense-report-narrative-title">Incident narrative</h4>
+                      <div className="student-offense-report-narrative">
                       <div className="student-offense-report-story">
                         <span className="student-offense-report-label">What happened?</span>
                         <p>{reportDetails.description || "No incident description provided."}</p>
@@ -1377,17 +1386,29 @@ function StudentOffenseRecords() {
                         <span className="student-offense-report-label">Actions taken</span>
                         <p>{reportDetails.descriptionActions || "No actions taken were provided."}</p>
                       </div>
-                    </div>
+                      </div>
+                    </section>
 
                     <div className="student-offense-report-footer">
                       <span><strong>Reporter</strong>{reportDetails.isAnonymous ? "Anonymous" : reportDetails.submittedBy || "—"}</span>
                       {reportDetails.submittedAt && <span><strong>Submitted</strong>{formatDate(reportDetails.submittedAt)}</span>}
                     </div>
 
-                    {reportDetails.conferenceFindings && <p className="student-offense-findings"><strong>Conference findings:</strong> {reportDetails.conferenceFindings}</p>}
-                    <button type="button" className="student-offense-secondary" onClick={() => loadHistoryReportEvidence(reportDetails.id)} disabled={evidenceLoading || !reportDetails.evidenceCount}>
-                      {evidenceLoading ? "Loading evidence…" : `Review attached evidence (${reportDetails.evidenceCount || 0})`}
-                    </button>
+                    {reportDetails.conferenceFindings && (
+                      <section className="student-offense-report-extra">
+                        <h4>Conference findings</h4>
+                        <p>{reportDetails.conferenceFindings}</p>
+                      </section>
+                    )}
+                    <section className="student-offense-report-evidence">
+                      <div>
+                        <h4>Attached evidence</h4>
+                        <p>{reportDetails.evidenceCount ? `${reportDetails.evidenceCount} file${reportDetails.evidenceCount === 1 ? "" : "s"} attached to this report.` : "No evidence was attached to this report."}</p>
+                      </div>
+                      <button type="button" className="student-offense-secondary" onClick={() => loadHistoryReportEvidence(reportDetails.id)} disabled={evidenceLoading || !reportDetails.evidenceCount}>
+                        {evidenceLoading ? "Loading evidence…" : reportEvidence ? "Evidence loaded" : "Review evidence"}
+                      </button>
+                    </section>
                     {reportEvidence?.length > 0 && <ul className="student-offense-evidence-list">{reportEvidence.map((item, index) => <li key={`${item.name}-${index}`}><a href={item.data} target="_blank" rel="noreferrer">{item.name || `Evidence ${index + 1}`}</a></li>)}</ul>}
                   </>
                 )}

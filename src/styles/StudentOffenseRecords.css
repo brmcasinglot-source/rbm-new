@@ -1722,66 +1722,157 @@
   margin: 0;
 }
 
+.student-offense-report-modal {
+  width: min(820px, 100%);
+}
+
+.student-offense-report-header {
+  gap: 12px;
+}
+
+.student-offense-report-header > div {
+  margin-right: auto;
+}
+
+.student-offense-report-modal-id {
+  padding: 6px 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .student-offense-report-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0 0 18px;
 }
 
 .student-offense-report-meta span,
 .student-offense-report-footer span {
   display: grid;
-  gap: 3px;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e8edf2;
+  border-radius: 9px;
+  background: #f8fafc;
   color: #334155;
-  font-size: 11.5px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .student-offense-report-meta strong,
 .student-offense-report-footer strong {
   color: #64748b;
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
   text-transform: uppercase;
+}
+
+.student-offense-report-narrative-section,
+.student-offense-report-extra {
+  display: grid;
+  gap: 10px;
+}
+
+.student-offense-report-narrative-section > h4,
+.student-offense-report-extra > h4,
+.student-offense-report-evidence h4 {
+  margin: 0;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .student-offense-report-narrative {
   display: grid;
-  gap: 12px;
-  margin: 14px 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
 }
 
 .student-offense-report-story {
   display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #f8fafc;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e8edf2;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.student-offense-report-story:first-child {
+  grid-column: 1 / -1;
 }
 
 .student-offense-report-label {
   color: #64748b;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  letter-spacing: .02em;
 }
 
 .student-offense-report-story p {
   margin: 0;
   color: #334155;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11.5px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 } 
 
 .student-offense-report-footer {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 12px;
-  border-top: 1px solid #eef2f6;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.student-offense-report-extra {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #e8edf2;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.student-offense-report-extra p,
+.student-offense-report-evidence p {
+  margin: 0;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.student-offense-report-evidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #e8edf2;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.student-offense-report-evidence > div {
+  display: grid;
+  gap: 4px;
+}
+
+.student-offense-report-evidence > button {
+  flex: 0 0 auto;
 }
 
 .student-offense-report-description {
@@ -1928,6 +2019,19 @@
 
   .student-offense-report-meta {
     grid-template-columns: 1fr;
+  }
+
+  .student-offense-report-narrative {
+    grid-template-columns: 1fr;
+  }
+
+  .student-offense-report-story:first-child {
+    grid-column: auto;
+  }
+
+  .student-offense-report-evidence {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .student-offense-student-fields {
