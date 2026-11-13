@@ -4458,3 +4458,249 @@
     transition: none;
   }
 }
+
+/* Student dashboard palette: vivid emerald accents with soft, readable surfaces. */
+.s-dashboard {
+  --s-accent: #087f5b;
+  --s-accent-bright: #10b981;
+  --s-accent-dim: rgba(16, 185, 129, 0.12);
+  --s-accent-glow: rgba(16, 185, 129, 0.22);
+  --s-main-bg: #f3f8f5;
+  --s-glass-border: #dcebe2;
+  --s-glass-border2: #c9ded1;
+  --s-text-main: #17352b;
+  --s-text-muted: #5e7569;
+  --s-text-muted2: #435a4e;
+  --accent-color: #087f5b;
+  --accent-color-soft: #e6f7ee;
+}
+
+.s-dashboard .s-main {
+  background: #f3f8f5;
+}
+
+.s-dashboard .s-sidebar {
+  border-right-color: #dcebe2;
+  box-shadow: 2px 0 14px rgba(18, 83, 58, 0.035);
+}
+
+.s-dashboard .s-brand h2 {
+  color: #087f5b;
+}
+
+.s-dashboard .s-menu button:hover {
+  background: #f0f8f3;
+  color: #087f5b;
+}
+
+.s-dashboard .s-menu button.active {
+  background: #e6f7ee;
+  color: #087f5b;
+  box-shadow: inset 3px 0 0 #10b981;
+}
+
+.s-dashboard .s-header {
+  border-bottom-color: #dcebe2;
+  box-shadow: 0 2px 10px rgba(18, 83, 58, 0.045);
+}
+
+.s-dashboard .s-welcome h2 {
+  color: #17352b;
+}
+
+.s-dashboard .s-welcome p {
+  color: #5e7569;
+}
+
+.s-dashboard .s-card-modern {
+  border-color: #dcebe2;
+}
+
+.s-dashboard .s-card-modern:hover {
+  box-shadow: 0 10px 24px rgba(18, 83, 58, 0.09);
+}
+
+.s-dashboard .s-report-layout .s-form-panel,
+.s-dashboard .s-report-layout .s-help-panel {
+  border-color: #d7e9de;
+  box-shadow: 0 2px 8px rgba(18, 83, 58, 0.045);
+}
+
+.s-dashboard .s-report-layout .s-form-title {
+  color: #17352b;
+}
+
+.s-dashboard .s-report-layout .s-fake-report-warning {
+  border-color: #f2d89a;
+  background: #fff8e8;
+  color: #72531d;
+}
+
+.s-dashboard .s-report-layout .s-fake-report-warning > svg {
+  color: #b7791f;
+}
+
+.s-dashboard .s-report-layout .s-fake-report-warning strong {
+  color: #805b12;
+}
+
+.s-dashboard .s-report-layout .s-form-section-title {
+  border-bottom-color: #cfe9da;
+  color: #087f5b;
+}
+
+.s-dashboard .s-report-layout .s-form-group label {
+  color: #435a4e;
+}
+
+.s-dashboard .s-report-layout .s-form-group input,
+.s-dashboard .s-report-layout .s-form-group select,
+.s-dashboard .s-report-layout .s-form-group textarea {
+  border-color: #ceddd3;
+  background: #fff;
+  color: #17352b;
+}
+
+.s-dashboard .s-report-layout .s-form-group input::placeholder,
+.s-dashboard .s-report-layout .s-form-group textarea::placeholder {
+  color: #788b80;
+}
+
+.s-dashboard .s-report-layout .s-form-group input:focus,
+.s-dashboard .s-report-layout .s-form-group select:focus,
+.s-dashboard .s-report-layout .s-form-group textarea:focus {
+  border-color: #10a878;
+  outline-color: rgba(16, 168, 120, 0.2);
+  box-shadow: 0 0 0 2px rgba(16, 168, 120, 0.08);
+}
+
+.s-dashboard .s-report-layout .s-person-card,
+.s-dashboard .s-report-layout .s-person-card-offender,
+.s-dashboard .s-report-layout .s-person-card-witness {
+  border-color: #b7e4ca;
+  background: #edfaf3;
+}
+
+.s-dashboard .s-report-layout .s-person-card-offender {
+  border-color: #f2c6b5;
+  background: #fff4ee;
+}
+
+.s-dashboard .s-report-layout .s-person-card-witness {
+  border-color: #bdd8f8;
+  background: #eef6ff;
+}
+
+.s-dashboard .s-report-layout .s-person-card-header {
+  color: #315343;
+}
+
+.s-dashboard .s-report-layout .s-add-person-btn,
+.s-dashboard .s-report-layout .s-add-person-btn-offender,
+.s-dashboard .s-report-layout .s-add-person-btn-witness {
+  border-color: #b7e4ca;
+  background: #e6f7ee;
+  color: #087f5b;
+}
+
+.s-dashboard .s-report-layout .s-add-person-btn:hover,
+.s-dashboard .s-report-layout .s-add-person-btn-offender:hover,
+.s-dashboard .s-report-layout .s-add-person-btn-witness:hover {
+  border-color: #82c9a0;
+  background: #d8f2e3;
+}
+
+.s-dashboard .s-report-layout .s-file-upload {
+  border-color: #a9d8bd;
+  background: #f2faf5;
+}
+
+.s-dashboard .s-report-layout .s-file-upload:hover {
+  border-color: #10a878;
+  background: #e9f8ef;
+}
+
+.s-dashboard .s-report-layout .s-file-upload > svg {
+  color: #087f5b;
+}
+
+.s-dashboard .s-report-layout .s-file-upload p,
+.s-dashboard .s-report-layout .s-anon-label {
+  color: #315343;
+}
+
+.s-dashboard .s-report-layout .s-file-upload span,
+.s-dashboard .s-report-layout .s-anon-hint {
+  color: #5e7569;
+}
+
+.s-dashboard .s-report-layout .s-anon-btn:hover,
+.s-dashboard .s-report-layout .s-anon-btn.s-anon-active {
+  border-color: #a9d8bd;
+  background: #eff9f3;
+}
+
+.s-dashboard .s-report-layout .s-anon-pill,
+.s-dashboard .s-report-layout .s-anon-btn.s-anon-active .s-anon-pill {
+  border-color: #cfe3d6;
+  background: #e9f3ed;
+  color: #476354;
+}
+
+.s-dashboard .s-report-layout .s-form-actions {
+  border-top-color: #dcebe2;
+}
+
+.s-dashboard .s-report-layout .s-cancel-btn {
+  border-color: #d4dfd8;
+  background: #f5f8f6;
+  color: #52665a;
+}
+
+.s-dashboard .s-report-layout .s-cancel-btn:hover {
+  border-color: #bdcec2;
+  background: #eaf1ec;
+}
+
+.s-dashboard .s-report-layout .s-submit-btn {
+  border-color: #087f5b;
+  background: #087f5b;
+  box-shadow: 0 4px 12px rgba(8, 127, 91, 0.2);
+}
+
+.s-dashboard .s-report-layout .s-submit-btn:hover:not(:disabled) {
+  border-color: #06694b;
+  background: #06694b;
+  box-shadow: 0 6px 16px rgba(8, 127, 91, 0.25);
+}
+
+.s-dashboard .s-report-layout :is(
+  .s-add-person-btn,
+  .s-remove-person-btn,
+  .s-anon-btn,
+  .s-cancel-btn,
+  .s-submit-btn,
+  .s-file-upload
+):focus-visible {
+  outline-color: rgba(8, 127, 91, 0.3);
+}
+
+.s-dashboard .s-status-badge.pending,
+.s-dashboard .s-status-badge.more-information-requested {
+  border-color: #f0d48f;
+  background: #fff6df;
+  color: #8a5a00;
+}
+
+.s-dashboard .s-status-badge.under-review,
+.s-dashboard .s-status-badge.under-investigation {
+  border-color: #bfd8f4;
+  background: #edf5ff;
+  color: #285d96;
+}
+
+.s-dashboard .s-status-badge.resolved {
+  border-color: #b7e4ca;
+  background: #e7f7ed;
+  color: #087348;
+}

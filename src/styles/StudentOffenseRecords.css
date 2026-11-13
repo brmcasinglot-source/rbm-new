@@ -2650,60 +2650,68 @@
 
 .student-offense-page .student-offense-stat {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
+  grid-template-columns: minmax(0, 1fr) 24px;
   align-items: center;
-  gap: 4px 8px;
-  padding: 10px 12px;
-  border-top: 2px solid #00a36c;
-  background: #fff;
+  gap: 2px 7px;
+  padding: 8px 10px;
+  border-top: 1px solid #c3e8d1;
+  border-left: 3px solid #00875a;
+  border-radius: 9px;
+  background: #eaf8ef;
 }
 
 .student-offense-page .student-offense-stat:hover {
-  border-color: #c9e6d6;
-  border-top-color: #00875a;
-  box-shadow: 0 3px 10px rgb(25 66 47 / 7%);
+  border-color: #c3e8d1;
+  border-left-color: #00875a;
+  box-shadow: 0 2px 8px rgb(25 66 47 / 6%);
   transform: none;
 }
 
 .student-offense-page .student-offense-stat > span {
   grid-column: 2;
-  grid-row: 1;
-  width: 28px;
-  height: 28px;
-  border-color: #d7eee0;
-  border-radius: 8px;
-  background: #edf8f1;
+  grid-row: 1 / span 2;
+  width: 24px;
+  height: 24px;
+  border-color: #c3e8d1;
+  border-radius: 7px;
+  background: #f4fbf6;
   color: #00875a;
 }
 
 .student-offense-page .student-offense-stat:nth-child(2) {
-  border-top-color: #4169e1;
+  border-top-color: #c5d8ff;
+  border-left-color: #3867e8;
+  background: #f1f6ff;
 }
 
 .student-offense-page .student-offense-stat:nth-child(2) > span {
-  border-color: #dce4ff;
-  background: #f0f3ff;
-  color: #3459c7;
+  border-color: #c5d8ff;
+  background: #f8faff;
+  color: #3867e8;
 }
 
 .student-offense-page .student-offense-stat:nth-child(3) {
-  border-top-color: #008d76;
+  border-top-color: #afe6cf;
+  border-left-color: #07876c;
+  background: #eff9f5;
 }
 
 .student-offense-page .student-offense-stat:nth-child(3) > span {
-  border-color: #d2ebe4;
-  background: #edf7f4;
-  color: #007b68;
+  border-color: #afe6cf;
+  background: #f7fcfa;
+  color: #07876c;
 }
 
 .student-offense-page .student-offense-stat:nth-child(4) {
-  border-top-color: #d18a08;
+  border-top-color: #f1d79b;
+  border-left-color: #c2760a;
+  background: #fff8e9;
 }
 
 .student-offense-page .student-offense-stat:nth-child(4) > span {
-  border-color: #f1e4c8;
-  background: #fbf6eb;
-  color: #a96a00;
+  border-color: #f1d79b;
+  background: #fffdf7;
+  color: #a96808;
 }
 
 .student-offense-page .student-offense-stat > div {
@@ -2718,14 +2726,26 @@
 .student-offense-page .student-offense-stat strong {
   grid-column: 1;
   grid-row: 1;
-  font-size: 19px;
+  font-size: 18px;
 }
 
 .student-offense-page .student-offense-stat small {
   grid-column: 1 / -1;
   grid-row: 2;
-  font-size: 10px;
-  line-height: 1.3;
+  font-size: 9.5px;
+  line-height: 1.2;
+}
+
+.student-offense-page .student-offense-stat:nth-child(2) strong {
+  color: #2f54bd;
+}
+
+.student-offense-page .student-offense-stat:nth-child(3) strong {
+  color: #08705b;
+}
+
+.student-offense-page .student-offense-stat:nth-child(4) strong {
+  color: #925600;
 }
 
 .student-offense-page .student-offense-number {
@@ -2832,6 +2852,35 @@
 .student-offense-page .student-offense-error,
 .student-offense-page .student-offense-follow-up-field > span {
   color: #b42318;
+}
+
+.student-offense-page .student-offense-report-modal .student-offense-modal-header {
+  border-bottom-color: #dce9e1;
+  background: #f7fbf8;
+}
+
+.student-offense-page .student-offense-report-modal .student-offense-modal-header h3 {
+  color: #263d32;
+}
+
+.student-offense-page .student-offense-report-modal .student-offense-modal-header p {
+  color: #586b62;
+}
+
+.student-offense-page .student-offense-report-modal .student-offense-modal-header > button {
+  border-radius: 7px;
+  color: #52665a;
+}
+
+.student-offense-page .student-offense-report-modal .student-offense-modal-header > button:hover {
+  background: #eaf5ee;
+  color: #087f5b;
+}
+
+.student-offense-page .student-offense-report-modal .student-offense-modal-header .student-offense-report-modal-id {
+  border-color: #cfe5d8;
+  background: #eff8f3;
+  color: #087f5b;
 }
 
 .student-offense-page .student-offense-number--first {

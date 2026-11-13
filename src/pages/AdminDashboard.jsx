@@ -189,6 +189,10 @@ function formatConferenceDate(dateValue) {
 function formatGrade(grade) {
   return grade ? String(grade).replace(/^grade\s*/i, "").trim() : "";
 }
+function getAccountGradeClass(grade) {
+  const gradeNumber = formatGrade(grade);
+  return ["7", "8", "9", "10"].includes(gradeNumber) ? `grade-${gradeNumber}` : "other";
+}
 function cleanDisplayValue(value) {
   const cleaned = value == null ? "" : String(value).trim();
   return cleaned && cleaned.toLowerCase() !== "none" ? cleaned : "";
@@ -2943,8 +2947,8 @@ export default function AdminDashboard() {
             AWARENESS HUB TAB
         ══════════════════════════════ */}
         {activeTab === "awareness" && (
-          <div className="admin-content">
-            <div className="panel-header-flex" style={{ marginBottom: 18 }}>
+          <div className="admin-content awareness-admin-page">
+            <div className="panel-header-flex awareness-admin-header" style={{ marginBottom: 18 }}>
               <div className="title-group">
                 <h3>Awareness Content</h3>
                 <p className="panel-subtitle">Manage content shown to students on the Awareness Hub</p>
@@ -2956,17 +2960,14 @@ export default function AdminDashboard() {
             <div className="awareness-admin-grid">
               {awarenessList.map((item) => (
                 <div className="awareness-admin-card" key={item.id}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 20, textTransform: "uppercase",
-                    background: "#dcfce7", color: "#16a34a", border: "1.5px solid #86efac",
-                  }}>{item.type}</span>
+                  <span className={`awareness-type-badge awareness-type-${item.type}`}>{item.type}</span>
                   {item.type === "video" ? (
                     getYouTubeThumbnail(item.videoUrl) ? (
                       <img src={getYouTubeThumbnail(item.videoUrl)} alt={`${item.title} video thumbnail`}
                         loading="lazy" decoding="async"
                         style={{ width: "100%", height: 120, borderRadius: 8, objectFit: "cover", marginTop: 10 }} />
                     ) : (
-                      <div style={{ minHeight: 80, marginTop: 10, borderRadius: 8, background: "#f8fafc", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
+                      <div className="awareness-thumbnail-empty" style={{ minHeight: 80, marginTop: 10 }}>
                         Video thumbnail unavailable
                       </div>
                     )
@@ -2975,7 +2976,7 @@ export default function AdminDashboard() {
                       loading="lazy" decoding="async"
                       style={{ width: "100%", maxHeight: 120, borderRadius: 8, objectFit: "cover", marginTop: 10 }} />
                   ) : (
-                    <div style={{ width: 40, height: 40, background: "#dcfce7", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 10, color: "#16a34a" }}>
+                    <div className="awareness-resource-icon" style={{ width: 40, height: 40, marginTop: 10 }}>
                       {item.type === "infographic" && <Image size={18} />}
                       {item.type === "resource" && <BookOpen size={18} />}
                     </div>
@@ -3112,7 +3113,7 @@ export default function AdminDashboard() {
               )}
             </section>
 
-            <section className="card-panel account-section">
+            <section className="card-panel account-section account-directory-section">
               <div className="title-group account-section-heading">
                 <h3>All Student Accounts</h3>
                 <p className="panel-subtitle">
@@ -3143,7 +3144,7 @@ export default function AdminDashboard() {
                           <td className="account-name-cell">{s.name}</td>
                           <td title={s.email}>{s.email}</td>
                           <td>{s.lrn || "—"}</td>
-                          <td>{s.grade || "—"}</td>
+                          <td><span className={`account-grade-badge account-grade-badge--${getAccountGradeClass(s.grade)}`}>{s.grade || "—"}</span></td>
                           <td>{s.section || "—"}</td>
                           <td>
                             <span className={`status-badge ${s.approved ? "resolved" : "pending"}`}>

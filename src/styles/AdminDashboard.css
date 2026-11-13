@@ -6545,6 +6545,66 @@
   font-weight: 500;
 }
 
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(1):hover,
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(1).active {
+  border-color: #b6e4c3;
+  background: #f0faf3;
+  color: #21864b;
+}
+
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(2):hover,
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(2).active {
+  border-color: #c5d8ff;
+  background: #f1f6ff;
+  color: #3d63cc;
+}
+
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(3):hover,
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(3).active {
+  border-color: #afe6cf;
+  background: #eff9f5;
+  color: #07805b;
+}
+
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(4):hover,
+.admin-theme .grade-management-grade-row .analytics-chip:nth-child(4).active {
+  border-color: #f1d79b;
+  background: #fff8e9;
+  color: #a96808;
+}
+
+.admin-theme .grade-management-overview-card {
+  border-left: 3px solid #21864b;
+  background: #f0faf3;
+}
+
+.admin-theme .grade-management-overview-card:nth-child(2) {
+  border-left-color: #3d63cc;
+  background: #f1f6ff;
+}
+
+.admin-theme .grade-management-overview-card:nth-child(3) {
+  border-left-color: #07805b;
+  background: #eff9f5;
+}
+
+.admin-theme .grade-management-overview-card:nth-child(4) {
+  border-left-color: #c2760a;
+  background: #fff8e9;
+}
+
+.admin-theme .grade-management-overview-card:nth-child(2) .grade-management-overview-count {
+  color: #3d63cc;
+}
+
+.admin-theme .grade-management-overview-card:nth-child(3) .grade-management-overview-count {
+  color: #07805b;
+}
+
+.admin-theme .grade-management-overview-card:nth-child(4) .grade-management-overview-count {
+  color: #a96808;
+}
+
 @media (max-width: 600px) {
   .admin-theme .grade-management-panel .grade-section-action {
     width: auto;
@@ -7282,4 +7342,216 @@
   border-color: #a9dfbf;
   background: #ddf5e5;
   color: #176b38;
+}
+
+.admin-theme .header {
+  border-bottom-color: #dce9e1;
+  background: #fbfdfb;
+  box-shadow: 0 2px 8px rgba(24, 43, 37, 0.035);
+}
+
+.admin-theme .welcome-dot {
+  background: #07864b;
+  box-shadow: 0 0 0 3px rgba(7, 134, 75, 0.12);
+}
+
+.admin-theme .welcome p svg {
+  color: #4a8a65;
+}
+
+.admin-theme .admin-identity-btn,
+.admin-theme .icon {
+  border-color: #dce9e1;
+}
+
+.admin-theme .admin-identity-btn:hover,
+.admin-theme .admin-identity-btn[aria-expanded="true"],
+.admin-theme .icon:hover {
+  border-color: #b6d9c2;
+  background: #eff8f2;
+}
+
+.admin-theme .admin-ava {
+  border-color: #cce5d4;
+  background: #eaf6ee;
+  color: #21864b;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section {
+  border-color: #dce9e1;
+  box-shadow: 0 2px 8px rgba(24, 43, 37, 0.04);
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .table-container {
+  border-color: #dce9e1;
+  background: #fff;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-table th {
+  border-bottom-color: #d6e7dc;
+  background: #eaf6ee;
+  color: #315d43;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-table tbody td {
+  border-bottom-color: #e8f0ea;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-table tbody tr:hover {
+  background: #f1faf4;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-table .status-badge.resolved {
+  border-color: #a9dfbf;
+  background: #ddf5e5;
+  color: #176b38;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-table .status-badge.pending {
+  border-color: #f0d48b;
+  background: #fff1c9;
+  color: #805000;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-grade-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border: 1px solid #dfe7e0;
+  border-radius: 6px;
+  background: #f5f8f5;
+  color: #53645a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-grade-badge--grade-7 {
+  border-color: #b6e4c3;
+  background: #f0faf3;
+  color: #21864b;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-grade-badge--grade-8 {
+  border-color: #c5d8ff;
+  background: #f1f6ff;
+  color: #3d63cc;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-grade-badge--grade-9 {
+  border-color: #afe6cf;
+  background: #eff9f5;
+  color: #07805b;
+}
+
+.admin-theme .admin-confirmations-page .account-directory-section .account-grade-badge--grade-10 {
+  border-color: #f1d79b;
+  background: #fff8e9;
+  color: #a96808;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-header {
+  margin-bottom: 18px;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-header h3 {
+  color: #263d32;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-header .panel-subtitle {
+  color: #586b62;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-card {
+  border: 1px solid #dce9e1;
+  border-top: 2px solid #07864b;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(24, 43, 37, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-card:hover {
+  border-color: #c6dfcf;
+  border-top-color: #07864b;
+  box-shadow: 0 4px 12px rgba(24, 43, 37, 0.07);
+  transform: none;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-card h4 {
+  color: #263d32;
+}
+
+.admin-theme .awareness-admin-page .awareness-admin-card p {
+  color: #586b62;
+}
+
+.admin-theme .awareness-admin-page .awareness-type-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 8px;
+  border: 1px solid #b6e4c3;
+  border-radius: 6px;
+  background: #f0faf3;
+  color: #21864b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-theme .awareness-admin-page .awareness-type-video {
+  border-color: #c5d8ff;
+  background: #f1f6ff;
+  color: #3d63cc;
+}
+
+.admin-theme .awareness-admin-page .awareness-type-resource {
+  border-color: #f1d79b;
+  background: #fff8e9;
+  color: #a96808;
+}
+
+.admin-theme .awareness-admin-page .awareness-thumbnail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f3f8f5;
+  color: #62736a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-theme .awareness-admin-page .awareness-resource-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #eaf6ee;
+  color: #21864b;
+}
+
+.admin-theme .awareness-admin-page .add-content-btn {
+  border: 1px solid #07864b;
+  border-radius: 8px;
+  background: #07864b;
+  box-shadow: 0 2px 5px rgba(7, 134, 75, 0.14);
+}
+
+.admin-theme .awareness-admin-page .add-content-btn:hover {
+  border-color: #066d3e;
+  background: #066d3e;
+  box-shadow: 0 3px 8px rgba(7, 109, 62, 0.18);
+  transform: none;
+}
+
+.admin-theme .awareness-admin-page .awareness-card-actions .read-btn {
+  border-color: #d4e4dc;
+  background: #f5f8f5;
+  color: #35664a;
+}
+
+.admin-theme .awareness-admin-page .awareness-card-actions .read-btn:hover {
+  border-color: #b7d8c6;
+  background: #eff8f3;
 }
