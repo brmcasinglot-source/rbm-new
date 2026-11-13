@@ -21,8 +21,8 @@ import {
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut,
-  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database, Menu,
-  History, ClipboardList, Send,
+  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Menu,
+  History, Send,
 } from "lucide-react";
 
 import {
@@ -203,12 +203,12 @@ function hexToRgba(hex, alpha = 1) {
 
 // ─── Inline Donut / Progress bars ─────────────────────────────────────────────
 const TYPE_COLORS = {
-  Physical: "#ef4444",
-  Verbal:   "#f97316",
-  Cyber:    "#8b5cf6",
-  Social:   "#3b82f6",
-  Property: "#f59e0b",
-  Others:   "#64748b",
+  Physical: "#A7565C",
+  Verbal:   "#966443",
+  Cyber:    "#54708D",
+  Social:   "#4C757A",
+  Property: "#786B3F",
+  Others:   "#68736B",
 };
 
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
@@ -360,8 +360,8 @@ export default function AdminDashboard() {
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [conferenceActionSaving, setConferenceActionSaving] = useState(false);
 
-  // Incident Type Breakdown pagination
-  const TYPE_BREAKDOWN_PAGE_SIZE = 4;
+  // Keep the common incident types visible together while retaining paging for custom types.
+  const TYPE_BREAKDOWN_PAGE_SIZE = 6;
   const [typeBreakdownPage, setTypeBreakdownPage] = useState(0);
 
   // Incidents tab pagination
@@ -967,7 +967,7 @@ export default function AdminDashboard() {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)";
     const tickColor = isDark ? "#a1a1aa" : "#64748b";
-    const accent = "#16a34a";
+    const accent = "#557b5d";
 
     trendChartInstanceRef.current = new Chart(canvas, {
       type: "line",
@@ -976,12 +976,12 @@ export default function AdminDashboard() {
         datasets: [{
           data: monthlyData.map((m) => m.count),
           borderColor: accent,
-          borderWidth: 3,
+          borderWidth: 2.5,
           pointBackgroundColor: "#ffffff",
           pointBorderColor: accent,
-          pointBorderWidth: 2.5,
-          pointRadius: 4,
-          pointHoverRadius: 6,
+          pointBorderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 5,
           pointHoverBackgroundColor: accent,
           pointHoverBorderColor: "#ffffff",
           tension: 0.4,
@@ -989,9 +989,9 @@ export default function AdminDashboard() {
           backgroundColor: (ctx) => {
             const { chart } = ctx;
             const { ctx: c, chartArea } = chart;
-            if (!chartArea) return "rgba(22,163,74,0.15)";
+            if (!chartArea) return "rgba(85,123,93,0.12)";
             const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            gradient.addColorStop(0, "rgba(22,163,74,0.28)");
+            gradient.addColorStop(0, "rgba(85,123,93,0.18)");
             gradient.addColorStop(1, "rgba(22,163,74,0)");
             return gradient;
           },
@@ -1751,7 +1751,7 @@ export default function AdminDashboard() {
             <div className="admin-dashboard-layout">
               <div className="admin-dashboard-main">
                 {/* Summary Cards */}
-                <div className="summary-grid admin-summary">
+                <div className="summary-grid admin-summary dashboard-summary-grid">
                   {[
                     { label: "Total Reports",               val: incidents.length,       icon: <FileText size={18} />,      color: "m-green",  badge: "muted", sub: "all submissions" },
                     { label: "Pending",                     val: pendingCases.length,    icon: <AlertTriangle size={18} />, color: "m-amber",  badge: "warn",  sub: "needs review" },
@@ -1774,7 +1774,7 @@ export default function AdminDashboard() {
                 {/* Charts Row */}
                 <div className="db-grid-chart">
                   {/* Monthly Trend */}
-                  <div className="card-panel">
+                  <div className="card-panel dashboard-chart-card">
                     <div className="panel-header-flex">
                       <div className="title-group">
                         <h3>Monthly Incident Trend</h3>
@@ -1784,21 +1784,21 @@ export default function AdminDashboard() {
                     <div className="chart-canvas-wrap" style={{ height: 180 }}>
                       <canvas ref={trendCanvasRef} role="img" aria-label="Line chart showing monthly incident trend" />
                     </div>
-                    <div className="mini-stats-row" style={{ marginTop: 26 }}>
+                    <div className="mini-stats-row dashboard-mini-stats">
                       <div className="mini-stat">
-                        <span className="mini-stat-val" style={{ color: "#ef4444" }}>
+                        <span className="mini-stat-val">
                           {Math.max(...monthlyData.map((m) => m.count))}
                         </span>
                         <span className="mini-stat-label">Peak month</span>
                       </div>
                       <div className="mini-stat">
-                        <span className="mini-stat-val" style={{ color: "#22c55e" }}>
+                        <span className="mini-stat-val">
                           {incidents.length}
                         </span>
                         <span className="mini-stat-label">Total reports</span>
                       </div>
                       <div className="mini-stat">
-                        <span className="mini-stat-val" style={{ color: "#f59e0b" }}>
+                        <span className="mini-stat-val">
                           {monthlyData[monthlyData.length - 1].count}
                         </span>
                         <span className="mini-stat-label">This month</span>
@@ -1807,7 +1807,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Type Breakdown */}
-                  <div className="card-panel">
+                  <div className="card-panel dashboard-chart-card dashboard-breakdown-card">
                     <div className="title-group" style={{ marginBottom: 16 }}>
                       <h3>Incident Type Breakdown</h3>
                       <p className="panel-subtitle">Distribution of all reported cases</p>
@@ -1823,61 +1823,38 @@ export default function AdminDashboard() {
                         typePage * TYPE_BREAKDOWN_PAGE_SIZE,
                         typePage * TYPE_BREAKDOWN_PAGE_SIZE + TYPE_BREAKDOWN_PAGE_SIZE
                       );
-                      const typePlaceholderCount = TYPE_BREAKDOWN_PAGE_SIZE - typePageItems.length;
                       return (
                         <>
                           <div className="breakdown-list">
                             {typePageItems.map(([type, count]) => {
                               const pct = Math.round((count / incidents.length) * 100);
-                              const color = TYPE_COLORS[type] || "#64748b";
+                              const color = TYPE_COLORS[type] || "#68736B";
                               return (
                                 <div className="bk-row" key={type}>
                                   <div className="bk-top">
                                     <span className="bk-label"><span className="bk-dot" style={{ background: color }} />{type}</span>
-                                    <span className="bk-pct" style={{ color }}>{pct}%</span>
+                                    <span className="dashboard-breakdown-stats">
+                                      <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
+                                      <span className="bk-pct" style={{ color }}>{pct}%</span>
+                                    </span>
                                   </div>
                                   <div className="bk-track"><div className="bk-fill" style={{ width: `${pct}%`, background: color }} /></div>
-                                  <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
                                 </div>
                               );
                             })}
-                            {/* Invisible filler rows keep every page the same height, so the
-                                pagination bar below never shifts position between pages. */}
-                            {Array.from({ length: typePlaceholderCount }).map((_, i) => (
-                              <div className="bk-row" key={`filler-${i}`} aria-hidden="true" style={{ visibility: "hidden" }}>
-                                <div className="bk-top">
-                                  <span className="bk-label"><span className="bk-dot" />placeholder</span>
-                                  <span className="bk-pct">0%</span>
-                                </div>
-                                <div className="bk-track"><div className="bk-fill" style={{ width: "0%" }} /></div>
-                                <span className="bk-count">0 incidents</span>
-                              </div>
-                            ))}
                           </div>
                           {typeTotalPages > 1 && (
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 14, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+                            <div className="dashboard-type-pagination">
                               <button
                                 onClick={() => setTypeBreakdownPage((p) => Math.max(0, p - 1))}
                                 disabled={typePage === 0}
-                                style={{
-                                  display: "flex", alignItems: "center", gap: 4, padding: "6px 12px",
-                                  border: "1.5px solid #e5e7eb", borderRadius: 8, background: "#fff",
-                                  color: typePage === 0 ? "#cbd5e1" : "#334155", fontSize: 12, fontWeight: 700,
-                                  cursor: typePage === 0 ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif",
-                                }}
                               ><ChevronLeft size={14} /> Prev</button>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>
+                              <span>
                                 Page {typePage + 1} of {typeTotalPages}
                               </span>
                               <button
                                 onClick={() => setTypeBreakdownPage((p) => Math.min(typeTotalPages - 1, p + 1))}
                                 disabled={typePage === typeTotalPages - 1}
-                                style={{
-                                  display: "flex", alignItems: "center", gap: 4, padding: "6px 12px",
-                                  border: "1.5px solid #e5e7eb", borderRadius: 8, background: "#fff",
-                                  color: typePage === typeTotalPages - 1 ? "#cbd5e1" : "#334155", fontSize: 12, fontWeight: 700,
-                                  cursor: typePage === typeTotalPages - 1 ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif",
-                                }}
                               >Next <ChevronRight size={14} /></button>
                             </div>
                           )}
@@ -1911,7 +1888,7 @@ export default function AdminDashboard() {
                                   {unseenReportIds.has(r.id) && <span className="incident-new-badge">NEW</span>}
                                 </td>
                                 <td>{r.type}</td>
-                                <td style={{ fontSize: 12 }}>{r.isAnonymous ? <span style={{ color: "#6b7280", fontStyle: "italic" }}>🕵️ Anonymous</span> : r.submittedBy}</td>
+                                <td style={{ fontSize: 12 }}>{r.isAnonymous ? <span style={{ color: "#6b7280", fontStyle: "italic" }}>Anonymous</span> : r.submittedBy}</td>
                                 <td className="date-cell">{r.date}</td>
                                 <td><span className={`status-badge ${r.status.toLowerCase().replace(/\s/g,"-")}`}>{r.status}</span></td>
                                 <td><button className="read-btn tiny" onClick={() => handleOpenManage(r)}>Manage</button></td>
@@ -2104,7 +2081,6 @@ export default function AdminDashboard() {
             {analyticsView === "export" ? (
               <div className="analytics-export-page">
                 <div className="analytics-export-page-header">
-                  <div className="analytics-export-page-icon"><Database size={22} /></div>
                   <div>
                     <h2>Export data</h2>
                     <p>Prepare and download incident reports and student offense records.</p>
@@ -2126,7 +2102,6 @@ export default function AdminDashboard() {
                         setExportError("");
                       }}
                     >
-                      <span className="analytics-export-dataset-icon"><FileText size={19} /></span>
                       <span className="analytics-export-dataset-copy">
                         <strong>Incident reports</strong>
                         <small>Submitted reports, statuses, dates, and reporter details</small>
@@ -2146,7 +2121,6 @@ export default function AdminDashboard() {
                         setExportError("");
                       }}
                     >
-                      <span className="analytics-export-dataset-icon"><ClipboardList size={19} /></span>
                       <span className="analytics-export-dataset-copy">
                         <strong>Student offense records</strong>
                         <small>Student details, offense history, actions, and follow-up</small>
@@ -2373,7 +2347,7 @@ export default function AdminDashboard() {
                       <div className="analytics-export-empty">Loading matching student offense records…</div>
                     ) : exportOffenseError ? null : exportOffensePreview.records.length > 0 ? (
                       <div className="analytics-export-table-wrap">
-                        <table className="analytics-export-table">
+                        <table className="analytics-export-table analytics-export-table--offenses">
                           <thead>
                             <tr><th>Student</th><th>Student ID/LRN</th><th>Grade/Section</th><th>Offense</th><th>Incident</th><th>Action</th><th>Follow-up</th><th>Date recorded</th></tr>
                           </thead>
@@ -2389,7 +2363,14 @@ export default function AdminDashboard() {
                                     .map((id) => formatReportNumber(id)).join(", ")}
                                   <br />{record.incidentType || "—"} · {formatConferenceDate(record.incidentDate)}
                                 </td>
-                                <td>{formatOffenseAction(record.disciplinaryAction)}</td>
+                                <td>
+                                  <div
+                                    className="analytics-export-action-preview"
+                                    title={formatOffenseAction(record.disciplinaryAction)}
+                                  >
+                                    {formatOffenseAction(record.disciplinaryAction)}
+                                  </div>
+                                </td>
                                 <td>{record.followUpStatus || "—"}{record.followUpDate ? ` · ${formatConferenceDate(record.followUpDate)}` : ""}</td>
                                 <td>{formatConferenceDate(record.reviewedAt || record.approvedAt)}</td>
                               </tr>
@@ -3193,14 +3174,14 @@ export default function AdminDashboard() {
         ══════════════════════════════ */}
         {activeTab === "sections" && (
           <div className="admin-content">
-            <div className="card-panel">
-              <div className="title-group" style={{ marginBottom: 20 }}>
+            <div className="card-panel grade-management-panel">
+              <div className="title-group grade-management-title">
                 <h3>Grade & Section Management</h3>
-                <p className="panel-subtitle">Choose a grade level, then add or remove its sections — keeps Analytics filters and records consistent.</p>
+                <p className="panel-subtitle">Manage sections and advisers for each grade level.</p>
               </div>
 
               {/* Grade selector */}
-              <div className="mf-filter-row" style={{ marginBottom: 20 }}>
+              <div className="mf-filter-row grade-management-grade-row">
                 <span className="mf-filter-label">Grade level</span>
                 <div className="mf-type-chips">
                   {["Grade 7", "Grade 8", "Grade 9", "Grade 10"].map((g) => (
@@ -3234,14 +3215,10 @@ export default function AdminDashboard() {
                   onKeyDown={(e) => { if (e.key === "Enter") handleAddSection(); }}
                 />
                 <button
+                  type="button"
+                  className="grade-sections-add-button"
                   onClick={handleAddSection}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6, padding: "10px 18px",
-                    background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 8,
-                    color: "#15803d", fontSize: 13, fontWeight: 800, cursor: "pointer",
-                    fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap",
-                  }}
-                ><Plus size={14} /> Add Section</button>
+                >Add Section</button>
               </div>
 
               {/* Sections for the selected grade */}
@@ -3333,18 +3310,18 @@ export default function AdminDashboard() {
               )}
 
               {/* Overview across all grades */}
-              <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid #f1f5f9" }}>
-                <h4 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              <div className="grade-management-overview">
+                <h4 className="grade-management-overview-heading">
                   Overview — all grades
                 </h4>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                <div className="grade-management-overview-grid">
                   {["Grade 7", "Grade 8", "Grade 9", "Grade 10"].map((g) => {
                     const count = gradeSections.filter((s) => s.grade === g).length;
                     return (
-                      <div key={g} style={{ border: "1.5px solid #e5e7eb", borderRadius: 10, padding: "12px 14px" }}>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#64748b" }}>{g}</p>
-                        <p style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 800, color: "#15803d" }}>
-                          {count} <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>section{count !== 1 ? "s" : ""}</span>
+                      <div className="grade-management-overview-card" key={g}>
+                        <p className="grade-management-overview-grade">{g}</p>
+                        <p className="grade-management-overview-count">
+                          {count} <span>section{count !== 1 ? "s" : ""}</span>
                         </p>
                       </div>
                     );

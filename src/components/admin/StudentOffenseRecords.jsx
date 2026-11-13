@@ -817,7 +817,7 @@ function StudentOffenseRecords() {
         </form>
 
         <details className="student-offense-filter-panel" open={filtersOpen} onToggle={(event) => setFiltersOpen(event.currentTarget.open)}>
-          <summary><span><ClipboardList size={15} /> Filters and sorting</span><small>{result.total} matching records</small></summary>
+          <summary><span>Filters and sorting</span><small>{result.total} matching records</small></summary>
           <form onSubmit={applyFilters}>
             <div className="student-offense-filter-grid">
               <label>Grade level
