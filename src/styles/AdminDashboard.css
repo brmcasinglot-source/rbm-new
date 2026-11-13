@@ -5355,13 +5355,61 @@
   background: #eaf7ee;
 }
 
-.analytics-export-action-preview {
-  display: -webkit-box;
-  overflow: hidden;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+.analytics-export-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid #cfe5d6;
+  border-radius: 7px;
+  background: #eff8f2;
+  color: #267044;
+  font: 800 10.5px "Nunito", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.analytics-export-action-button:hover {
+  border-color: #9dc9aa;
+  background: #e2f3e7;
+}
+
+.analytics-export-action-button:focus-visible {
+  outline: 2px solid #16804e;
+  outline-offset: 2px;
+}
+
+.student-offense-modal.analytics-export-offense-modal {
+  width: min(840px, 100%);
+}
+
+.analytics-export-offense-modal .student-offense-modal-content {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.analytics-export-offense-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid #dce9e1;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.analytics-export-offense-summary > strong {
+  color: #263d32;
+  font-size: 12px;
+}
+
+.analytics-export-offense-summary > span:not(.student-offense-number):not(.student-offense-follow-up-status) {
+  color: #62736a;
+  font-size: 11px;
 }
 
 .analytics-export-table tbody tr:first-child td {

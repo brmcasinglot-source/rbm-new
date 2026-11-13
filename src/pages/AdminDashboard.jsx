@@ -21,7 +21,7 @@ import {
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut,
-  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Menu,
+  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Menu, Eye,
   History, Send,
 } from "lucide-react";
 
@@ -42,6 +42,7 @@ import {
 } from "../data/store";
 import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
 import ConferenceManagement from "../components/admin/ConferenceManagement";
+import { INTERVENTION_PLAN_FIELDS, parseInterventionPlan } from "../lib/studentOffensePlan";
 import { optimizeImageFile } from "../lib/imageOptimization";
 import { getYouTubeThumbnail } from "../lib/videoUtils";
 
@@ -110,13 +111,6 @@ function formatReportNumber(id) {
   return Number.isInteger(numericId) && numericId >= 0
     ? `CNHS-${String(numericId).padStart(4, "0")}`
     : String(id ?? "—");
-}
-
-function formatOffenseAction(value) {
-  const action = String(value || "").trim();
-  if (/^(yes|true)$/i.test(action)) return "Intervention recorded";
-  if (/^(no|false)$/i.test(action)) return "No intervention recorded";
-  return action || "—";
 }
 
 /** Returns last N months as { label, count } from reports */
@@ -414,6 +408,7 @@ export default function AdminDashboard() {
   const [exportFormat, setExportFormat] = useState("xlsx");
   const [exportError, setExportError] = useState("");
   const [exportSelectedIds, setExportSelectedIds] = useState(() => new Set());
+  const [previewOffenseDetail, setPreviewOffenseDetail] = useState(null);
   const exportOffenseRequestRef = useRef(0);
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -511,6 +506,19 @@ export default function AdminDashboard() {
     exportYearFilter,
     exportOffenseFilters,
   ]);
+
+  useEffect(() => {
+    if (!previewOffenseDetail) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setPreviewOffenseDetail(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [previewOffenseDetail]);
+
+  useEffect(() => {
+    if (!exportOffensesSelected || analyticsView !== "export") setPreviewOffenseDetail(null);
+  }, [exportOffensesSelected, analyticsView]);
 
   // Refresh only the data used by the active admin tab, without overlapping requests.
   useEffect(() => {
@@ -1548,6 +1556,10 @@ export default function AdminDashboard() {
   const selectedExportPreviewRecords = exportPreviewRecords.filter((record) =>
     exportSelectedIds.has(String(record.id))
   );
+  const previewOffensePlanItems = useMemo(
+    () => parseInterventionPlan(previewOffenseDetail?.disciplinaryAction),
+    [previewOffenseDetail]
+  );
   const toggleExportRecordSelection = (recordId) => {
     const key = String(recordId);
     setExportSelectedIds((current) => {
@@ -2460,12 +2472,18 @@ export default function AdminDashboard() {
                                   <br />{record.incidentType || "—"} · {formatConferenceDate(record.incidentDate)}
                                 </td>
                                 <td>
-                                  <div
-                                    className="analytics-export-action-preview"
-                                    title={formatOffenseAction(record.disciplinaryAction)}
+                                  <button
+                                    type="button"
+                                    className="analytics-export-action-button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setPreviewOffenseDetail(record);
+                                    }}
+                                    aria-label={`View full intervention plan for ${record.studentName || "student"}`}
                                   >
-                                    {formatOffenseAction(record.disciplinaryAction)}
-                                  </div>
+                                    <Eye size={14} />
+                                  Details
+                                  </button>
                                 </td>
                                 <td>{record.followUpStatus || "—"}{record.followUpDate ? ` · ${formatConferenceDate(record.followUpDate)}` : ""}</td>
                                 <td>{formatConferenceDate(record.reviewedAt || record.approvedAt)}</td>
@@ -2533,6 +2551,107 @@ export default function AdminDashboard() {
                   </div>
                   {exportError && <p className="analytics-export-error" role="alert">{exportError}</p>}
                 </section>
+                {previewOffenseDetail && (
+                  <div
+                    className="student-offense-overlay"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) setPreviewOffenseDetail(null);
+                    }}
+                  >
+                    <section
+                      className="student-offense-modal student-offense-history-modal analytics-export-offense-modal"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="analytics-export-offense-title"
+                    >
+                      <div className="student-offense-modal-header student-offense-history-header">
+                        <div>
+                          <h3 id="analytics-export-offense-title">
+                            {previewOffenseDetail.studentName || "Student offense details"}
+                          </h3>
+                          <p>Established offense record · Offense #{previewOffenseDetail.offenseNumber || "—"}</p>
+                          <div className="student-offense-history-student-meta">
+                            {previewOffenseDetail.lrn && <span>LRN {previewOffenseDetail.lrn}</span>}
+                            {previewOffenseDetail.grade && <span>{previewOffenseDetail.grade}</span>}
+                            {previewOffenseDetail.section && <span>{previewOffenseDetail.section}</span>}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewOffenseDetail(null)}
+                          aria-label="Close intervention plan details"
+                        >
+                          <X size={19} />
+                        </button>
+                      </div>
+                      <div className="student-offense-modal-content">
+                        <div className="analytics-export-offense-summary">
+                          <span className="student-offense-number">
+                            Offense #{previewOffenseDetail.offenseNumber || "—"}
+                          </span>
+                          <strong>{previewOffenseDetail.incidentType || "Incident"}</strong>
+                          <span>{formatConferenceDate(previewOffenseDetail.incidentDate)}</span>
+                          <span className={`student-offense-follow-up-status ${(previewOffenseDetail.followUpStatus || (previewOffenseDetail.followUpDate ? "Monitoring" : "Not scheduled")).toLowerCase().replace(/\s+/g, "-")}`}>
+                            {previewOffenseDetail.followUpStatus || (previewOffenseDetail.followUpDate ? "Monitoring" : "Not scheduled")}
+                          </span>
+                        </div>
+                        <section className="student-offense-history-section">
+                          <h4>Related incident reports</h4>
+                          <div className="student-offense-history-reports">
+                            {(previewOffenseDetail.incidentReportIds || [previewOffenseDetail.incidentReportId])
+                              .filter((id) => id !== null && id !== undefined)
+                              .map((id) => (
+                                <span className="student-offense-link" key={id}>{formatReportNumber(id)}</span>
+                              ))}
+                          </div>
+                        </section>
+                        <div className="student-offense-history-facts">
+                          <div>
+                            <span>Approved by</span>
+                            <strong>{previewOffenseDetail.approvedBy || "Administrator"}</strong>
+                          </div>
+                          <div>
+                            <span>Date reviewed</span>
+                            <strong>{formatConferenceDate(previewOffenseDetail.reviewedAt || previewOffenseDetail.approvedAt)}</strong>
+                          </div>
+                          <div>
+                            <span>Follow-up date</span>
+                            <strong>{previewOffenseDetail.followUpDate ? formatConferenceDate(previewOffenseDetail.followUpDate) : "Not scheduled"}</strong>
+                          </div>
+                        </div>
+                        <section className="student-offense-history-section">
+                          <h4>Intervention plan</h4>
+                          {previewOffensePlanItems.length > 0 ? (
+                            <div className="student-offense-plan-history">
+                              {previewOffensePlanItems.map((item, index) => {
+                                const completedFields = INTERVENTION_PLAN_FIELDS
+                                  .filter((field) => item[field.key].trim());
+                                return (
+                                  <section className="student-offense-plan-history-item" key={`plan-${index + 1}`}>
+                                    <h5>Plan item {index + 1}</h5>
+                                    <dl>
+                                      {completedFields.map((field) => (
+                                        <div key={field.key}>
+                                          <dt>{field.label}</dt>
+                                          <dd>{item[field.key]}</dd>
+                                        </div>
+                                      ))}
+                                    </dl>
+                                  </section>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="student-offense-history-text">
+                              {previewOffenseDetail.disciplinaryAction || "No intervention plan was recorded."}
+                            </p>
+                          )}
+                        </section>
+                      </div>
+                    </section>
+                  </div>
+                )}
               </div>
             ) : (
               <>
