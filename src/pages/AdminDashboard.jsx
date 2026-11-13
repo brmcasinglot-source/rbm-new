@@ -426,7 +426,7 @@ export default function AdminDashboard() {
 
   // Location Breakdown customization panel
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locForm, setLocForm] = useState({ name: "", icon: "📍", zone: "inside", keywords: "" });
+  const [locForm, setLocForm] = useState({ name: "", zone: "inside", keywords: "" });
 
   // Grade & Section management panel
   const [sectionMgmtGrade, setSectionMgmtGrade] = useState("Grade 7");
@@ -1390,14 +1390,13 @@ export default function AdminDashboard() {
   };
 
   const openAddLocation = () => {
-    setLocForm({ name: "", icon: "📍", zone: "inside", keywords: "" });
+    setLocForm({ name: "", zone: "inside", keywords: "" });
     setShowLocationModal(true);
   };
 
   const handleSaveLocation = async () => {
     const result = await addCustomLocation({
       name:     locForm.name,
-      icon:     locForm.icon,
       zone:     locForm.zone,
       keywords: locForm.keywords.split(",").map((k) => k.trim()).filter(Boolean),
     });
@@ -3933,10 +3932,9 @@ export default function AdminDashboard() {
       {/* Add Custom Place (Location Breakdown customization) */}
       {showLocationModal && (
         <div className="admin-modal-overlay">
-          <div className="admin-modal" style={{ maxWidth: 440 }}>
+          <div className="admin-modal admin-custom-location-modal" style={{ maxWidth: 440 }}>
             <div className="modal-header-admin">
               <div className="title-wrap">
-                <MapPin size={18} color="var(--accent-color)" />
                 <h3>Add Custom Place</h3>
               </div>
               <X size={20} className="close-modal-btn" onClick={() => setShowLocationModal(false)} />
@@ -3948,21 +3946,13 @@ export default function AdminDashboard() {
                   placeholder="e.g. Science Laboratory"
                   value={locForm.name} onChange={(e) => setLocForm({ ...locForm, name: e.target.value })} />
               </div>
-              <div style={{ display: "flex", gap: 14, marginBottom: 14 }}>
-                <div className="form-group" style={{ flex: 1 }}>
-                  <label>Icon</label>
-                  <input style={{ padding: "10px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 16, width: "100%", textAlign: "center" }}
-                    maxLength={2}
-                    value={locForm.icon} onChange={(e) => setLocForm({ ...locForm, icon: e.target.value })} />
-                </div>
-                <div className="form-group" style={{ flex: 1.4 }}>
-                  <label>Zone</label>
-                  <select className="professional-select" style={{ width: "100%" }}
-                    value={locForm.zone} onChange={(e) => setLocForm({ ...locForm, zone: e.target.value })}>
-                    <option value="inside">Inside School</option>
-                    <option value="outside">Outside / Other</option>
-                  </select>
-                </div>
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label>Zone</label>
+                <select className="professional-select" style={{ width: "100%" }}
+                  value={locForm.zone} onChange={(e) => setLocForm({ ...locForm, zone: e.target.value })}>
+                  <option value="inside">Inside School</option>
+                  <option value="outside">Outside / Other</option>
+                </select>
               </div>
               <div className="form-group" style={{ marginBottom: 4 }}>
                 <label>Match Keywords <span style={{ fontWeight: 500, color: "#94a3b8", textTransform: "none" }}>(optional, comma-separated)</span></label>

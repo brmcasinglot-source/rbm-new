@@ -1872,6 +1872,14 @@
   font-family: "Poppins", sans-serif;
 }
 
+.admin-custom-location-modal .modal-header-admin {
+  padding: 16px 20px;
+}
+
+.admin-custom-location-modal .title-wrap h3 {
+  font-size: 15px;
+}
+
 .close-modal-btn {
   cursor: pointer;
   color: #64748b;
