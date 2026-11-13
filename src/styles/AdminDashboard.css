@@ -1202,6 +1202,10 @@
   box-shadow: none;
 }
 
+.admin-theme .db-grid-chart > .dashboard-chart-card:first-child {
+  background: #fff;
+}
+
 .dashboard-chart-card .title-group h3 {
   color: #293a30;
   font-size: 14px;
@@ -6556,4 +6560,161 @@
   .admin-theme .grade-management-overview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern {
+  border-left: 3px solid transparent;
+  box-shadow: 0 2px 8px rgba(24, 43, 37, 0.035);
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green {
+  border-color: #b6e4c3;
+  border-left-color: #21864b;
+  background: #f0faf3;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-amber {
+  border-color: #f1d79b;
+  border-left-color: #c2760a;
+  background: #fff8e9;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-blue {
+  border-color: #c5d8ff;
+  border-left-color: #3d63cc;
+  background: #f1f6ff;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green2 {
+  border-color: #afe6cf;
+  border-left-color: #07805b;
+  background: #effbf6;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green .summary-value,
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green .trend-badge {
+  color: #176b38;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green .trend-badge {
+  background: #dff3e5;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-amber .summary-value,
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-amber .trend-badge {
+  color: #8b4f00;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-amber .trend-badge {
+  background: #fcebc5;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-blue .summary-value,
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-blue .trend-badge {
+  color: #2549a8;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-blue .trend-badge {
+  background: #dce8ff;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green2 .summary-value,
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green2 .trend-badge {
+  color: #08684d;
+}
+
+.admin-theme .dashboard-summary-grid .summary-card-modern.m-green2 .trend-badge {
+  background: #d8f4e8;
+}
+
+.admin-theme .db-grid-chart > .dashboard-chart-card,
+.admin-theme .db-grid-bottom > .card-panel {
+  border-color: #dce8df;
+}
+
+.admin-theme .dashboard-mini-stats {
+  border-top-color: #e3eee6;
+}
+
+.admin-theme .dashboard-mini-stats .mini-stat-val {
+  color: #187647;
+}
+
+.admin-theme .dashboard-breakdown-card .bk-track {
+  background: #edf2ef;
+}
+
+.admin-theme .dashboard-breakdown-card .bk-fill {
+  box-shadow: 0 1px 4px rgba(24, 43, 37, 0.16);
+}
+
+.admin-theme .db-grid-bottom .cases-table.compact th {
+  border-bottom-color: #d8e7dc;
+  background: #eff7f1;
+  color: #45634e;
+}
+
+.admin-theme .db-grid-bottom .cases-table.compact tbody tr:hover {
+  background: #f0f8f2;
+}
+
+.admin-theme .db-grid-bottom .cases-table.compact .status-badge.pending,
+.admin-theme .db-grid-bottom .cases-table.compact .status-badge.more-information-requested {
+  border-color: #f0d48b;
+  background: #fff4d6;
+  color: #805000;
+}
+
+.admin-theme .db-grid-bottom .cases-table.compact .status-badge.under-review,
+.admin-theme .db-grid-bottom .cases-table.compact .status-badge.under-investigation {
+  border-color: #c3d6ff;
+  background: #eaf1ff;
+  color: #304da5;
+}
+
+.admin-theme .db-grid-bottom .cases-table.compact .status-badge.resolved {
+  border-color: #b2e1c4;
+  background: #e4f6e9;
+  color: #176b38;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-panel {
+  border-color: #d7e8dc;
+  box-shadow: 0 6px 20px rgba(24, 92, 54, 0.08);
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-panel-title {
+  color: #17834a;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-panel-title h2 {
+  color: #203d2c;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-action-count {
+  background: #fff0d6;
+  color: #885100;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-filters button {
+  border-color: #dce8df;
+  background: #f7faf8;
+  color: #53665a;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-filters button.active {
+  border-color: #76bd8c;
+  background: #e6f6eb;
+  color: #176b38;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-card {
+  border-color: #e0eae3;
+  background: #fbfdfb;
+}
+
+.admin-theme .admin-dashboard-layout .conference-manager-card:hover,
+.admin-theme .admin-dashboard-layout .conference-manager-card:focus-visible {
+  border-color: #80c896;
+  box-shadow: 0 5px 15px rgba(22, 101, 52, 0.12);
 }

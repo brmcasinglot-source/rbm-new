@@ -203,12 +203,12 @@ function hexToRgba(hex, alpha = 1) {
 
 // ─── Inline Donut / Progress bars ─────────────────────────────────────────────
 const TYPE_COLORS = {
-  Physical: "#A7565C",
-  Verbal:   "#966443",
-  Cyber:    "#54708D",
-  Social:   "#4C757A",
-  Property: "#786B3F",
-  Others:   "#68736B",
+  Physical: "#D64550",
+  Verbal:   "#D97706",
+  Cyber:    "#5368D5",
+  Social:   "#0F8A72",
+  Property: "#A87900",
+  Others:   "#7656A8",
 };
 
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
@@ -793,7 +793,7 @@ export default function AdminDashboard() {
     () => mfTypes.map((t) => mfFiltered.filter((r) => r.type === t).length),
     [mfFiltered, mfTypes]
   );
-  const mfChartColors = useMemo(() => ["#4f8760", "#6484a0", "#b28a4f", "#85749b", "#b9785f", "#78847d"], []);
+  const mfChartColors = useMemo(() => ["#D6455D", "#E07824", "#5368D5", "#159985", "#C28A16", "#8562C8"], []);
 
   const mfTopIdx   = mfChartData.indexOf(Math.max(...mfChartData));
   const mfTopType  = mfTypes[mfTopIdx];
@@ -967,7 +967,7 @@ export default function AdminDashboard() {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)";
     const tickColor = isDark ? "#a1a1aa" : "#64748b";
-    const accent = "#557b5d";
+    const accent = "#16834A";
 
     trendChartInstanceRef.current = new Chart(canvas, {
       type: "line",
@@ -989,10 +989,10 @@ export default function AdminDashboard() {
           backgroundColor: (ctx) => {
             const { chart } = ctx;
             const { ctx: c, chartArea } = chart;
-            if (!chartArea) return "rgba(85,123,93,0.12)";
+            if (!chartArea) return "rgba(22,131,74,0.12)";
             const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            gradient.addColorStop(0, "rgba(85,123,93,0.18)");
-            gradient.addColorStop(1, "rgba(22,163,74,0)");
+            gradient.addColorStop(0, "rgba(22,131,74,0.2)");
+            gradient.addColorStop(1, "rgba(22,131,74,0)");
             return gradient;
           },
         }],
