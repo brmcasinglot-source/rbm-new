@@ -20,7 +20,7 @@ import {
   LayoutDashboard, Search, FileText, Image, Shield, BookOpen, User, X,
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
-  ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen,
+  ChevronLeft, ChevronRight, MapPin, LogOut,
   Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database, Menu,
   History, ClipboardList, Send,
 } from "lucide-react";
@@ -1585,7 +1585,6 @@ export default function AdminDashboard() {
     { label: "Reported students", people: selectedReport.offenders || [] },
     { label: "Witnesses", people: selectedReport.witnesses || [] },
   ].filter((group) => group.people.length > 0) : [];
-
   return (
     <div className="dashboard admin-theme" style={{ backgroundImage: `url(${bg})` }}>
       {/* ── SIDEBAR ── */}
@@ -2682,18 +2681,18 @@ export default function AdminDashboard() {
                       <button
                         className="analytics-add-place-btn"
                         onClick={openAddLocation}
-                      ><Plus size={13} /> Add Place</button>
+                      >Add Place</button>
                     </div>
 
                     {/* Zone legend */}
                     <div className="analytics-zone-legend">
-                      <span className="analytics-zone-chip inside"><Building2 size={12} /> Inside School</span>
-                      <span className="analytics-zone-chip outside"><DoorOpen size={12} /> Outside / Other</span>
+                      <span className="analytics-zone-chip inside">Inside School</span>
+                      <span className="analytics-zone-chip outside">Outside / Other</span>
                     </div>
 
                     {/* Custom places are grouped by their configured zone. */}
                     {customLocations.length > 0 && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 8 }}>
                         {["inside", "outside"].map((zone) => {
                           const zoneLocations = customLocations.filter((loc) =>
                             (loc.zone === "outside" ? "outside" : "inside") === zone
@@ -2709,12 +2708,12 @@ export default function AdminDashboard() {
                                 {zoneLocations.map((loc) => (
                                   <span key={loc.key} style={{
                                     display: "inline-flex", alignItems: "center", gap: 5,
-                                    fontSize: 11, fontWeight: 700, padding: "4px 6px 4px 10px", borderRadius: 20,
+                                    fontSize: 10.5, fontWeight: 700, padding: "3px 6px 3px 9px", borderRadius: 20,
                                     background: hexToRgba(color, 0.12),
                                     color,
                                     border: `1.5px solid ${hexToRgba(color, 0.4)}`,
                                   }}>
-                                    {loc.icon} {loc.key}
+                                    {loc.key}
                                     <button
                                       onClick={() => handleDeleteLocation(loc.key)}
                                       aria-label={`Remove ${loc.key}`}
@@ -2752,13 +2751,10 @@ export default function AdminDashboard() {
                               const meta  = allLocationMeta.find((m) => m.key === loc);
                               const zone  = meta?.zone  || "inside";
                               const color = LOCATION_ZONE_COLORS[zone === "outside" ? "outside" : "inside"];
-                              const icon  = meta?.icon || "📍";
                               return (
                                 <div className="bk-row" key={loc}>
                                   <div className="bk-top">
                                     <span className="bk-label">
-                                      <span className="bk-dot" style={{ background: color }} />
-                                      <span style={{ marginRight: 2 }}>{icon}</span>
                                       {loc}
                                       {zone === "outside" && (
                                         <span style={{
@@ -2768,12 +2764,14 @@ export default function AdminDashboard() {
                                         }}>Outside</span>
                                       )}
                                     </span>
-                                    <span className="bk-pct" style={{ color }}>{pct}%</span>
+                                    <span className="bk-stats">
+                                      <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
+                                      <span className="bk-pct" style={{ color }}>{pct}%</span>
+                                    </span>
                                   </div>
                                   <div className="bk-track">
                                     <div className="bk-fill" style={{ width: `${pct}%`, background: color }} />
                                   </div>
-                                  <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
                                 </div>
                               );
                             })}
@@ -2812,16 +2810,10 @@ export default function AdminDashboard() {
                     {/* Prefect Hotspot Alert */}
                     {topLocation && (
                       <div style={{
-                        marginTop: "auto", padding: "12px 14px", borderRadius: 10,
-                        background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-                        border: "1.5px solid #fcd34d",
-                        display: "flex", alignItems: "flex-start", gap: 10,
+                        marginTop: 10, padding: "9px 11px", borderRadius: 9,
+                        background: "#fbf8ef",
+                        border: "1px solid #eee5c8",
                       }}>
-                        <span style={{
-                          width: 26, height: 26, borderRadius: "50%", background: "#ffffff",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: "#d97706", flexShrink: 0,
-                        }}><AlertTriangle size={14} /></span>
                         <div>
                           <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: "#92400e" }}>
                             Prefect Hotspot Alert
