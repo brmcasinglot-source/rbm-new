@@ -20,7 +20,7 @@ import {
   LayoutDashboard, Search, FileText, Image, Shield, BookOpen, User, X,
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
-  ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen, Sparkles,
+  ChevronLeft, ChevronRight, MapPin, LogOut, Building2, DoorOpen,
   Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Database, Menu,
   History, ClipboardList, Send,
 } from "lucide-react";
@@ -2649,7 +2649,6 @@ export default function AdminDashboard() {
 
                     {/* Auto insight */}
                     <div className="analytics-insight-box">
-                      <span className="analytics-insight-icon"><Sparkles size={15} /></span>
                       <div>
                         <p className="analytics-insight-label">Auto-Generated Insight</p>
                         <p className="analytics-insight-text" dangerouslySetInnerHTML={{ __html: mfInsight }} />

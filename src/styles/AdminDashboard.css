@@ -2752,19 +2752,6 @@
   box-shadow: 0 4px 14px rgba(22,163,74,0.08);
 }
 
-.analytics-insight-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #16a34a;
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(22,163,74,0.15);
-}
-
 .analytics-insight-label {
   font-size: 10px;
   font-weight: 800;
@@ -4042,8 +4029,8 @@
 .analytics-overview {
   --analytics-green: #477656;
   --analytics-green-strong: #386547;
-  --analytics-green-soft: #edf5ef;
-  --analytics-border: #e1e9e2;
+  --analytics-green-soft: #f5f8f5;
+  --analytics-border: #e7ece8;
   --analytics-muted: #68766d;
   background: #fff;
 }
@@ -4074,29 +4061,29 @@
   padding: 17px;
   border: 1px solid var(--analytics-border);
   border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(40, 65, 47, 0.045);
+  box-shadow: 0 2px 8px rgba(40, 65, 47, 0.025);
 }
 
 .analytics-overview .summary-card-modern:hover {
-  border-color: #cbdccc;
-  box-shadow: 0 6px 16px rgba(40, 65, 47, 0.08);
+  border-color: #dce6de;
+  box-shadow: 0 4px 12px rgba(40, 65, 47, 0.05);
 }
 
 .analytics-overview .summary-card-modern.m-green::before,
 .analytics-overview .summary-card-modern.m-green2::before {
-  background: #72997a;
+  background: #a9c2ad;
 }
 
 .analytics-overview .summary-card-modern.m-amber::before {
-  background: #c1a06b;
+  background: #d8c6a2;
 }
 
 .analytics-overview .summary-card-modern.m-blue::before {
-  background: #7894aa;
+  background: #b7c8d5;
 }
 
 .analytics-overview .summary-card-modern.m-purple::before {
-  background: #9584a4;
+  background: #c9bfd3;
 }
 
 .analytics-overview .summary-icon {
@@ -4106,22 +4093,22 @@
 }
 
 .analytics-overview .summary-icon.g {
-  background: #edf5ef;
+  background: #f5f8f5;
   color: var(--analytics-green);
 }
 
 .analytics-overview .summary-icon.a {
-  background: #f8f2e7;
+  background: #fbf9f4;
   color: #927541;
 }
 
 .analytics-overview .summary-icon.b {
-  background: #edf3f7;
+  background: #f6f8fa;
   color: #58758a;
 }
 
 .analytics-overview .summary-icon.p {
-  background: #f2eef5;
+  background: #faf9fb;
   color: #746483;
 }
 
@@ -4133,26 +4120,26 @@
 }
 
 .analytics-overview .trend-badge.muted {
-  border-color: #e2e8e3;
-  background: #f3f6f3;
+  border-color: #e8ede9;
+  background: #f8faf8;
   color: #5f6e63;
 }
 
 .analytics-overview .trend-badge.warn {
-  border-color: #eadfc8;
-  background: #f8f3e8;
+  border-color: #eee7d9;
+  background: #fcfaf5;
   color: #896f3e;
 }
 
 .analytics-overview .trend-badge.info {
-  border-color: #d9e4ec;
-  background: #eef4f7;
+  border-color: #e5ebef;
+  background: #f7f9fa;
   color: #58748b;
 }
 
 .analytics-overview .trend-badge.purple {
-  border-color: #e2dbe9;
-  background: #f3eff6;
+  border-color: #ece8f0;
+  background: #faf9fb;
   color: #756387;
 }
 
@@ -4167,7 +4154,7 @@
   padding: 20px;
   border: 1px solid var(--analytics-border);
   border-radius: 14px;
-  box-shadow: 0 2px 9px rgba(40, 65, 47, 0.045);
+  box-shadow: 0 2px 8px rgba(40, 65, 47, 0.025);
 }
 
 .analytics-overview .title-group h3 {
@@ -4189,13 +4176,13 @@
 
 .analytics-overview .mf-filters-panel-header {
   padding: 10px 14px;
-  border-bottom-color: #e4ebe5;
-  background: #f1f6f2;
+  border-bottom-color: #edf1ed;
+  background: #fbfcfb;
   color: #49624f;
 }
 
 .analytics-overview .mf-filters-panel-count {
-  background: #e3eee5;
+  background: #f2f6f2;
   color: #42644b;
 }
 
@@ -4286,7 +4273,7 @@
 .analytics-overview .mf-clear-row {
   justify-content: flex-end;
   border-top-color: #e8eee9;
-  background: #f8faf8;
+  background: #fcfdfc;
 }
 
 .analytics-overview .mf-clear-filters-btn,
@@ -4329,15 +4316,11 @@
 }
 
 .analytics-overview .analytics-insight-box {
+  display: block;
   margin-top: 14px;
-  border-color: #d8e6db;
+  border-color: #e7ece8;
   border-radius: 11px;
-  background: #f1f7f2;
-  box-shadow: none;
-}
-
-.analytics-overview .analytics-insight-icon {
-  color: var(--analytics-green);
+  background: #fff;
   box-shadow: none;
 }
 
@@ -4421,8 +4404,8 @@
 
 .admin-theme .analytics-overview .analytics-recommendations {
   margin-top: 0 !important;
-  border-color: #e5e9dd;
-  background: #fbfcf8;
+  border-color: var(--analytics-border);
+  background: #fff;
 }
 
 .analytics-overview .analytics-recommendations .title-group {
