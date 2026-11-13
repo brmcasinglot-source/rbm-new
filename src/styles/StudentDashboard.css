@@ -4819,3 +4819,77 @@
   background: #e7f7ed;
   color: #087348;
 }
+
+.s-dashboard .s-content.s-case-monitoring {
+  background: #f3f8f5;
+}
+
+.s-dashboard .s-content.s-case-monitoring .s-case-list .s-case-card {
+  border: 1px solid #d5e8dc;
+  border-left: 3px solid #79b995;
+  background: #f8fcf9;
+  box-shadow: 0 2px 6px rgba(18, 83, 58, 0.045);
+}
+
+.s-dashboard .s-content.s-case-monitoring .s-case-list .s-case-card:hover {
+  border-color: #add4bd;
+  border-left-color: #087f5b;
+  background: #f1f9f4;
+  box-shadow: 0 5px 14px rgba(18, 83, 58, 0.09);
+}
+
+.s-dashboard .s-content.s-case-monitoring .s-case-list .s-case-card:focus-visible {
+  border-color: #087f5b;
+  outline-color: rgba(8, 127, 91, 0.22);
+}
+
+.s-dashboard .s-content.s-case-monitoring .s-case-id {
+  color: #087f5b;
+}
+
+.s-dashboard .s-content.s-case-monitoring .s-case-type {
+  border-color: #cfe5d7;
+  background: #eaf5ee;
+  color: #426b53;
+}
+
+.s-dashboard .s-case-detail-modal .s-modal-header {
+  border-bottom-color: #d7e9de;
+  background: #f1f8f3;
+}
+
+.s-dashboard .s-case-detail-modal .s-modal-header h3 {
+  color: #087f5b;
+}
+
+.s-dashboard .s-case-detail-modal .s-modal-header .s-hub-type-badge {
+  border-color: #cfe5d7;
+  background: #e4f2e9;
+  color: #426b53;
+}
+
+.s-dashboard .s-case-detail-modal .s-case-tracker-title {
+  color: #176b48;
+}
+
+.s-dashboard .s-case-detail-modal .s-tracker-step.completed .s-tracker-dot {
+  border-color: #087f5b;
+  background: #087f5b;
+}
+
+.s-dashboard .s-case-detail-modal .s-tracker-step.completed .s-tracker-line {
+  background: #9dcdb0;
+}
+
+.s-dashboard .s-case-detail-modal .s-tracker-step.completed .s-tracker-step-tag {
+  color: #087f5b;
+}
+
+.s-dashboard .s-case-detail-modal .s-case-details-box {
+  border-color: #d5e8dc;
+  background: #f6fbf7;
+}
+
+.s-dashboard .s-case-detail-modal .s-case-details-box .s-case-tracker-title svg {
+  color: #087f5b;
+}
