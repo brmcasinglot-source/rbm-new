@@ -1004,7 +1004,6 @@ export default function StudentDashboard() {
                         <span className={`s-status-badge ${r.status.toLowerCase().replace(/\s/g, "-")}`}>
                           {statusIcon(r.status)} {r.status}
                         </span>
-                        <ArrowUpRight className="s-case-open-icon" size={15} aria-hidden="true" />
                       </div>
                     </div>
                     <p className="s-case-desc">{r.description}</p>
@@ -1176,7 +1175,7 @@ export default function StudentDashboard() {
                   <button type="button" className="s-add-person-btn" onClick={() => addPerson(setVictims)}>+ Add Another Victim</button>
 
                   {/* ── Alleged Offender Information ── */}
-                  <div className="s-form-section-title" style={{ marginTop: 20 }}>Alleged Offender Information</div>
+                  <div className="s-form-section-title">Alleged Offender Information</div>
                   {offenders.map((o, idx) => (
                     <div key={idx} className="s-person-card s-person-card-offender">
                       {offenders.length > 1 && (
@@ -1283,7 +1282,7 @@ export default function StudentDashboard() {
                   )}
 
                   {/* ── Incident Description (split) ── */}
-                  <div className="s-form-section-title" style={{ marginTop: 20 }}>Incident Description</div>
+                  <div className="s-form-section-title">Incident Description</div>
                   <div className="s-form-group">
                     <label>What happened? *</label>
                     <textarea placeholder="I-describe ang nahitabo nga insidente sa detalye..." required
@@ -1535,9 +1534,9 @@ export default function StudentDashboard() {
         };
         return (
           <div className="s-modal-overlay" onClick={() => setCaseViewItem(null)}>
-            <div className="s-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="s-modal-box s-case-detail-modal" onClick={(e) => e.stopPropagation()}>
               <div className="s-modal-header">
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="s-case-modal-heading">
                   <span className="s-hub-type-badge" style={{ position: "static" }}>{r.type}</span>
                   <h3>Case #{r.id}</h3>
                 </div>
@@ -1584,7 +1583,7 @@ export default function StudentDashboard() {
 
                 {/* Admin Note */}
                 {r.adminNotes && (
-                  <div className="s-admin-note" style={{ marginTop: 16 }}>
+                  <div className="s-admin-note s-case-modal-note" style={{ marginTop: 16 }}>
                     <Lock size={12} color="var(--s-accent)" />
                     <div>
                       <strong>{status === "More Information Requested" ? "Request from the Prefect:" : "Note from the Prefect:"}</strong>
@@ -1594,7 +1593,7 @@ export default function StudentDashboard() {
                 )}
 
                 {r.offenseRecord && (
-                  <div className="s-admin-note" style={{ marginTop: 16, background: "#fef3c7", borderColor: "#fbbf24" }}>
+                  <div className="s-admin-note s-case-modal-note s-case-modal-note-offense" style={{ marginTop: 16 }}>
                     <Shield size={12} style={{ color: "#b45309" }} />
                     <div>
                       <strong>Official Offense Record</strong>
@@ -1609,7 +1608,7 @@ export default function StudentDashboard() {
                   </div>
                 )}
                 {!r.offenseRecord && r.hasCaseFollowUp && (
-                  <div className="s-admin-note" style={{ marginTop: 16 }}>
+                  <div className="s-admin-note s-case-modal-note" style={{ marginTop: 16 }}>
                     <Lock size={12} color="var(--s-accent)" />
                     <div>
                       <strong>Case Review Update</strong>
