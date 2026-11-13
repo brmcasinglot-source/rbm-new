@@ -961,7 +961,6 @@ export default function StudentDashboard() {
                           {conf.notes && <div className="s-conference-note">{conf.notes}</div>}
                           <div className="s-conference-footer">
                             <span>View details</span>
-                            <ArrowUpRight size={12} />
                           </div>
                         </div>
                       ))}
