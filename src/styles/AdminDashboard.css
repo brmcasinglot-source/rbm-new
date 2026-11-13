@@ -5120,11 +5120,14 @@
   display: grid;
   align-content: start;
   gap: 16px;
+  background: #f8faf8;
 }
 
 .admin-confirmations-page .account-section {
   min-width: 0;
   margin: 0;
+  border-color: #e7eee8;
+  box-shadow: 0 2px 8px rgba(38, 59, 45, .025);
 }
 
 .admin-confirmations-page .account-section-heading {
@@ -5155,15 +5158,15 @@
   gap: 16px;
   min-width: 0;
   padding: 14px 16px;
-  border: 1px solid #e3eae6;
-  border-radius: 10px;
+  border: 1px solid #e7eee8;
+  border-radius: 12px;
   background: #fff;
   transition: border-color 0.18s ease, background 0.18s ease;
 }
 
 .account-request-row:hover {
-  border-color: #c8dfcf;
-  background: #fcfefc;
+  border-color: #d7e4da;
+  background: #fff;
 }
 
 .account-request-info {
@@ -5267,14 +5270,14 @@
 }
 
 .account-action-button.approve {
-  border-color: #286341;
-  background: #286341;
+  border-color: #32734d;
+  background: #32734d;
   color: #fff;
 }
 
 .account-action-button.approve:hover {
-  border-color: #214f35;
-  background: #214f35;
+  border-color: #286341;
+  background: #286341;
 }
 
 .account-action-button.decline {
@@ -5297,8 +5300,8 @@
 }
 
 .account-empty-state {
-  border: 1px dashed #dfe7e1;
-  background: #fafcfb;
+  border: 1px dashed #e5ece6;
+  background: #fbfcfb;
   color: #6b7770;
 }
 
@@ -5344,7 +5347,7 @@
 }
 
 .admin-confirmations-page .table-container {
-  border: 1px solid #e5ebe7;
+  border: 1px solid #e7eee8;
   border-radius: 9px;
   scrollbar-color: #cbd8cf #f5f8f6;
 }
@@ -5372,7 +5375,7 @@
 
 .admin-confirmations-page .account-table thead th {
   padding: 11px 12px;
-  background: #f6f9f7;
+  background: #f8faf8;
   color: #53645a;
   font-size: 10px;
   letter-spacing: 0.55px;
@@ -5384,7 +5387,7 @@
 }
 
 .admin-confirmations-page .account-table tbody tr:hover {
-  background: #f7faf8;
+  background: #f9fbf9;
 }
 
 .admin-confirmations-page .account-table tbody td {
