@@ -1789,23 +1789,28 @@ export default function StudentDashboard() {
       {/* ── SCHEDULED CONFERENCE VIEW MODAL ── */}
       {activeConferenceViewItem && (
         <div className="s-modal-overlay" onClick={() => setConferenceViewItem(null)}>
-          <div className="s-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+          <div className="s-modal-box s-conference-detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="s-modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="s-hub-type-badge" style={{ position: "static" }}>{activeConferenceViewItem.type}</span>
+              <div className="s-conference-modal-header-group">
+                <span className="s-hub-type-badge s-conference-modal-badge">{activeConferenceViewItem.type}</span>
                 <h3>Conference Details</h3>
               </div>
-              <button className="s-modal-close" onClick={() => setConferenceViewItem(null)}><X size={18} /></button>
+              <button className="s-modal-close" onClick={() => setConferenceViewItem(null)} aria-label="Close conference details"><X size={18} /></button>
             </div>
             <div className="s-modal-body">
-              <div className="s-case-status-banner" style={{ background: "#dbeafe", borderColor: "#93c5fd" }}>
-                <span className="s-status-badge" style={{ background: "#dbeafe", color: "#1d4ed8" }}>
-                  <Calendar size={12} /> Case #{activeConferenceViewItem.id}
-                </span>
-                <p style={{ color: "#1e3a8a", margin: 0 }}>Your scheduled conference for this case is shown below.</p>
+              <div className="s-conference-summary">
+                <div className="s-conference-summary-icon">
+                  <Calendar size={16} />
+                </div>
+                <div>
+                  <span className="s-status-badge">
+                    Case #{activeConferenceViewItem.id}
+                  </span>
+                  <p>Your scheduled conference for this case is shown below.</p>
+                </div>
               </div>
 
-              <div className="s-case-details-box" style={{ marginTop: 16 }}>
+              <div className="s-case-details-box">
                 <div className="s-case-detail-grid">
                   <div><label>Case</label><span>#{activeConferenceViewItem.id}</span></div>
                   <div><label>Status</label><span className={`s-conference-status ${activeConferenceViewItem.status.toLowerCase().replace(/\s/g, "-")}`}>
@@ -1813,7 +1818,7 @@ export default function StudentDashboard() {
                   </span></div>
                   <div><label>Date</label><span>{formatConferenceDate(activeConferenceViewItem.date, language)}</span></div>
                   <div><label>Time</label><span>{formatConferenceTime(activeConferenceViewItem.time) || "Time TBD"}</span></div>
-                  <div style={{ gridColumn: "1 / -1" }}><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
+                  <div className="s-conference-location-row"><label>Location</label><span>{activeConferenceViewItem.location || "Location TBD"}</span></div>
                 </div>
                 {(activeConferenceViewItem.rescheduledFrom || activeConferenceViewItem.previousSchedule?.date) && (
                   <p className="s-conference-previous">
@@ -1821,7 +1826,7 @@ export default function StudentDashboard() {
                   </p>
                 )}
                 {activeConferenceViewItem.notes && (
-                  <div style={{ marginTop: 12 }}>
+                  <div className="s-conference-notes-wrap">
                     <label className="s-case-detail-label">Agenda / Notes</label>
                     <p className="s-case-detail-text">{activeConferenceViewItem.notes}</p>
                   </div>

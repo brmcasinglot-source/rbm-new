@@ -2638,14 +2638,73 @@
   flex: 0 0 8px;
 }
 
+.s-conference-detail-modal {
+  max-width: 520px;
+  width: min(520px, calc(100vw - 24px));
+}
+
+.s-conference-modal-header-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.s-conference-modal-badge {
+  position: static;
+}
+
+.s-conference-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  margin-bottom: 16px;
+}
+
+.s-conference-summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  flex-shrink: 0;
+}
+
+.s-conference-summary .s-status-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 5px 10px;
+}
+
+.s-conference-summary p {
+  margin: 6px 0 0;
+  color: #1e3a8a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .s-conference-previous {
-  margin-top: 6px;
-  padding: 7px 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: #eff6ff;
   color: #1e40af;
   font-size: 11px;
   line-height: 1.45;
+}
+
+.s-conference-notes-wrap {
+  margin-top: 12px;
+}
+
+.s-conference-location-row {
+  grid-column: 1 / -1;
 }
 
 .s-conference-actions,
@@ -3282,13 +3341,21 @@
 }
 .s-case-detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .s-case-detail-grid > div {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.s-conference-location-row {
+  grid-column: 1 / -1;
+  background: #f8fafc;
 }
 .s-case-detail-grid label {
   font-size: 11px;
