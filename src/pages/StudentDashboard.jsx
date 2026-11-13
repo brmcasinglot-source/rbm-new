@@ -1433,14 +1433,14 @@ export default function StudentDashboard() {
               </div>
 
             </div>
-            <div className="s-panel" style={{ maxWidth: 720, padding: 24, marginTop: 16 }}>
-              <div className="s-help-header">
+            <div className="s-settings-panel" style={{ maxWidth: 720, marginTop: 16 }}>
+              <div className="s-settings-header">
                 <h3>Language Preference</h3>
               </div>
-              <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
+              <p className="s-settings-text">
                 Choose the language used across your student dashboard. This preference is saved for your account on this device.
               </p>
-              <div className="s-form-group" style={{ marginTop: 18, maxWidth: 360 }}>
+              <div className="s-settings-select-wrap">
                 <label htmlFor="student-language">Dashboard Language</label>
                 <select
                   id="student-language"
