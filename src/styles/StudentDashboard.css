@@ -4063,8 +4063,26 @@
   gap: 10px;
 }
 
+.s-dashboard .s-report-layout .s-person-contact-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.s-dashboard .s-report-layout .s-offender-identity-row {
+  grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr);
+  gap: 10px;
+}
+
+.s-dashboard .s-report-layout .s-offender-grade-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 @media (max-width: 600px) {
-  .s-dashboard .s-report-layout .s-person-details-row {
+  .s-dashboard .s-report-layout .s-person-details-row,
+  .s-dashboard .s-report-layout .s-person-contact-row,
+  .s-dashboard .s-report-layout .s-offender-identity-row,
+  .s-dashboard .s-report-layout .s-offender-grade-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -4645,6 +4663,47 @@
 .s-dashboard .s-report-layout .s-person-card-witness {
   border-color: #bdd8f8;
   background: #eef6ff;
+}
+
+.s-dashboard .s-report-layout .s-help-panel {
+  border-color: #cfe6d7 !important;
+  background: #f2faf5 !important;
+}
+
+.s-dashboard .s-report-layout .s-help-header {
+  border-bottom-color: #d8ebdf;
+}
+
+.s-dashboard .s-report-layout .s-help-header > svg {
+  color: #087f5b;
+}
+
+.s-dashboard .s-report-layout .s-help-header h3 {
+  color: #17352b;
+}
+
+.s-dashboard .s-report-layout .s-step-num {
+  border-color: #b7dfc7;
+  background: #e2f4e9;
+  color: #087f5b;
+}
+
+.s-dashboard .s-report-layout .s-help-steps li strong {
+  color: #315343;
+}
+
+.s-dashboard .s-report-layout .s-help-steps li p {
+  color: #5e7569;
+}
+
+.s-dashboard .s-report-layout .s-privacy-note {
+  border-color: #cfe6d7;
+  background: #e6f5eb;
+  color: #176b48;
+}
+
+.s-dashboard .s-report-layout .s-privacy-note svg {
+  color: #087f5b;
 }
 
 .s-dashboard .s-report-layout .s-person-card-header {

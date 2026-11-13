@@ -1162,14 +1162,14 @@ export default function StudentDashboard() {
                             ) && <option value={v.section}>{v.section}</option>}
                           </select></div>
                       </div>
-                      <div className="s-form-row">
+                      <div className="s-form-row s-person-contact-row">
                         <div className="s-form-group"><label>Adviser</label>
                           <input type="text" placeholder="Adviser's name" value={v.adviser} onChange={e => updatePerson(setVictims, idx, "adviser", e.target.value)} /></div>
                         <div className="s-form-group"><label>Parent / Guardian Name</label>
                           <input type="text" placeholder="Parent or guardian" value={v.parentName} onChange={e => updatePerson(setVictims, idx, "parentName", e.target.value)} /></div>
+                        <div className="s-form-group"><label>Parent / Guardian Contact</label>
+                          <input type="text" placeholder="Phone number or email" value={v.parentContact} onChange={e => updatePerson(setVictims, idx, "parentContact", e.target.value)} /></div>
                       </div>
-                      <div className="s-form-group"><label>Parent / Guardian Contact</label>
-                        <input type="text" placeholder="Phone number or email" value={v.parentContact} onChange={e => updatePerson(setVictims, idx, "parentContact", e.target.value)} /></div>
                     </div>
                   ))}
                   <button type="button" className="s-add-person-btn" onClick={() => addPerson(setVictims)}>+ Add Another Victim</button>
@@ -1184,11 +1184,13 @@ export default function StudentDashboard() {
                           <button type="button" className="s-remove-person-btn" onClick={() => removePerson(setOffenders, idx)}><X size={13} /> Remove</button>
                         </div>
                       )}
-                      <div className="s-form-group"><label>Full Name (if known)</label>
-                        <input type="text" placeholder="Last, First Middle" value={o.name} onChange={e => updatePerson(setOffenders, idx, "name", e.target.value)} /></div>
-                      <div className="s-form-row s-person-details-row">
+                      <div className="s-form-row s-offender-identity-row">
+                        <div className="s-form-group"><label>Full Name (if known)</label>
+                          <input type="text" placeholder="Last, First Middle" value={o.name} onChange={e => updatePerson(setOffenders, idx, "name", e.target.value)} /></div>
                         <div className="s-form-group"><label>Age</label>
                           <input type="number" min="5" max="25" placeholder="e.g. 15" value={o.age} onChange={e => updatePerson(setOffenders, idx, "age", e.target.value)} /></div>
+                      </div>
+                      <div className="s-form-row s-offender-grade-row">
                         <div className="s-form-group"><label>Grade (if known)</label>
                           <select value={o.grade} onChange={e => { updatePerson(setOffenders, idx, "grade", e.target.value); updatePerson(setOffenders, idx, "section", ""); }}>
                             <option value="">Select grade</option>
@@ -1202,14 +1204,14 @@ export default function StudentDashboard() {
                             ))}
                           </select></div>
                       </div>
-                      <div className="s-form-row">
+                      <div className="s-form-row s-person-contact-row">
                         <div className="s-form-group"><label>Adviser</label>
                           <input type="text" placeholder="Adviser's name" value={o.adviser} onChange={e => updatePerson(setOffenders, idx, "adviser", e.target.value)} /></div>
                         <div className="s-form-group"><label>Parent / Guardian Name</label>
                           <input type="text" placeholder="Parent or guardian" value={o.parentName} onChange={e => updatePerson(setOffenders, idx, "parentName", e.target.value)} /></div>
+                        <div className="s-form-group"><label>Parent / Guardian Contact</label>
+                          <input type="text" placeholder="Phone number or email" value={o.parentContact} onChange={e => updatePerson(setOffenders, idx, "parentContact", e.target.value)} /></div>
                       </div>
-                      <div className="s-form-group"><label>Parent / Guardian Contact</label>
-                        <input type="text" placeholder="Phone number or email" value={o.parentContact} onChange={e => updatePerson(setOffenders, idx, "parentContact", e.target.value)} /></div>
                     </div>
                   ))}
                   <button type="button" className="s-add-person-btn s-add-person-btn-offender" onClick={() => addPerson(setOffenders)}>+ Add Another Offender</button>
