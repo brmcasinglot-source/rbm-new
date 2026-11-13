@@ -2502,26 +2502,42 @@
 .s-conference-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   font-weight: 800;
-  color: #166534;
-  margin-bottom: 12px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #243b2d;
+  margin-bottom: 11px;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.s-conference-header > svg {
+  color: #16834b;
+  flex: 0 0 auto;
+}
+
+.s-conference-count {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid #f5dfbd;
+  border-radius: 999px;
+  background: #fff7e8;
+  color: #9a5c14;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .s-conference-list {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .s-conference-item {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-left: 3px solid #7dbb9b;
-  border-radius: 12px;
-  padding: 10px 12px;
+  background: #fcfefc;
+  border: 1px solid #e1ebe4;
+  border-radius: 11px;
+  padding: 9px 10px;
   transform: none;
   transform-origin: top center;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
@@ -2533,8 +2549,8 @@
 .s-conference-item:hover,
 .s-conference-item:focus-visible {
   transform: translateY(-1px);
-  border-color: #b5d8c1;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  border-color: #acd2b8;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
   background: #ffffff;
   outline: none;
 }
@@ -2544,20 +2560,16 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .s-conference-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #dcfce7;
-  color: #166534;
+  color: #4b6252;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .s-conference-status {
@@ -2573,8 +2585,8 @@
 }
 
 .s-conference-status.scheduled {
-  background: #fef3c7;
-  color: #b45309;
+  background: #eaf5ed;
+  color: #427451;
 }
 
 .s-conference-status.rescheduled,
@@ -2734,6 +2746,27 @@
 
 .s-conference-meta strong {
   color: #1f2937;
+}
+
+.s-conference-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 7px;
+}
+
+.s-conference-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #728078;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.s-conference-meta-item svg {
+  flex: 0 0 auto;
+  color: #718579;
 }
 
 .s-conference-note {
@@ -4985,4 +5018,93 @@
 
 .s-dashboard .s-case-detail-modal .s-case-details-box .s-case-tracker-title svg {
   color: #087f5b;
+}
+
+.s-dashboard .s-header {
+  gap: 14px;
+  padding: 0 24px;
+  border-bottom-color: #e3ebe5;
+  box-shadow: 0 1px 5px rgba(24, 43, 37, 0.035);
+}
+
+.s-dashboard .s-welcome {
+  min-width: 0;
+  flex: 1;
+}
+
+.s-dashboard .s-welcome h2 {
+  overflow: hidden;
+  color: #243b2d;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.s-dashboard .s-welcome p {
+  margin-top: 2px;
+  color: #718078;
+  font-size: 12px;
+}
+
+.s-dashboard .s-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.s-dashboard .s-icon-btn-round {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e1e9e3;
+  background: #f8faf8;
+  box-shadow: none;
+  color: #53665a;
+}
+
+.s-dashboard .s-icon-btn-round:hover {
+  transform: none;
+  border-color: #c9dfd0;
+  background: #eff7f1;
+  box-shadow: none;
+  color: #087f5b;
+}
+
+.s-dashboard .s-identity-btn {
+  max-width: 240px;
+  padding: 4px 9px 4px 4px;
+  border: 1px solid #e1e9e3;
+  background: #fff;
+}
+
+.s-dashboard .s-identity-btn:hover,
+.s-dashboard .s-identity-btn[aria-expanded="true"] {
+  border-color: #c9dfd0;
+  background: #f5faf6;
+}
+
+.s-dashboard .s-ava-info {
+  min-width: 0;
+}
+
+.s-dashboard .s-ava-name {
+  overflow: hidden;
+  color: #30463a;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.s-dashboard .s-ava-role {
+  color: #7a8980;
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .s-dashboard .s-header {
+    padding: 0 14px;
+    gap: 8px;
+  }
 }

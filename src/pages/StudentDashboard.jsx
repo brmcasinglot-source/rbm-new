@@ -648,8 +648,8 @@ export default function StudentDashboard() {
     cases:     { title: "My Case Monitoring",         sub: "Track the status of your submitted reports in real-time." },
     dashboard: {
       title: language === "fil"
-        ? `👋 Maligayang pagdating, ${studentName || "Mag-aaral"}!`
-        : `👋 Welcome, ${studentName || "Student"}!`,
+      ? `Maligayang pagdating, ${studentName || "Mag-aaral"}`
+      : `Welcome, ${studentName || "Student"}`,
       sub: "A safer school starts with speaking up.",
     },
   }[activeTab] || { title: "Dashboard", sub: "" });
@@ -704,7 +704,7 @@ export default function StudentDashboard() {
             <h2>{title}</h2>
             <p>{sub}</p>
           </div>
-          <div className="s-header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="s-header-actions">
             {/* Notifications */}
             <div style={{ position: "relative" }} ref={notifRef}>
               <button className="s-icon-btn-round" onClick={() => setNotifOpen(!notifOpen)}>
@@ -914,8 +914,11 @@ export default function StudentDashboard() {
               <aside className="s-dashboard-side-panel">
                 <div className="s-conference-card">
                   <div className="s-conference-header">
-                    <Calendar size={12} />
+                    <Calendar size={15} />
                     <span>Scheduled Conferences</span>
+                    <span className="s-conference-count">
+                      {scheduledConferenceList.length} active
+                    </span>
                   </div>
 
                   {scheduledConferenceList.length === 0 ? (
@@ -950,18 +953,21 @@ export default function StudentDashboard() {
                             <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
                             <strong>{conf.type}</strong>
                           </div>
-                          <div className="s-conference-meta">📅 {formatConferenceDate(conf.date, language)}</div>
-                          <div className="s-conference-meta">🕒 {conf.time}</div>
-                          <div className="s-conference-meta">📍 {conf.location}</div>
+                          <div className="s-conference-schedule">
+                            <span className="s-conference-meta-item">
+                              <Calendar size={12} />
+                              {formatConferenceDate(conf.date, language)}
+                            </span>
+                            <span className="s-conference-meta-item">
+                              <Clock size={12} />
+                              {conf.time}
+                            </span>
+                          </div>
                           {(conf.rescheduledFrom || conf.previousSchedule?.date) && (
                             <div className="s-conference-previous">
                               Rescheduled from {conf.rescheduledFrom || conf.previousSchedule.date}
                             </div>
                           )}
-                          {conf.notes && <div className="s-conference-note">{conf.notes}</div>}
-                          <div className="s-conference-footer">
-                            <span>View details</span>
-                          </div>
                         </div>
                       ))}
                     </div>
