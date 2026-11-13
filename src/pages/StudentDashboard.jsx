@@ -1051,8 +1051,8 @@ export default function StudentDashboard() {
                 <form onSubmit={handleReportSubmit}>
 
                   {/* ── Reporter Information ── */}
-                  <div className="s-form-section-title">Reporter Information</div>
-                  <div className="s-form-row">
+                  <div className="s-form-section-title s-reporter-section-title">Reporter Information</div>
+                  <div className="s-form-row s-reporter-role-row">
                     <div className="s-form-group">
                       <label>Reporter Role *</label>
                       <select value={reporterType} required
@@ -1066,7 +1066,7 @@ export default function StudentDashboard() {
                     </div>
                   </div>
 
-                  <div className="s-form-row">
+                  <div className="s-form-row s-reporter-detail-row">
                     <div className="s-form-group">
                       <label>Type of Bullying *</label>
                       <select value={reportForm.type} required
@@ -1087,7 +1087,7 @@ export default function StudentDashboard() {
                         onChange={(e) => setReportForm({ ...reportForm, date: e.target.value })} />
                     </div>
                   </div>
-                  <div className="s-form-row">
+                  <div className="s-form-row s-reporter-detail-row">
                     <div className="s-form-group">
                       <label>Approximate Time</label>
                       <input type="time" value={reportForm.time}
@@ -1142,9 +1142,9 @@ export default function StudentDashboard() {
                           <input type="text" inputMode="numeric" placeholder="12-digit LRN" maxLength={12} value={v.lrn}
                             onChange={e => updatePerson(setVictims, idx, "lrn", e.target.value.replace(/\D/g, "").slice(0, 12))} /></div>
                       </div>
-                      <div className="s-form-group"><label>Age</label>
-                        <input type="number" min="5" max="25" placeholder="e.g. 14" value={v.age} onChange={e => updatePerson(setVictims, idx, "age", e.target.value)} /></div>
-                      <div className="s-form-row">
+                      <div className="s-form-row s-person-details-row">
+                        <div className="s-form-group"><label>Age</label>
+                          <input type="number" min="5" max="25" placeholder="e.g. 14" value={v.age} onChange={e => updatePerson(setVictims, idx, "age", e.target.value)} /></div>
                         <div className="s-form-group"><label>Grade</label>
                           <select value={v.grade} onChange={e => handleVictimGradeChange(idx, e.target.value)}>
                             <option value="">Select grade</option>
@@ -1175,7 +1175,7 @@ export default function StudentDashboard() {
                   <button type="button" className="s-add-person-btn" onClick={() => addPerson(setVictims)}>+ Add Another Victim</button>
 
                   {/* ── Alleged Offender Information ── */}
-                  <div className="s-form-section-title">Alleged Offender Information</div>
+                  <div className="s-form-section-title s-offender-section-title">Alleged Offender Information</div>
                   {offenders.map((o, idx) => (
                     <div key={idx} className="s-person-card s-person-card-offender">
                       {offenders.length > 1 && (
@@ -1186,9 +1186,9 @@ export default function StudentDashboard() {
                       )}
                       <div className="s-form-group"><label>Full Name (if known)</label>
                         <input type="text" placeholder="Last, First Middle" value={o.name} onChange={e => updatePerson(setOffenders, idx, "name", e.target.value)} /></div>
-                      <div className="s-form-group"><label>Age</label>
-                        <input type="number" min="5" max="25" placeholder="e.g. 15" value={o.age} onChange={e => updatePerson(setOffenders, idx, "age", e.target.value)} /></div>
-                      <div className="s-form-row">
+                      <div className="s-form-row s-person-details-row">
+                        <div className="s-form-group"><label>Age</label>
+                          <input type="number" min="5" max="25" placeholder="e.g. 15" value={o.age} onChange={e => updatePerson(setOffenders, idx, "age", e.target.value)} /></div>
                         <div className="s-form-group"><label>Grade (if known)</label>
                           <select value={o.grade} onChange={e => { updatePerson(setOffenders, idx, "grade", e.target.value); updatePerson(setOffenders, idx, "section", ""); }}>
                             <option value="">Select grade</option>

@@ -4058,6 +4058,17 @@
   outline-offset: 2px;
 }
 
+.s-dashboard .s-report-layout .s-person-details-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .s-dashboard .s-report-layout .s-person-details-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .s-report-layout .s-help-panel {
   position: sticky;
   top: 16px;
@@ -4530,6 +4541,43 @@
   color: #17352b;
 }
 
+.s-dashboard .s-report-layout .s-reporter-section-title {
+  margin: 10px 0 7px;
+  padding-bottom: 5px;
+  font-size: 11px;
+  letter-spacing: 0.045em;
+}
+
+.s-dashboard .s-report-layout .s-reporter-detail-row {
+  gap: 10px;
+}
+
+.s-dashboard .s-report-layout .s-reporter-role-row .s-form-group,
+.s-dashboard .s-report-layout .s-reporter-detail-row .s-form-group {
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.s-dashboard .s-report-layout .s-reporter-role-row .s-form-group label,
+.s-dashboard .s-report-layout .s-reporter-detail-row .s-form-group label {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.s-dashboard .s-report-layout .s-reporter-role-row .s-form-group input,
+.s-dashboard .s-report-layout .s-reporter-role-row .s-form-group select,
+.s-dashboard .s-report-layout .s-reporter-detail-row .s-form-group input,
+.s-dashboard .s-report-layout .s-reporter-detail-row .s-form-group select {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.s-dashboard .s-report-layout .s-reporter-role-row > .s-form-group:only-child {
+  grid-column: auto;
+  max-width: 100%;
+}
+
 .s-dashboard .s-report-layout .s-fake-report-warning {
   border-color: #f2d89a;
   background: #fff8e8;
@@ -4547,6 +4595,7 @@
 .s-dashboard .s-report-layout .s-form-section-title {
   border-bottom-color: #cfe9da;
   color: #087f5b;
+  font-size: 12px;
 }
 
 .s-dashboard .s-report-layout .s-form-group label {
@@ -4582,8 +4631,15 @@
 }
 
 .s-dashboard .s-report-layout .s-person-card-offender {
-  border-color: #f2c6b5;
-  background: #fff4ee;
+  padding: 12px;
+  border: 1px solid #f2c6b5;
+  border-radius: 8px;
+  background: #fff7f2;
+}
+
+.s-dashboard .s-report-layout .s-offender-section-title {
+  border-bottom-color: #f0d7ca;
+  color: #a65c38;
 }
 
 .s-dashboard .s-report-layout .s-person-card-witness {
