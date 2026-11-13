@@ -4913,17 +4913,17 @@
 }
 
 .s-dashboard .s-content.s-case-monitoring .s-case-list .s-case-card {
-  border: 1px solid #d5e8dc;
-  border-left: 3px solid #79b995;
-  background: #f8fcf9;
-  box-shadow: 0 2px 6px rgba(18, 83, 58, 0.045);
+  background: #ffffff;
+  border: 1px solid #dfeae2;
+  border-left: 4px solid #7bbd99;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
 
 .s-dashboard .s-content.s-case-monitoring .s-case-list .s-case-card:hover {
-  border-color: #add4bd;
-  border-left-color: #087f5b;
-  background: #f1f9f4;
-  box-shadow: 0 5px 14px rgba(18, 83, 58, 0.09);
+  background: #ffffff;
+  border-color: #c9dccf;
+  border-left-color: #0a7d5a;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .s-dashboard .s-content.s-case-monitoring .s-case-list .s-case-card:focus-visible {
