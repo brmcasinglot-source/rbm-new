@@ -49,8 +49,8 @@ const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 const ACCOUNT_PAGE_SIZE = 25;
 const ANALYTICS_LOCATION_COLORS = {
-  inside: { bar: "#5D7FA6", text: "#3F6289", soft: "#EEF3F8", border: "#D5E0EB" },
-  outside: { bar: "#BA6268", text: "#98474D", soft: "#FBF1F2", border: "#EBD6D8" },
+  inside: { bar: "#3977B8", text: "#285B91", soft: "#EEF5FD", border: "#C9DDF2" },
+  outside: { bar: "#C84B59", text: "#A63846", soft: "#FFF1F2", border: "#F0CDD1" },
 };
 
 async function fileToDataUrl(file) {
@@ -203,12 +203,12 @@ function hexToRgba(hex, alpha = 1) {
 
 // ─── Inline Donut / Progress bars ─────────────────────────────────────────────
 const TYPE_COLORS = {
-  Physical: "#D64550",
-  Verbal:   "#D97706",
-  Cyber:    "#5368D5",
-  Social:   "#0F8A72",
-  Property: "#A87900",
-  Others:   "#7656A8",
+  Physical: "#C83F4B",
+  Verbal:   "#C66A08",
+  Cyber:    "#3F5FE0",
+  Social:   "#078773",
+  Property: "#9B6900",
+  Others:   "#7950C4",
 };
 
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
@@ -967,7 +967,7 @@ export default function AdminDashboard() {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)";
     const tickColor = isDark ? "#a1a1aa" : "#64748b";
-    const accent = "#16834A";
+    const accent = "#07864B";
 
     trendChartInstanceRef.current = new Chart(canvas, {
       type: "line",
@@ -989,10 +989,10 @@ export default function AdminDashboard() {
           backgroundColor: (ctx) => {
             const { chart } = ctx;
             const { ctx: c, chartArea } = chart;
-            if (!chartArea) return "rgba(22,131,74,0.12)";
+            if (!chartArea) return "rgba(7,134,75,0.12)";
             const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            gradient.addColorStop(0, "rgba(22,131,74,0.2)");
-            gradient.addColorStop(1, "rgba(22,131,74,0)");
+            gradient.addColorStop(0, "rgba(7,134,75,0.2)");
+            gradient.addColorStop(1, "rgba(7,134,75,0)");
             return gradient;
           },
         }],
