@@ -5121,6 +5121,10 @@
   outline: 2px solid rgb(34 197 94 / 15%);
 }
 
+.analytics-export-format-panel {
+  display: none;
+}
+
 .analytics-export-format-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5233,6 +5237,38 @@
   font-weight: 800;
 }
 
+.analytics-export-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.analytics-export-preview-actions > span {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f2f5f2;
+  color: #59685d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.analytics-export-preview-actions button {
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #287044;
+  font: 700 11px "Nunito", sans-serif;
+  cursor: pointer;
+}
+
+.analytics-export-preview-actions button:hover {
+  background: #edf6ef;
+}
+
 .analytics-export-table-wrap {
   max-height: 280px;
   overflow: auto;
@@ -5286,6 +5322,35 @@
   overflow-wrap: anywhere;
 }
 
+.analytics-export-row-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.analytics-export-row-select input {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #07864b;
+  cursor: pointer;
+}
+
+.analytics-export-table tbody tr {
+  cursor: pointer;
+}
+
+.analytics-export-table tbody tr:focus-visible {
+  outline: 2px solid #07864b;
+  outline-offset: -2px;
+}
+
+.analytics-export-table tbody tr.selected {
+  background: #eaf7ee;
+}
+
 .analytics-export-action-preview {
   display: -webkit-box;
   overflow: hidden;
@@ -5301,6 +5366,10 @@
 
 .analytics-export-table tbody tr:hover {
   background: #f8faf8;
+}
+
+.analytics-export-table tbody tr.selected:hover {
+  background: #e1f2e7;
 }
 
 .analytics-export-table .status-badge {

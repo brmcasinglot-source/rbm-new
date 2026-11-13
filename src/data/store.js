@@ -1156,6 +1156,69 @@ export async function downloadDOCX(reports) {
   );
 }
 
+function parseInterventionPlan(value) {
+  const fieldMap = new Map([
+    ["objective", "objective"],
+    ["intervention strategy", "strategy"],
+    ["time frame", "timeFrame"],
+    ["persons involved", "personsInvolved"],
+    ["resources needed", "resourcesNeeded"],
+    ["expected outcome", "expectedOutcome"],
+  ]);
+
+  const items = [];
+  let currentItem = null;
+  let activeField = "";
+  let hasStructuredFields = false;
+
+  String(value || "").split(/\r?\n/).forEach((line) => {
+    const text = line.trim();
+    if (!text || text === "Learner Rights and Protection Intervention Plan") return;
+
+    if (/^Plan item(?:\s+\d+)?$/i.test(text)) {
+      currentItem = {
+        objective: "",
+        strategy: "",
+        timeFrame: "",
+        personsInvolved: "",
+        resourcesNeeded: "",
+        expectedOutcome: "",
+      };
+      items.push(currentItem);
+      activeField = "";
+      return;
+    }
+
+    const separatorIndex = text.indexOf(":");
+    const label = separatorIndex === -1 ? "" : text.slice(0, separatorIndex).trim().toLowerCase();
+    const fieldKey = fieldMap.get(label);
+
+    if (fieldKey) {
+      if (!currentItem) {
+        currentItem = {
+          objective: "",
+          strategy: "",
+          timeFrame: "",
+          personsInvolved: "",
+          resourcesNeeded: "",
+          expectedOutcome: "",
+        };
+        items.push(currentItem);
+      }
+      currentItem[fieldKey] = text.slice(separatorIndex + 1).trim();
+      activeField = fieldKey;
+      hasStructuredFields = true;
+      return;
+    }
+
+    if (currentItem && activeField) {
+      currentItem[activeField] = [currentItem[activeField], text].filter(Boolean).join("\n");
+    }
+  });
+
+  return hasStructuredFields ? items : [];
+}
+
 export async function downloadStudentOffenseRecords(records, format) {
   const actionDisplay = (value) => {
     const action = String(value || "").trim();
@@ -1229,26 +1292,236 @@ export async function downloadStudentOffenseRecords(records, format) {
   }
 
   if (format === "docx") {
-    const { Document, HeadingLevel, Packer, Paragraph, TextRun } = await import("docx");
-    const children = [
-      new Paragraph({ text: "CNHS Student Offense Records", heading: HeadingLevel.TITLE }),
-      new Paragraph(`Generated ${new Date().toLocaleString("en-PH")} | ${records.length} matching records`),
-    ];
-    records.forEach((record, index) => {
-      const values = rows[index];
-      children.push(new Paragraph({
-        text: `${values[0]} — Offense #${values[4]}`,
-        heading: HeadingLevel.HEADING_2,
-      }));
-      headers.forEach((header, valueIndex) => {
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: `${header}: `, bold: true }),
-            new TextRun(values[valueIndex]),
-          ],
-        }));
+    const {
+      AlignmentType,
+      BorderStyle,
+      Document,
+      HeadingLevel,
+      Packer,
+      Paragraph,
+      Table,
+      TableCell,
+      TableRow,
+      TextRun,
+      WidthType,
+    } = await import("docx");
+
+    const createText = (text = "", options = {}) =>
+      new Paragraph({
+        alignment: options.align || AlignmentType.LEFT,
+        spacing: options.spacing || {},
+        children: [
+          new TextRun({
+            text: String(text ?? ""),
+            bold: options.bold ?? false,
+            size: options.size ?? 21,
+            color: options.color || "000000",
+          }),
+        ],
       });
+
+    const headerCell = (content, fill = "F8FAFC") => new TableCell({
+      shading: { fill },
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: String(content ?? ""), bold: true, size: 18, color: "1F2937" }),
+          ],
+        }),
+      ],
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      },
     });
+
+    const bodyCell = (content, fill = "FFFFFF") => new TableCell({
+      shading: { fill },
+      children: [
+        new Paragraph({
+          children: [
+            new TextRun({ text: String(content ?? ""), size: 18, color: "1F2937" }),
+          ],
+          spacing: { after: 0 },
+        }),
+      ],
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      },
+    });
+
+    const buildOffensePlanRows = (record) => {
+      const planItems = parseInterventionPlan(record.disciplinaryAction);
+
+      if (planItems.length > 0) {
+        return planItems.map((item) => [
+          item.objective || "",
+          item.strategy || "",
+          item.timeFrame || "",
+          item.personsInvolved || "",
+          item.resourcesNeeded || "",
+          item.expectedOutcome || "",
+        ]);
+      }
+
+      return [[
+        record.disciplinaryAction || "Intervention recorded",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]];
+    };
+
+    const buildRecordSection = (record) => {
+      const currentType = String(record.incidentType || "");
+      const offenseTypes = [
+        "Bullying",
+        "Child Abuse",
+        "Child Labor",
+        "Cyberbullying",
+        "CICL",
+        "Suicide/OSAEC/CSAEM",
+        "Other Act of Abuse (Learner to Learner)",
+      ];
+
+      const planRows = buildOffensePlanRows(record);
+      const tableRows = [
+        new TableRow({
+          children: [
+            headerCell("OBJECTIVES"),
+            headerCell("INTERVENTION STRATEGY"),
+            headerCell("TIME FRAME"),
+            headerCell("PERSONS INVOLVED"),
+            headerCell("RESOURCES NEEDED"),
+            headerCell("EXPECTED OUTCOME"),
+          ],
+        }),
+        ...planRows.map((row) => new TableRow({
+          children: row.map((cell) => bodyCell(cell)),
+        })),
+      ];
+
+      return [
+        createText("Republic of the Philippines", { align: AlignmentType.CENTER, bold: true, size: 21 }),
+        createText("Department of Education", { align: AlignmentType.CENTER, bold: true, size: 22 }),
+        createText("REGION X – NORTHERN MINDANAO", { align: AlignmentType.CENTER, bold: true, size: 23 }),
+        createText("SCHOOLS DIVISION OF MISAMIS ORIENTAL", { align: AlignmentType.CENTER, bold: true, size: 22 }),
+        new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" } }, spacing: { after: 180 } }),
+        createText("LEARNER RIGHTS AND PROTECTION INTERVENTION PLAN", { align: AlignmentType.CENTER, bold: true, size: 22 }),
+        createText("S.Y. ________", { align: AlignmentType.CENTER, bold: true, size: 18 }),
+        new Paragraph({ spacing: { after: 120 } }),
+
+        new Paragraph({
+          children: [
+            new TextRun({ text: "School Division Office: Misamis Oriental   ", bold: true, size: 19 }),
+            new TextRun({ text: "School: _____________________________", size: 19 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: "District: _______________________   ", size: 19 }),
+            new TextRun({ text: "Division LRP Focal: ", bold: true, size: 19 }),
+            new TextRun({ text: "CATHERINE ANNE B. ALCALA", size: 19 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: "School I.D. No.: __________________   ", size: 19 }),
+            new TextRun({ text: "Reported Incident: ", bold: true, size: 19 }),
+            new TextRun({ text: currentType || "_______________________", size: 19 }),
+          ],
+        }),
+        new Paragraph({ spacing: { after: 120 } }),
+
+        ...offenseTypes.map((type) => new Paragraph({
+          children: [
+            new TextRun({ text: `${currentType === type ? "☒" : "☐"} ${type}`, size: 18 }),
+          ],
+          spacing: { after: 0 },
+        })),
+
+        new Paragraph({ spacing: { before: 120, after: 120 } }),
+
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: tableRows,
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+            left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+            right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+          },
+        }),
+
+        new Paragraph({ spacing: { before: 220, after: 30 } }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Student Name: ${record.studentName || "________________"}`, bold: true, size: 19 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Grade & Section: ${record.grade || "_____"} ${record.section || "_____"}`, size: 19 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Offense Number: ${record.offenseNumber || "_____"}`, size: 19 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Date Recorded: ${record.reviewedAt || record.approvedAt || "_____"}`, size: 19 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Approved by: ${record.approvedBy || "_____"}`, size: 19 }),
+          ],
+        }),
+        new Paragraph({ spacing: { before: 180 } }),
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          children: [
+            new TextRun({ text: "Address: Del Pilar - Velaz St., Brgy. 29, Cagayan de Oro City 9000", bold: true, size: 18 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: "Contact No.: (088) 856-4545 | 0966-4196797 (Globe)", size: 18 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: "Website: www.depedmisor.com", size: 18 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: "Email: misamis.oriental@deped.gov.ph", size: 18 }),
+          ],
+        }),
+      ];
+    };
+
+    const children = [];
+    records.forEach((record, index) => {
+      if (index > 0) {
+        children.push(new Paragraph({ pageBreakBefore: true }));
+      }
+      children.push(...buildRecordSection(record));
+    });
+
     const document = new Document({ sections: [{ children }] });
     const blob = await Packer.toBlob(document);
     downloadFile(

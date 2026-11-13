@@ -413,6 +413,7 @@ export default function AdminDashboard() {
   const [exportOffenseError, setExportOffenseError] = useState("");
   const [exportFormat, setExportFormat] = useState("xlsx");
   const [exportError, setExportError] = useState("");
+  const [exportSelectedIds, setExportSelectedIds] = useState(() => new Set());
   const exportOffenseRequestRef = useRef(0);
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -496,6 +497,20 @@ export default function AdminDashboard() {
       window.clearTimeout(timer);
     };
   }, [exportOffensesSelected, exportOffenseFilters]);
+
+  useEffect(() => {
+    setExportSelectedIds(new Set());
+  }, [
+    exportSearch,
+    exportTypes,
+    exportStatuses,
+    exportGradeFilter,
+    exportGenderFilter,
+    exportSectionFilter,
+    exportMonthFilter,
+    exportYearFilter,
+    exportOffenseFilters,
+  ]);
 
   // Refresh only the data used by the active admin tab, without overlapping requests.
   useEffect(() => {
@@ -1527,6 +1542,27 @@ export default function AdminDashboard() {
     (exportMonthFilter === null || (report.date && exportMonthFilter.includes(MONTH_NAMES[new Date(report.date).getMonth()]))) &&
     (exportYearFilter === null || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
   );
+  const exportPreviewRecords = exportReportsSelected
+    ? exportFilteredIncidents.slice(0, 10)
+    : exportOffensePreview.records;
+  const selectedExportPreviewRecords = exportPreviewRecords.filter((record) =>
+    exportSelectedIds.has(String(record.id))
+  );
+  const toggleExportRecordSelection = (recordId) => {
+    const key = String(recordId);
+    setExportSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setExportError("");
+  };
+  const handleExportPreviewRowKeyDown = (event, recordId) => {
+    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    toggleExportRecordSelection(recordId);
+  };
 
   const clearExportFilters = () => {
     setExportSearch("");
@@ -1571,13 +1607,20 @@ export default function AdminDashboard() {
     if ((exportReportsSelected && exportFilteredIncidents.length === 0)
       || (exportOffensesSelected && exportOffensePreview.total === 0)) return;
     setExportError("");
+    const selectedIds = new Set(selectedExportPreviewRecords.map((record) => String(record.id)));
     try {
       if (exportReportsSelected) {
-        if (exportFormat === "xlsx") await downloadXLSX(exportFilteredIncidents);
-        else if (exportFormat === "docx") await downloadDOCX(exportFilteredIncidents);
-        else downloadCSV(exportFilteredIncidents);
+        const reportsToExport = selectedIds.size
+          ? exportFilteredIncidents.filter((report) => selectedIds.has(String(report.id)))
+          : exportFilteredIncidents;
+        if (exportFormat === "xlsx") await downloadXLSX(reportsToExport);
+        else if (exportFormat === "docx") await downloadDOCX(reportsToExport);
+        else downloadCSV(reportsToExport);
       } else {
-        const offenseRecords = await loadAllFilteredOffenses();
+        const matchingOffenses = await loadAllFilteredOffenses();
+        const offenseRecords = selectedIds.size
+          ? matchingOffenses.filter((record) => selectedIds.has(String(record.id)))
+          : matchingOffenses;
         await downloadStudentOffenseRecords(offenseRecords, exportFormat);
       }
     } catch (error) {
@@ -2103,6 +2146,7 @@ export default function AdminDashboard() {
                       className={`analytics-export-dataset${exportReportsSelected ? " selected" : ""}`}
                       onClick={() => {
                         setExportDataset("incidents");
+                        setExportSelectedIds(new Set());
                         setExportError("");
                       }}
                     >
@@ -2122,6 +2166,7 @@ export default function AdminDashboard() {
                       className={`analytics-export-dataset${exportOffensesSelected ? " selected" : ""}`}
                       onClick={() => {
                         setExportDataset("offenses");
+                        setExportSelectedIds(new Set());
                         setExportError("");
                       }}
                     >
@@ -2323,8 +2368,19 @@ export default function AdminDashboard() {
 
                 <section className="analytics-export-card analytics-export-records">
                   <div className="analytics-export-records-heading">
-                    <div><h3>Preview</h3><p>First 10 records matching your selection.</p></div>
-                    <span>{exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} total</span>
+                    <div>
+                      <h3>Preview</h3>
+                      <p>Select preview rows to export only those records. Leave all unselected to export every match.</p>
+                    </div>
+                    <div className="analytics-export-preview-actions">
+                      <span>{exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} total</span>
+                      {selectedExportPreviewRecords.length > 0 && (
+                        <>
+                          <span>{selectedExportPreviewRecords.length} selected</span>
+                          <button type="button" onClick={() => setExportSelectedIds(new Set())}>Clear selection</button>
+                        </>
+                      )}
+                    </div>
                   </div>
                   {exportReportsSelected && exportFilteredIncidents.length > 0 && (
                     <div className="analytics-export-table-wrap">
@@ -2332,8 +2388,26 @@ export default function AdminDashboard() {
                         <thead><tr><th>Report No.</th><th>Date</th><th>Type</th><th>Location</th><th>Status</th><th>Reporter</th><th>Reporter role</th></tr></thead>
                         <tbody>
                           {exportFilteredIncidents.slice(0, 10).map((report) => (
-                            <tr key={report.id}>
-                              <td>{formatReportNumber(report.id)}</td>
+                            <tr
+                              key={report.id}
+                              className={exportSelectedIds.has(String(report.id)) ? "selected" : ""}
+                              aria-selected={exportSelectedIds.has(String(report.id))}
+                              tabIndex={0}
+                              onClick={() => toggleExportRecordSelection(report.id)}
+                              onKeyDown={(event) => handleExportPreviewRowKeyDown(event, report.id)}
+                            >
+                              <td>
+                                <span className="analytics-export-row-select">
+                                  <input
+                                    type="checkbox"
+                                    checked={exportSelectedIds.has(String(report.id))}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onChange={() => toggleExportRecordSelection(report.id)}
+                                    aria-label={`Select report ${formatReportNumber(report.id)} for export`}
+                                  />
+                                  {formatReportNumber(report.id)}
+                                </span>
+                              </td>
                               <td>{report.date || "—"}</td>
                               <td>{report.type || "—"}</td>
                               <td>{report.location || "—"}</td>
@@ -2357,8 +2431,26 @@ export default function AdminDashboard() {
                           </thead>
                           <tbody>
                             {exportOffensePreview.records.map((record) => (
-                              <tr key={record.id}>
-                                <td>{record.studentName || "—"}</td>
+                              <tr
+                                key={record.id}
+                                className={exportSelectedIds.has(String(record.id)) ? "selected" : ""}
+                                aria-selected={exportSelectedIds.has(String(record.id))}
+                                tabIndex={0}
+                                onClick={() => toggleExportRecordSelection(record.id)}
+                                onKeyDown={(event) => handleExportPreviewRowKeyDown(event, record.id)}
+                              >
+                                <td>
+                                  <span className="analytics-export-row-select">
+                                    <input
+                                      type="checkbox"
+                                      checked={exportSelectedIds.has(String(record.id))}
+                                      onClick={(event) => event.stopPropagation()}
+                                      onChange={() => toggleExportRecordSelection(record.id)}
+                                      aria-label={`Select offense record for ${record.studentName || "student"} for export`}
+                                    />
+                                    {record.studentName || "—"}
+                                  </span>
+                                </td>
                                 <td>{record.lrn || "—"}</td>
                                 <td>{[record.grade, record.section].filter(Boolean).join(" · ") || "—"}</td>
                                 <td>#{record.offenseNumber}</td>
@@ -2394,7 +2486,7 @@ export default function AdminDashboard() {
                 <section className="analytics-export-card">
                   <div className="analytics-export-section-heading">
                     <span className="analytics-export-step">3</span>
-                    <div><h3>Export file</h3><p>Choose a format and download your filtered {exportReportsSelected ? "incident reports" : "student offense records"}.</p></div>
+                    <div><h3>Export records</h3><p>Download the selected {exportReportsSelected ? "incident reports" : "student offense records"} in your chosen format.</p></div>
                   </div>
                   <div className="analytics-export-format-options" role="radiogroup" aria-label="Export format">
                     {[
@@ -2421,7 +2513,9 @@ export default function AdminDashboard() {
                   </div>
                   <div className="analytics-export-action-row">
                     <span>
-                      {exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} records ready
+                      {selectedExportPreviewRecords.length > 0
+                        ? `${selectedExportPreviewRecords.length} selected records ready`
+                        : `${exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} records ready`}
                     </span>
                     <button
                       type="button"
@@ -2434,7 +2528,7 @@ export default function AdminDashboard() {
                         (exportOffensesSelected && exportOffensePreview.total === 0)
                       }
                     >
-                      <Download size={16} /> Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "docx" ? "DOCS" : "CSV"}
+                      <Download size={16} /> Download {selectedExportPreviewRecords.length > 0 ? "selected" : "all"} {exportFormat === "xlsx" ? "Excel" : exportFormat === "docx" ? "DOCS" : "CSV"}
                     </button>
                   </div>
                   {exportError && <p className="analytics-export-error" role="alert">{exportError}</p>}
