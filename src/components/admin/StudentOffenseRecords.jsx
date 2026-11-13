@@ -112,6 +112,14 @@ function formatDate(value) {
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function getOffenseLevelClass(value) {
+  const offenseNumber = Number(value);
+  if (offenseNumber === 1) return "first";
+  if (offenseNumber === 2) return "second";
+  if (offenseNumber >= 3) return "subsequent";
+  return "unknown";
+}
+
 function formatIncidentTime(value) {
   if (!value) return "—";
   const raw = String(value).trim();
@@ -880,7 +888,7 @@ function StudentOffenseRecords() {
                 {studentRecords.map(({ record, matchingRecordCount }) => (
                   <tr key={record.id}>
                     <td><strong>{record.studentName}</strong><small>{[record.lrn, record.grade, record.section].filter(Boolean).join(" · ") || "Student details unavailable"}</small></td>
-                    <td><span className="student-offense-number">{record.studentOffenseCount || matchingRecordCount} {(record.studentOffenseCount || matchingRecordCount) === 1 ? "offense" : "offenses"}</span><small>Latest: #{record.offenseNumber}</small></td>
+                    <td><span className={`student-offense-number student-offense-number--${getOffenseLevelClass(record.studentOffenseCount || matchingRecordCount)}`}>{record.studentOffenseCount || matchingRecordCount} {(record.studentOffenseCount || matchingRecordCount) === 1 ? "offense" : "offenses"}</span><small>Latest: #{record.offenseNumber}</small></td>
                     <td>
                       {(record.incidentReportIds || [record.incidentReportId]).map((reportId) => (
                         <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>{formatReportNumber(reportId)}</button>
@@ -1281,7 +1289,7 @@ function StudentOffenseRecords() {
                             <details className="student-offense-history-entry">
                               <summary>
                                 <span className="student-offense-history-summary-main">
-                                  <span className="student-offense-number">Offense #{record.offenseNumber}</span>
+                                  <span className={`student-offense-number student-offense-number--${getOffenseLevelClass(record.offenseNumber)}`}>Offense #{record.offenseNumber}</span>
                                   <strong>{record.incidentType || "Incident"}</strong>
                                   <span>{formatDate(record.incidentDate)}</span>
                                 </span>
