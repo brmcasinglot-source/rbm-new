@@ -371,6 +371,8 @@ export default function AdminDashboard() {
   // Incident Records table pagination (Analytics tab)
   const RECORDS_PAGE_SIZE = 10;
   const [recordsPage, setRecordsPage] = useState(0);
+  const [recordsSearch, setRecordsSearch] = useState("");
+  const [recordsStatus, setRecordsStatus] = useState("All");
 
   // Multi-filter state
   const [mfType,    setMfType]    = useState([]);
@@ -766,6 +768,20 @@ export default function AdminDashboard() {
       (mfMonth   === "All" || (d && MONTH_NAMES[d.getMonth()] === mfMonth)) &&
       (mfYear    === "All" || (d && d.getFullYear().toString() === mfYear))
     );
+  });
+  const recordsFiltered = mfFiltered.filter((report) => {
+    const query = recordsSearch.trim().toLowerCase();
+    const matchesSearch = !query || [
+      report.id,
+      report.type,
+      report.isAnonymous ? "anonymous anon" : report.submittedBy,
+      report.status,
+      report.description,
+      report.location,
+      report.reporterGrade,
+      report.reporterSection,
+    ].some((value) => String(value ?? "").toLowerCase().includes(query));
+    return matchesSearch && (recordsStatus === "All" || report.status === recordsStatus);
   });
 
   const mfTypes = useMemo(() => ["Physical","Verbal","Cyber","Social","Property","Others"], []);
@@ -2821,81 +2837,108 @@ export default function AdminDashboard() {
 
                 </div>
 
-                {/* ── Filtered Records Table ── */}
-                <div className="card-panel" style={{ marginBottom: 18 }}>
-                  <div className="title-group" style={{ marginBottom: 12 }}>
+                {/* ── Incident Records ── */}
+                <section className="card-panel analytics-incident-records" style={{ marginBottom: 18 }}>
+                  <div className="title-group">
                     <h3>Incident Records</h3>
-                    <p className="panel-subtitle">{mfFiltered.length} record{mfFiltered.length !== 1 ? "s" : ""} {mfHasFilters ? "matching filters" : "total"}</p>
-                  </div>
-                  {mfFiltered.length === 0 ? (
-                    <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-                      {incidents.length === 0 ? "No incidents have been reported yet." : "No records match the selected filters."}
+                    <p className="panel-subtitle">
+                      {recordsFiltered.length} record{recordsFiltered.length !== 1 ? "s" : ""}
+                      {mfHasFilters ? " matching analytics filters" : " total"}
                     </p>
+                  </div>
+                  <div className="analytics-records-toolbar">
+                    <label className="analytics-records-search">
+                      <Search size={15} aria-hidden="true" />
+                      <input
+                        type="search"
+                        aria-label="Search incident records"
+                        placeholder="Search by ID, type, reporter, status..."
+                        value={recordsSearch}
+                        onChange={(event) => {
+                          setRecordsSearch(event.target.value);
+                          setRecordsPage(0);
+                        }}
+                      />
+                    </label>
+                    <div className="analytics-records-status" role="group" aria-label="Filter records by status">
+                      {["Pending", "Under Investigation", "Resolved", "All"].map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          className={`filter-tab filter-tab-${status.toLowerCase().replace(/\s/g, "-")}${recordsStatus === status ? " active" : ""}`}
+                          aria-pressed={recordsStatus === status}
+                          onClick={() => {
+                            setRecordsStatus(status);
+                            setRecordsPage(0);
+                          }}
+                        >{status}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {recordsFiltered.length === 0 ? (
+                    <div className="analytics-records-empty">
+                      <FileText size={30} aria-hidden="true" />
+                      <p>
+                        {incidents.length === 0
+                          ? "No incidents have been reported yet."
+                          : "No records match your search and filters."}
+                      </p>
+                    </div>
                   ) : (() => {
-                    const recordsTotalPages = Math.max(1, Math.ceil(mfFiltered.length / RECORDS_PAGE_SIZE));
+                    const recordsTotalPages = Math.max(1, Math.ceil(recordsFiltered.length / RECORDS_PAGE_SIZE));
                     const recPage = Math.min(recordsPage, recordsTotalPages - 1);
-                    const recordsPageItems = mfFiltered.slice(
-                      recPage * RECORDS_PAGE_SIZE,
-                      recPage * RECORDS_PAGE_SIZE + RECORDS_PAGE_SIZE
-                    );
+                    const pageStart = recPage * RECORDS_PAGE_SIZE;
+                    const recordsPageItems = recordsFiltered.slice(pageStart, pageStart + RECORDS_PAGE_SIZE);
                     return (
                       <>
-                        <div className="table-container">
-                          <table className="cases-table compact">
-                            <thead>
-                              <tr><th>Case ID</th><th>Type</th><th>Reporter</th><th>Grade</th><th>Gender</th><th>Section</th><th>Date</th><th>Status</th><th></th></tr>
-                            </thead>
-                            <tbody>
-                              {recordsPageItems.map((r) => (
-                                <tr key={r.id}>
-                                  <td>
-                                    <b className="case-id-cell">#{r.id}</b>
-                                    {unseenReportIds.has(r.id) && <span className="incident-new-badge">NEW</span>}
-                                  </td>
-                                  <td><span className="type-chip">{r.type}</span></td>
-                                  <td style={{ fontSize: 12 }}>{r.isAnonymous ? <span style={{ color: "#6b7280", fontStyle: "italic" }}>🕵️ Anon</span> : r.submittedBy}</td>
-                                  <td style={{ fontSize: 12 }}>{r.reporterGrade || "—"}</td>
-                                  <td style={{ fontSize: 12 }}>{r.isAnonymous ? "—" : (r.reporterSex || "—")}</td>
-                                  <td style={{ fontSize: 12 }}>{r.isAnonymous ? "—" : (r.reporterSection || "—")}</td>
-                                  <td className="date-cell">{r.date}</td>
-                                  <td><span className={`status-badge ${r.status.toLowerCase().replace(/\s/g,"-")}`}>{r.status}</span></td>
-                                  <td><button className="read-btn tiny" onClick={() => handleOpenManage(r)}>Manage</button></td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <p className="analytics-records-count">
+                          Showing {pageStart + 1}–{Math.min(pageStart + RECORDS_PAGE_SIZE, recordsFiltered.length)} of {recordsFiltered.length} incident{recordsFiltered.length !== 1 ? "s" : ""}
+                        </p>
+                        <div className="analytics-records-list">
+                          {recordsPageItems.map((report) => (
+                            <article
+                              className={`analytics-record-card${unseenReportIds.has(report.id) ? " unseen" : ""}`}
+                              key={report.id}
+                            >
+                              <div className="analytics-record-top">
+                                <div className="analytics-record-badges">
+                                  <b className="case-id-cell">#{report.id}</b>
+                                  {unseenReportIds.has(report.id) && <span className="incident-new-badge">NEW</span>}
+                                  <span className="type-chip">{report.type}</span>
+                                  {report.priority && <span className={`priority-badge ${report.priority}`}>{report.priority}</span>}
+                                </div>
+                                <div className="analytics-record-actions">
+                                  <span className={`status-badge ${(report.status || "").toLowerCase().replace(/\s/g, "-")}`}>{report.status}</span>
+                                  <button className="read-btn tiny" onClick={() => handleOpenManage(report)}>Manage</button>
+                                </div>
+                              </div>
+                              {report.description && <p className="analytics-record-description">{report.description}</p>}
+                              <div className="analytics-record-meta">
+                                <span>
+                                  {report.isAnonymous ? <Shield size={12} aria-hidden="true" /> : <User size={12} aria-hidden="true" />}
+                                  {report.isAnonymous ? "Anonymous" : report.submittedBy}
+                                </span>
+                                <span><Calendar size={12} aria-hidden="true" />{report.date}</span>
+                                {report.location && <span><MapPin size={12} aria-hidden="true" />{report.location}</span>}
+                              </div>
+                            </article>
+                          ))}
                         </div>
                         {recordsTotalPages > 1 && (
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 14, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
-                            <button
-                              onClick={() => setRecordsPage((p) => Math.max(0, p - 1))}
-                              disabled={recPage === 0}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 4, padding: "6px 12px",
-                                border: "1.5px solid #e5e7eb", borderRadius: 8, background: "#fff",
-                                color: recPage === 0 ? "#cbd5e1" : "#334155", fontSize: 12, fontWeight: 700,
-                                cursor: recPage === 0 ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif",
-                              }}
-                            ><ChevronLeft size={14} /> Prev</button>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>
-                              Page {recPage + 1} of {recordsTotalPages}
-                            </span>
-                            <button
-                              onClick={() => setRecordsPage((p) => Math.min(recordsTotalPages - 1, p + 1))}
-                              disabled={recPage === recordsTotalPages - 1}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 4, padding: "6px 12px",
-                                border: "1.5px solid #e5e7eb", borderRadius: 8, background: "#fff",
-                                color: recPage === recordsTotalPages - 1 ? "#cbd5e1" : "#334155", fontSize: 12, fontWeight: 700,
-                                cursor: recPage === recordsTotalPages - 1 ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif",
-                              }}
-                            >Next <ChevronRight size={14} /></button>
+                          <div className="analytics-records-pagination">
+                            <button type="button" onClick={() => setRecordsPage((page) => Math.max(0, page - 1))} disabled={recPage === 0}>
+                              <ChevronLeft size={14} /> Prev
+                            </button>
+                            <span>Page {recPage + 1} of {recordsTotalPages}</span>
+                            <button type="button" onClick={() => setRecordsPage((page) => Math.min(recordsTotalPages - 1, page + 1))} disabled={recPage === recordsTotalPages - 1}>
+                              Next <ChevronRight size={14} />
+                            </button>
                           </div>
                         )}
                       </>
                     );
                   })()}
-                </div>
+                </section>
 
                 {/* Recommendations */}
                 <div className="card-panel analytics-recommendations">
