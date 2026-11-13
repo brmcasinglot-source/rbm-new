@@ -30,7 +30,7 @@ import {
   updateConferenceSchedule, cancelConference,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
-  LOCATION_META, LOCATION_ZONE_COLORS, getCustomLocations, addCustomLocation, deleteCustomLocation,
+  LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
   GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
@@ -48,6 +48,10 @@ import { getYouTubeThumbnail } from "../lib/videoUtils";
 const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 const ACCOUNT_PAGE_SIZE = 25;
+const ANALYTICS_LOCATION_COLORS = {
+  inside: { bar: "#5D7FA6", text: "#3F6289", soft: "#EEF3F8", border: "#D5E0EB" },
+  outside: { bar: "#BA6268", text: "#98474D", soft: "#FBF1F2", border: "#EBD6D8" },
+};
 
 async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -2698,10 +2702,10 @@ export default function AdminDashboard() {
                             (loc.zone === "outside" ? "outside" : "inside") === zone
                           );
                           if (zoneLocations.length === 0) return null;
-                          const color = zone === "outside" ? "#a66f63" : "#63859a";
+                          const colors = ANALYTICS_LOCATION_COLORS[zone];
                           return (
                             <div key={zone}>
-                              <p style={{ color, fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
+                              <p style={{ color: colors.text, fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
                                 Custom places — {zone === "outside" ? "Outside / Other" : "Inside School"}
                               </p>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -2709,9 +2713,9 @@ export default function AdminDashboard() {
                                   <span key={loc.key} style={{
                                     display: "inline-flex", alignItems: "center", gap: 5,
                                     fontSize: 10.5, fontWeight: 700, padding: "3px 6px 3px 9px", borderRadius: 20,
-                                    background: hexToRgba(color, 0.12),
-                                    color,
-                                    border: `1.5px solid ${hexToRgba(color, 0.4)}`,
+                                    background: colors.soft,
+                                    color: colors.text,
+                                    border: `1px solid ${colors.border}`,
                                   }}>
                                     {loc.key}
                                     <button
@@ -2750,7 +2754,7 @@ export default function AdminDashboard() {
                               const pct   = Math.round((count / incidents.length) * 100);
                               const meta  = allLocationMeta.find((m) => m.key === loc);
                               const zone  = meta?.zone  || "inside";
-                              const color = LOCATION_ZONE_COLORS[zone === "outside" ? "outside" : "inside"];
+                              const colors = ANALYTICS_LOCATION_COLORS[zone === "outside" ? "outside" : "inside"];
                               return (
                                 <div className="bk-row" key={loc}>
                                   <div className="bk-top">
@@ -2759,18 +2763,19 @@ export default function AdminDashboard() {
                                       {zone === "outside" && (
                                         <span style={{
                                           marginLeft: 6, fontSize: 10, fontWeight: 700,
-                                          color: "#965f54", background: "#f7ece9",
+                                          color: ANALYTICS_LOCATION_COLORS.outside.text,
+                                          background: ANALYTICS_LOCATION_COLORS.outside.soft,
                                           padding: "1px 6px", borderRadius: 8,
                                         }}>Outside</span>
                                       )}
                                     </span>
                                     <span className="bk-stats">
                                       <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
-                                      <span className="bk-pct" style={{ color }}>{pct}%</span>
+                                      <span className="bk-pct" style={{ color: colors.text }}>{pct}%</span>
                                     </span>
                                   </div>
                                   <div className="bk-track">
-                                    <div className="bk-fill" style={{ width: `${pct}%`, background: color }} />
+                                    <div className="bk-fill" style={{ width: `${pct}%`, background: colors.bar }} />
                                   </div>
                                 </div>
                               );
@@ -2811,14 +2816,14 @@ export default function AdminDashboard() {
                     {topLocation && (
                       <div style={{
                         marginTop: 10, padding: "9px 11px", borderRadius: 9,
-                        background: "#fbf8ef",
-                        border: "1px solid #eee5c8",
+                        background: ANALYTICS_LOCATION_COLORS.outside.soft,
+                        border: `1px solid ${ANALYTICS_LOCATION_COLORS.outside.border}`,
                       }}>
                         <div>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: "#92400e" }}>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: ANALYTICS_LOCATION_COLORS.outside.text }}>
                             Prefect Hotspot Alert
                           </p>
-                          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
+                          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#70474A", lineHeight: 1.5 }}>
                             <strong>{topLocation}</strong> has the most reported incidents ({locationCounts[topLocation]}).
                             Deploy prefects or increase monitoring in this area.
                           </p>
