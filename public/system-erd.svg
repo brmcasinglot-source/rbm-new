@@ -1,0 +1,294 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1760" role="img" aria-labelledby="title desc">
+<title id="title">CNHS Bullying and Incident Reporting System Core ERD</title><desc id="desc">Entity relationship diagram showing Supabase core tables, authentication tables, offense records, and declared foreign keys.</desc>
+<defs><style>
+text{font-family:Inter,"Segoe UI",Arial,sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.subtitle{font-size:15px;fill:#64748b}.card{fill:#fff;stroke:#94a3b8;stroke-width:1.4}.rel{fill:none;stroke:#64748b;stroke-width:1.5}.header{fill:#2e4e71}.entity{fill:#fff;font-size:16px;font-weight:700}.field{font-size:12px}.type{font-size:11px;fill:#475569}.ref{font-size:10px;fill:#1d4ed8}.pk{fill:#b45309;font-size:10px;font-weight:700}.fk{fill:#2563eb;font-size:10px;font-weight:700}.uq{fill:#64748b;font-size:9px;font-weight:700}.noteHead{font-size:14px;font-weight:700;fill:#334155}.note{font-size:12px;fill:#475569}
+</style></defs>
+<rect width="100%" height="100%" fill="#f8fafc"/><text class="title" x="950" y="46" text-anchor="middle">CNHS Bullying &amp; Incident Reporting System Core ERD</text><text class="subtitle" x="950" y="72" text-anchor="middle">Entity relationship diagram | Supabase tables | PK = primary key | FK = declared foreign key | UQ = unique | * = composite FK</text>
+<text class="subtitle" x="240" y="142" text-anchor="middle" style="font-weight:700;letter-spacing:1px">STUDENT</text>
+<text class="subtitle" x="710" y="142" text-anchor="middle" style="font-weight:700;letter-spacing:1px">REPORTS &amp; CONFERENCES</text>
+<text class="subtitle" x="1180" y="142" text-anchor="middle" style="font-weight:700;letter-spacing:1px">OFFENSE RECORDS</text>
+<text class="subtitle" x="1650" y="142" text-anchor="middle" style="font-weight:700;letter-spacing:1px">ADMIN</text>
+<g class="rel"><path d="M450 310H475V570H500"/><path d="M920 230H950V250H970"/><path d="M920 230H940V449H970"/><path d="M920 230H930V1010H970"/><path d="M1180 790V818"/><path d="M1180 1252V1280"/><path d="M1440 230H1430V317H1390"/><path d="M1440 230H1415V757H1390"/><path d="M1440 230H1400V1199H1390"/></g><rect class="card" x="30" y="180" width="420" height="302" rx="4"/><rect class="header" x="30" y="180" width="420" height="38" rx="4"/><text class="entity" x="42" y="205">students</text>
+<rect x="31" y="218" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="38" y="233">PK</text>
+<text class="field" x="73" y="233">id</text>
+<text class="type" x="295" y="233">UUID</text>
+<text class="field" x="73" y="255">name</text>
+<text class="type" x="295" y="255">TEXT</text>
+<rect x="31" y="262" width="418" height="22" fill="#f1f5f9"/>
+<text class="uq" x="38" y="277">UQ</text>
+<text class="field" x="73" y="277">email</text>
+<text class="type" x="295" y="277">TEXT</text>
+<text class="uq" x="38" y="299">UQ</text>
+<text class="field" x="73" y="299">lrn</text>
+<text class="type" x="295" y="299">TEXT</text>
+<rect x="31" y="306" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="73" y="321">age</text>
+<text class="type" x="295" y="321">INTEGER</text>
+<text class="field" x="73" y="343">sex</text>
+<text class="type" x="295" y="343">TEXT</text>
+<rect x="31" y="350" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="73" y="365">grade</text>
+<text class="type" x="295" y="365">TEXT</text>
+<text class="field" x="73" y="387">section</text>
+<text class="type" x="295" y="387">TEXT</text>
+<rect x="31" y="394" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="73" y="409">student_id_front_path</text>
+<text class="type" x="295" y="409">TEXT</text>
+<text class="field" x="73" y="431">student_id_back_path</text>
+<text class="type" x="295" y="431">TEXT</text>
+<rect x="31" y="438" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="73" y="453">approved</text>
+<text class="type" x="295" y="453">BOOLEAN</text>
+<text class="field" x="73" y="475">created_at</text>
+<text class="type" x="295" y="475">TIMESTAMPTZ</text>
+<rect class="card" x="500" y="180" width="420" height="720" rx="4"/><rect class="header" x="500" y="180" width="420" height="38" rx="4"/><text class="entity" x="512" y="205">reports</text>
+<rect x="501" y="218" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="508" y="233">PK</text>
+<text class="field" x="543" y="233">id</text>
+<text class="type" x="765" y="233">BIGINT</text>
+<text class="field" x="543" y="255">type</text>
+<text class="type" x="765" y="255">TEXT</text>
+<rect x="501" y="262" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="277">date</text>
+<text class="type" x="765" y="277">DATE</text>
+<text class="field" x="543" y="299">time</text>
+<text class="type" x="765" y="299">TEXT</text>
+<rect x="501" y="306" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="321">location</text>
+<text class="type" x="765" y="321">TEXT</text>
+<text class="field" x="543" y="343">description</text>
+<text class="type" x="765" y="343">TEXT</text>
+<rect x="501" y="350" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="365">description_lead_up</text>
+<text class="type" x="765" y="365">TEXT</text>
+<text class="field" x="543" y="387">description_impact</text>
+<text class="type" x="765" y="387">TEXT</text>
+<rect x="501" y="394" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="409">description_actions</text>
+<text class="type" x="765" y="409">TEXT</text>
+<text class="field" x="543" y="431">reporter_type</text>
+<text class="type" x="765" y="431">TEXT</text>
+<rect x="501" y="438" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="453">victims</text>
+<text class="type" x="765" y="453">JSONB</text>
+<text class="field" x="543" y="475">offenders</text>
+<text class="type" x="765" y="475">JSONB</text>
+<rect x="501" y="482" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="497">witnesses</text>
+<text class="type" x="765" y="497">JSONB</text>
+<text class="field" x="543" y="519">status</text>
+<text class="type" x="765" y="519">TEXT</text>
+<rect x="501" y="526" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="541">priority</text>
+<text class="type" x="765" y="541">TEXT</text>
+<text class="field" x="543" y="563">submitted_by</text>
+<text class="type" x="765" y="563">TEXT</text>
+<rect x="501" y="570" width="418" height="22" fill="#f1f5f9"/>
+<text class="fk" x="508" y="585">FK</text>
+<text class="field" x="543" y="585">submitted_id</text>
+<text class="type" x="765" y="585">UUID</text>
+<text class="ref" x="835" y="585">-&gt; students</text>
+<text class="field" x="543" y="607">reporter_age</text>
+<text class="type" x="765" y="607">INTEGER</text>
+<rect x="501" y="614" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="629">reporter_sex</text>
+<text class="type" x="765" y="629">TEXT</text>
+<text class="field" x="543" y="651">reporter_grade</text>
+<text class="type" x="765" y="651">TEXT</text>
+<rect x="501" y="658" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="673">reporter_section</text>
+<text class="type" x="765" y="673">TEXT</text>
+<text class="field" x="543" y="695">is_anonymous</text>
+<text class="type" x="765" y="695">BOOLEAN</text>
+<rect x="501" y="702" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="717">admin_notes</text>
+<text class="type" x="765" y="717">TEXT</text>
+<text class="field" x="543" y="739">evidence</text>
+<text class="type" x="765" y="739">JSONB</text>
+<rect x="501" y="746" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="761">evidence_count</text>
+<text class="type" x="765" y="761">INTEGER generated</text>
+<text class="field" x="543" y="783">scheduled_conference</text>
+<text class="type" x="765" y="783">JSONB</text>
+<rect x="501" y="790" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="805">conference_findings</text>
+<text class="type" x="765" y="805">TEXT</text>
+<text class="fk" x="508" y="827">FK</text>
+<text class="field" x="543" y="827">conference_findings_updated_by</text>
+<text class="type" x="765" y="827">UUID</text>
+<text class="ref" x="835" y="827">-&gt; admins</text>
+<rect x="501" y="834" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="849">conference_findings_updated_at</text>
+<text class="type" x="765" y="849">TIMESTAMPTZ</text>
+<text class="field" x="543" y="871">submitted_at</text>
+<text class="type" x="765" y="871">TIMESTAMPTZ</text>
+<rect x="501" y="878" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="543" y="893">updated_at</text>
+<text class="type" x="765" y="893">TIMESTAMPTZ</text>
+<rect class="card" x="970" y="180" width="420" height="170" rx="4"/><rect class="header" x="970" y="180" width="420" height="38" rx="4"/><text class="entity" x="982" y="205">report_student_links</text>
+<rect x="971" y="218" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="978" y="233">PK</text>
+<text class="field" x="1013" y="233">id</text>
+<text class="type" x="1235" y="233">BIGINT</text>
+<text class="fk" x="978" y="255">FK</text>
+<text class="field" x="1013" y="255">report_id</text>
+<text class="type" x="1235" y="255">BIGINT</text>
+<text class="ref" x="1305" y="255">-&gt; reports</text>
+<rect x="971" y="262" width="418" height="22" fill="#f1f5f9"/>
+<text class="fk" x="978" y="277">FK</text>
+<text class="field" x="1013" y="277">student_id</text>
+<text class="type" x="1235" y="277">UUID</text>
+<text class="ref" x="1305" y="277">-&gt; students</text>
+<text class="fk" x="978" y="299">FK</text>
+<text class="field" x="1013" y="299">linked_by</text>
+<text class="type" x="1235" y="299">UUID</text>
+<text class="ref" x="1305" y="299">-&gt; admins</text>
+<rect x="971" y="306" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="321">linked_at</text>
+<text class="type" x="1235" y="321">TIMESTAMPTZ</text>
+<text class="uq" x="978" y="343">UQ</text>
+<text class="field" x="1013" y="343">UNIQUE (report_id, student_id)</text>
+<rect class="card" x="970" y="378" width="420" height="412" rx="4"/><rect class="header" x="970" y="378" width="420" height="38" rx="4"/><text class="entity" x="982" y="403">student_offense_decisions</text>
+<rect x="971" y="416" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="978" y="431">PK</text>
+<text class="field" x="1013" y="431">id</text>
+<text class="type" x="1235" y="431">BIGINT</text>
+<text class="fk" x="978" y="453">FK</text>
+<text class="field" x="1013" y="453">report_id</text>
+<text class="type" x="1235" y="453">BIGINT</text>
+<text class="ref" x="1305" y="453">-&gt; reports</text>
+<rect x="971" y="460" width="418" height="22" fill="#f1f5f9"/>
+<text class="fk" x="978" y="475">FK</text>
+<text class="field" x="1013" y="475">student_id</text>
+<text class="type" x="1235" y="475">UUID nullable</text>
+<text class="ref" x="1305" y="475">-&gt; students</text>
+<text class="field" x="1013" y="497">person_key</text>
+<text class="type" x="1235" y="497">TEXT</text>
+<rect x="971" y="504" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="519">student_name</text>
+<text class="type" x="1235" y="519">TEXT</text>
+<text class="field" x="1013" y="541">student_lrn</text>
+<text class="type" x="1235" y="541">TEXT</text>
+<rect x="971" y="548" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="563">student_grade</text>
+<text class="type" x="1235" y="563">TEXT</text>
+<text class="field" x="1013" y="585">student_section</text>
+<text class="type" x="1235" y="585">TEXT</text>
+<rect x="971" y="592" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="607">outcome</text>
+<text class="type" x="1235" y="607">TEXT</text>
+<text class="field" x="1013" y="629">findings</text>
+<text class="type" x="1235" y="629">TEXT</text>
+<rect x="971" y="636" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="651">conference_findings</text>
+<text class="type" x="1235" y="651">TEXT</text>
+<text class="field" x="1013" y="673">admin_remarks</text>
+<text class="type" x="1235" y="673">TEXT</text>
+<rect x="971" y="680" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="695">disciplinary_action</text>
+<text class="type" x="1235" y="695">TEXT</text>
+<text class="field" x="1013" y="717">follow_up_date</text>
+<text class="type" x="1235" y="717">DATE</text>
+<rect x="971" y="724" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="739">reviewed_at</text>
+<text class="type" x="1235" y="739">DATE</text>
+<text class="fk" x="978" y="761">FK</text>
+<text class="field" x="1013" y="761">decided_by</text>
+<text class="type" x="1235" y="761">UUID</text>
+<text class="ref" x="1305" y="761">-&gt; admins</text>
+<rect x="971" y="768" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="783">decided_at</text>
+<text class="type" x="1235" y="783">TIMESTAMPTZ</text>
+<rect class="card" x="970" y="818" width="420" height="434" rx="4"/><rect class="header" x="970" y="818" width="420" height="38" rx="4"/><text class="entity" x="982" y="843">student_offense_records</text>
+<rect x="971" y="856" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="978" y="871">PK</text>
+<text class="field" x="1013" y="871">id</text>
+<text class="type" x="1235" y="871">BIGINT</text>
+<text class="fk" x="978" y="893">FK</text>
+<text class="field" x="1013" y="893">student_id</text>
+<text class="type" x="1235" y="893">UUID nullable</text>
+<text class="ref" x="1305" y="893">-&gt; students</text>
+<rect x="971" y="900" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="915">person_key</text>
+<text class="type" x="1235" y="915">TEXT</text>
+<text class="field" x="1013" y="937">student_name</text>
+<text class="type" x="1235" y="937">TEXT</text>
+<rect x="971" y="944" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="959">student_lrn</text>
+<text class="type" x="1235" y="959">TEXT</text>
+<text class="field" x="1013" y="981">student_grade</text>
+<text class="type" x="1235" y="981">TEXT</text>
+<rect x="971" y="988" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="1003">student_section</text>
+<text class="type" x="1235" y="1003">TEXT</text>
+<text class="fk" x="978" y="1025">FK</text>
+<text class="field" x="1013" y="1025">incident_report_id</text>
+<text class="type" x="1235" y="1025">BIGINT</text>
+<text class="ref" x="1305" y="1025">-&gt; reports</text>
+<rect x="971" y="1032" width="418" height="22" fill="#f1f5f9"/>
+<text class="fk" x="978" y="1047">FK</text>
+<text class="field" x="1013" y="1047">decision_id</text>
+<text class="type" x="1235" y="1047">BIGINT</text>
+<text class="ref" x="1305" y="1047">-&gt; offense_decisions*</text>
+<text class="field" x="1013" y="1069">offense_number</text>
+<text class="type" x="1235" y="1069">INTEGER</text>
+<rect x="971" y="1076" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="1091">conference_findings</text>
+<text class="type" x="1235" y="1091">TEXT</text>
+<text class="field" x="1013" y="1113">admin_remarks</text>
+<text class="type" x="1235" y="1113">TEXT</text>
+<rect x="971" y="1120" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="1135">reviewed_at</text>
+<text class="type" x="1235" y="1135">DATE</text>
+<text class="field" x="1013" y="1157">disciplinary_action</text>
+<text class="type" x="1235" y="1157">TEXT</text>
+<rect x="971" y="1164" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="1179">follow_up_date</text>
+<text class="type" x="1235" y="1179">DATE</text>
+<text class="fk" x="978" y="1201">FK</text>
+<text class="field" x="1013" y="1201">approved_by</text>
+<text class="type" x="1235" y="1201">UUID</text>
+<text class="ref" x="1305" y="1201">-&gt; admins</text>
+<rect x="971" y="1208" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="1223">approved_at</text>
+<text class="type" x="1235" y="1223">TIMESTAMPTZ</text>
+<text class="field" x="1013" y="1245">created_at</text>
+<text class="type" x="1235" y="1245">TIMESTAMPTZ</text>
+<rect class="card" x="970" y="1280" width="420" height="126" rx="4"/><rect class="header" x="970" y="1280" width="420" height="38" rx="4"/><text class="entity" x="982" y="1305">student_offense_record_reports</text>
+<rect x="971" y="1318" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="978" y="1333">PK</text>
+<text class="fk" x="998" y="1333">FK</text>
+<text class="field" x="1013" y="1333">offense_record_id</text>
+<text class="type" x="1235" y="1333">BIGINT</text>
+<text class="ref" x="1305" y="1333">-&gt; student_offense_records</text>
+<text class="pk" x="978" y="1355">PK</text>
+<text class="fk" x="998" y="1355">FK</text>
+<text class="field" x="1013" y="1355">report_id</text>
+<text class="type" x="1235" y="1355">BIGINT</text>
+<text class="ref" x="1305" y="1355">-&gt; reports</text>
+<rect x="971" y="1362" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1013" y="1377">person_key</text>
+<text class="type" x="1235" y="1377">TEXT</text>
+<text class="field" x="1013" y="1399">created_at</text>
+<text class="type" x="1235" y="1399">TIMESTAMPTZ</text>
+<rect class="card" x="1440" y="180" width="420" height="104" rx="4"/><rect class="header" x="1440" y="180" width="420" height="38" rx="4"/><text class="entity" x="1452" y="205">admins</text>
+<rect x="1441" y="218" width="418" height="22" fill="#f1f5f9"/>
+<text class="pk" x="1448" y="233">PK</text>
+<text class="field" x="1483" y="233">id</text>
+<text class="type" x="1705" y="233">UUID</text>
+<text class="uq" x="1448" y="255">UQ</text>
+<text class="field" x="1483" y="255">email</text>
+<text class="type" x="1705" y="255">TEXT</text>
+<rect x="1441" y="262" width="418" height="22" fill="#f1f5f9"/>
+<text class="field" x="1483" y="277">name</text>
+<text class="type" x="1705" y="277">TEXT</text>
+<rect x="30" y="1470" width="1840" height="260" rx="8" fill="#fff" stroke="#cbd5e1"/><text class="noteHead" x="50" y="1498">Core relationships</text>
+<text class="note" x="50" y="1526">students.id -&gt; reports.submitted_id; admins.id -&gt; reports.conference_findings_updated_by</text>
+<text class="note" x="50" y="1550">reports.id / students.id / admins.id -&gt; report_student_links and student_offense_decisions</text>
+<text class="note" x="50" y="1574">students.id / reports.id / admins.id -&gt; student_offense_records</text>
+<text class="note" x="50" y="1598">Composite FK: student_offense_decisions(id, report_id, person_key) -&gt; student_offense_records(decision_id, incident_report_id, person_key)</text>
+<text class="note" x="50" y="1622">student_offense_records.id / reports.id -&gt; student_offense_record_reports</text>
+<text class="noteHead" x="50" y="1660">Scope</text>
+<text class="note" x="50" y="1684">Conference schedule and request metadata are in reports.scheduled_conference (JSONB); conference findings are stored on reports.</text>
+<text class="note" x="50" y="1708">Authentication, notification, awareness, location, grade-section, and audit-support tables are excluded.</text></svg>

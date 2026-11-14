@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 960" role="img" aria-labelledby="title description">
+  <title id="title">CNHS Bullying Reporting and Management System Level 1 DFD</title>
+  <desc id="description">A simple Level 1 data flow diagram showing student, administrator, and email service interactions with account access, incident reporting, case management, awareness, and four system data stores.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 10 5 0 10z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-start" markerWidth="10" markerHeight="10" refX="2" refY="5" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 10 5 0 10z" fill="#334155"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 30px; font-weight: 700; }
+      .subtitle { font-size: 15px; fill: #64748b; }
+      .boundary-label { font-size: 15px; font-weight: 700; letter-spacing: 1px; fill: #64748b; }
+      .actor { stroke-width: 2; }
+      .actor-label { font-size: 15px; font-weight: 700; text-anchor: middle; }
+      .process { stroke-width: 2.2; }
+      .process-title { font-size: 15px; font-weight: 700; text-anchor: middle; }
+      .process-number { font-size: 16px; font-weight: 700; text-anchor: middle; }
+      .store { fill: #f8fafc; stroke: #64748b; stroke-width: 2; }
+      .store-title { font-size: 13px; font-weight: 700; }
+      .store-detail { font-size: 11px; fill: #475569; }
+      .flow { fill: none; stroke: #334155; stroke-width: 1.8; marker-end: url(#arrow); }
+      .flow-blue { stroke: #2563eb; stroke-width: 2; }
+      .flow-green { stroke: #16a34a; stroke-width: 2; }
+      .flow-orange { stroke: #ea580c; }
+      .flow-both { marker-start: url(#arrow-start); }
+      .flow-label { font-size: 11px; font-weight: 600; fill: #334155; }
+      .label-bg { fill: #fff; opacity: .94; }
+    </style>
+  </defs>
+  <rect width="1440" height="960" fill="#fff"/>
+  <text class="title" x="720" y="45" text-anchor="middle">CNHS Bullying Reporting &amp; Management System</text>
+  <text class="subtitle" x="720" y="73" text-anchor="middle">Level 1 Data Flow Diagram · Core processes, external entities, and data stores</text>
+
+  <rect x="240" y="115" width="1040" height="775" rx="14" fill="#fff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text class="boundary-label" x="265" y="150">SYSTEM BOUNDARY</text>
+
+  <!-- Data flows are drawn before the nodes. -->
+  <path class="flow flow-blue" d="M205 292H300V245H334"/>
+  <path class="flow flow-blue" d="M340 285H285V340H205"/>
+  <path class="flow flow-green" d="M205 650H215V155H420V205"/>
+  <path class="flow" d="M420 315V390H377V745"/>
+  <path class="flow" d="M450 745V390H460V315"/>
+  <path class="flow flow-orange" d="M455 210V165H1290V215H1300"/>
+  <path class="flow flow-orange" d="M1357 250V390H180V355"/>
+  <path class="flow flow-blue" d="M205 330H250V375H590V255H625"/>
+  <path class="flow flow-blue" d="M720 205V180H220V315H205"/>
+  <path class="flow flow-both" d="M720 315V745"/>
+  <path class="flow flow-both" d="M755 745V635H950V520"/>
+  <path class="flow flow-green" d="M205 665H245V850H1250V480H1100"/>
+  <path class="flow flow-green" d="M1100 480H1270V870H205V685"/>
+  <path class="flow" d="M1050 520H1180V730H1120V745"/>
+  <path class="flow flow-both" d="M610 590V690H865V745"/>
+  <path class="flow flow-blue" d="M510 530H20V315H35"/>
+  <path class="flow flow-both" d="M700 555H900V690H1120V745"/>
+
+  <!-- External entities -->
+  <rect class="actor" x="35" y="275" width="170" height="80" fill="#eff6ff" stroke="#2563eb"/>
+  <text class="actor-label" x="120" y="321">STUDENT</text>
+  <rect class="actor" x="35" y="630" width="170" height="80" fill="#f0fdf4" stroke="#16a34a"/>
+  <text class="actor-label" x="120" y="677">ADMINISTRATOR</text>
+  <rect class="actor" x="1300" y="180" width="115" height="70" fill="#fff7ed" stroke="#ea580c"/>
+  <text class="actor-label" x="1357" y="210">
+    <tspan x="1357">EMAIL</tspan>
+    <tspan x="1357" dy="19">SERVICE</tspan>
+  </text>
+
+  <!-- Core processes -->
+  <ellipse class="process" cx="420" cy="260" rx="90" ry="55" fill="#dbeafe" stroke="#2563eb"/>
+  <text class="process-number" x="420" y="250">1.0</text>
+  <text class="process-title" x="420" y="272">Account &amp; access</text>
+  <ellipse class="process" cx="720" cy="260" rx="95" ry="55" fill="#dbeafe" stroke="#2563eb"/>
+  <text class="process-number" x="720" y="250">2.0</text>
+  <text class="process-title" x="720" y="272">Submit incident report</text>
+  <ellipse class="process" cx="1000" cy="465" rx="105" ry="63" fill="#dcfce7" stroke="#16a34a"/>
+  <text class="process-number" x="1000" y="451">3.0</text>
+  <text class="process-title" x="1000" y="475">
+    <tspan x="1000">Review cases &amp;</tspan>
+    <tspan x="1000" dy="18">manage conferences</tspan>
+  </text>
+  <ellipse class="process" cx="610" cy="530" rx="100" ry="60" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text class="process-number" x="610" y="516">4.0</text>
+  <text class="process-title" x="610" y="540">
+    <tspan x="610">Awareness &amp;</tspan>
+    <tspan x="610" dy="18">notifications</tspan>
+  </text>
+
+  <!-- Data stores -->
+  <path class="store" d="M275 745H480V825H275V765M275 765H480"/>
+  <text class="store-title" x="290" y="786">D1  Accounts &amp; profiles</text>
+  <text class="store-detail" x="290" y="807">Users · credentials · OTPs</text>
+  <path class="store" d="M520 745H725V825H520V765M520 765H725"/>
+  <text class="store-title" x="535" y="786">D2  Incident records</text>
+  <text class="store-detail" x="535" y="807">Reports · evidence · case data</text>
+  <path class="store" d="M765 745H970V825H765V765M765 765H970"/>
+  <text class="store-title" x="780" y="786">D3  Awareness content</text>
+  <text class="store-detail" x="780" y="807">Images · videos · learning links</text>
+  <path class="store" d="M1010 745H1230V825H1010V765M1010 765H1230"/>
+  <text class="store-title" x="1025" y="786">D4  Alerts &amp; settings</text>
+  <text class="store-detail" x="1025" y="807">Notifications · sections · locations</text>
+
+  <!-- Flow labels -->
+  <g>
+    <rect class="label-bg" x="215" y="260" width="112" height="18" rx="3"/>
+    <text class="flow-label" x="219" y="273">Sign-up / login</text>
+    <rect class="label-bg" x="218" y="570" width="123" height="18" rx="3"/>
+    <text class="flow-label" x="222" y="583">Admin credentials</text>
+    <rect class="label-bg" x="220" y="320" width="91" height="18" rx="3"/>
+    <text class="flow-label" x="224" y="333">Access result</text>
+    <rect class="label-bg" x="336" y="675" width="143" height="18" rx="3"/>
+    <text class="flow-label" x="340" y="688">Account / OTP state</text>
+    <rect class="label-bg" x="491" y="175" width="160" height="18" rx="3"/>
+    <text class="flow-label" x="495" y="188">Verification / reset email</text>
+    <rect class="label-bg" x="300" y="345" width="178" height="18" rx="3"/>
+    <text class="flow-label" x="304" y="358">Report details &amp; evidence</text>
+    <rect class="label-bg" x="260" y="180" width="154" height="18" rx="3"/>
+    <text class="flow-label" x="264" y="193">Receipt / report status</text>
+    <rect class="label-bg" x="722" y="625" width="128" height="18" rx="3"/>
+    <text class="flow-label" x="726" y="638">Incident / case records</text>
+    <rect class="label-bg" x="860" y="840" width="165" height="18" rx="3"/>
+    <text class="flow-label" x="864" y="853">Status / conference updates</text>
+    <rect class="label-bg" x="1065" y="600" width="100" height="18" rx="3"/>
+    <text class="flow-label" x="1069" y="613">Case alerts</text>
+    <rect class="label-bg" x="708" y="662" width="78" height="18" rx="3"/>
+    <text class="flow-label" x="712" y="675">Content</text>
+    <rect class="label-bg" x="220" y="510" width="164" height="18" rx="3"/>
+    <text class="flow-label" x="224" y="523">Learning content / alerts</text>
+    <rect class="label-bg" x="920" y="662" width="160" height="18" rx="3"/>
+    <text class="flow-label" x="924" y="675">Notifications / settings</text>
+    <rect class="label-bg" x="1210" y="310" width="142" height="18" rx="3"/>
+    <text class="flow-label" x="1214" y="323">Verification code</text>
+  </g>
+  <text class="subtitle" x="720" y="925" text-anchor="middle">Data is handled by the Supabase API and stored in the application database / media storage.</text>
+</svg>

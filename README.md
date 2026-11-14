@@ -6,6 +6,12 @@
 
 ![CNHS Bullying Reporting & Management System flowchart](./public/system-flowchart.svg)
 
+## Core activity diagram
+
+[Open the editable activity diagram](./system-activity-diagram.drawio) in diagrams.net or import it into draw.io.
+
+![CNHS Bullying Reporting & Management System core activity diagram](./public/system-activity-diagram.svg)
+
 ## Entity relationship diagram
 
 [Open the editable database ERD](./system-erd.drawio) in diagrams.net or import it into draw.io.
@@ -13,6 +19,8 @@
 ## Level 1 data flow diagram
 
 [Open the editable Level 1 DFD](./system-dfd-level-1.drawio) in diagrams.net or import it into draw.io.
+
+![CNHS Bullying Reporting & Management System Level 1 data flow diagram](./public/system-dfd-level-1.svg)
 
 ## Development
 

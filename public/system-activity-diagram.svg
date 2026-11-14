@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1230" role="img" aria-labelledby="title description">
+  <title id="title">CNHS Bullying and Incident Reporting System activity diagram</title>
+  <desc id="description">A simple activity diagram showing student sign-in, incident report submission, administrator case review, status notification, and monitoring until the case is resolved.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 10 5 0 10z" fill="#334155"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 25px; font-weight: 700; }
+      .subtitle { font-size: 14px; fill: #64748b; }
+      .note { font-size: 13px; fill: #64748b; }
+      .lane-label { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+      .action { stroke-width: 2; }
+      .action-text { font-size: 14px; font-weight: 600; text-anchor: middle; }
+      .flow { fill: none; stroke: #334155; stroke-width: 2; marker-end: url(#arrow); }
+      .start { fill: #172033; }
+      .end-outer { fill: #fff; stroke: #172033; stroke-width: 3; }
+      .end-inner { fill: #172033; }
+    </style>
+  </defs>
+  <rect width="1200" height="1230" fill="#fff"/>
+  <text class="title" x="600" y="48" text-anchor="middle">CNHS Bullying &amp; Incident Reporting System</text>
+  <text class="subtitle" x="600" y="77" text-anchor="middle">Simple activity diagram: submit, review, and follow up on an incident report</text>
+  <text class="note" x="600" y="105" text-anchor="middle">New student accounts must be email-verified and approved before sign-in.</text>
+
+  <rect x="40" y="135" width="360" height="1030" fill="#f8fbff" stroke="#bfdbfe" stroke-width="2"/>
+  <rect x="400" y="135" width="400" height="1030" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="800" y="135" width="360" height="1030" fill="#f8fdf9" stroke="#bbf7d0" stroke-width="2"/>
+  <rect x="40" y="135" width="360" height="45" fill="#eff6ff"/>
+  <rect x="400" y="135" width="400" height="45" fill="#f1f5f9"/>
+  <rect x="800" y="135" width="360" height="45" fill="#f0fdf4"/>
+  <text class="lane-label" x="220" y="164" text-anchor="middle" fill="#1d4ed8">STUDENT</text>
+  <text class="lane-label" x="600" y="164" text-anchor="middle" fill="#334155">SYSTEM</text>
+  <text class="lane-label" x="980" y="164" text-anchor="middle" fill="#15803d">ADMINISTRATOR</text>
+
+  <path class="flow" d="M220 216V240"/>
+  <path class="flow" d="M360 277H420V380H460"/>
+  <path class="flow" d="M460 380H420V497H360"/>
+  <path class="flow" d="M360 497H420V605H460"/>
+  <path class="flow" d="M740 605H840"/>
+  <path class="flow" d="M980 640V675"/>
+  <path class="flow" d="M840 710H820V815H740"/>
+  <path class="flow" d="M460 815H420V920H360"/>
+  <path class="flow" d="M220 955V985"/>
+  <path class="flow" d="M165 1025H55V920H80"/>
+  <path class="flow" d="M220 1065V1110"/>
+  <text class="note" x="67" y="1008">No</text>
+  <text class="note" x="230" y="1093">Yes</text>
+
+  <circle class="start" cx="220" cy="198" r="18"/>
+  <rect class="action" x="80" y="240" width="280" height="75" rx="14" fill="#eff6ff" stroke="#2563eb"/>
+  <text class="action-text" x="220" y="269">
+    <tspan x="220">Open system</tspan>
+    <tspan x="220" dy="20">Register or sign in</tspan>
+  </text>
+  <rect class="action" x="460" y="340" width="280" height="80" rx="14" fill="#f8fafc" stroke="#64748b"/>
+  <text class="action-text" x="600" y="371">
+    <tspan x="600">Verify email and credentials</tspan>
+    <tspan x="600" dy="20">Deny unapproved accounts</tspan>
+  </text>
+  <rect class="action" x="80" y="455" width="280" height="85" rx="14" fill="#eff6ff" stroke="#2563eb"/>
+  <text class="action-text" x="220" y="488">
+    <tspan x="220">View awareness resources</tspan>
+    <tspan x="220" dy="20">Complete incident report</tspan>
+  </text>
+  <rect class="action" x="460" y="570" width="280" height="70" rx="14" fill="#f8fafc" stroke="#64748b"/>
+  <text class="action-text" x="600" y="611">Save report as Pending</text>
+  <rect class="action" x="840" y="570" width="280" height="70" rx="14" fill="#f0fdf4" stroke="#16a34a"/>
+  <text class="action-text" x="980" y="611">Review and investigate report</text>
+  <rect class="action" x="840" y="675" width="280" height="70" rx="14" fill="#f0fdf4" stroke="#16a34a"/>
+  <text class="action-text" x="980" y="716">Update case status and notes</text>
+  <rect class="action" x="460" y="780" width="280" height="70" rx="14" fill="#f8fafc" stroke="#64748b"/>
+  <text class="action-text" x="600" y="821">Send status notification</text>
+  <rect class="action" x="80" y="885" width="280" height="70" rx="14" fill="#eff6ff" stroke="#2563eb"/>
+  <text class="action-text" x="220" y="926">View case updates</text>
+  <polygon points="220,985 275,1025 220,1065 165,1025" fill="#fff" stroke="#334155" stroke-width="2"/>
+  <text class="action-text" x="220" y="1030">Resolved?</text>
+  <circle class="end-outer" cx="220" cy="1128" r="18"/>
+  <circle class="end-inner" cx="220" cy="1128" r="11"/>
+</svg>
