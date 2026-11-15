@@ -1778,7 +1778,11 @@ async function runRpc(functionName, args, req) {
         throw Object.assign(new Error("No scheduled conference exists for this report."), { status: 400 });
       }
       const status = conference.status || (conference.completed ? "Completed" : "Scheduled");
-      if (!["Scheduled", "Rescheduled"].includes(status)) {
+      const canRequestNewSchedule = type === "reschedule"
+        && status === "Cancelled"
+        && conference.request?.type === "cancellation"
+        && conference.request?.state === "Approved";
+      if (!["Scheduled", "Rescheduled"].includes(status) && !canRequestNewSchedule) {
         throw Object.assign(new Error("This conference cannot accept a new request in its current status."), { status: 400 });
       }
       const updatedConference = {

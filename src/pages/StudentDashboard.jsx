@@ -596,11 +596,16 @@ export default function StudentDashboard() {
         request: conference.request || null,
         previousSchedule: conference.previousSchedule || null,
         rescheduledFrom: conference.rescheduledFrom || null,
+        canRequestNewSchedule: conference.status === "Cancelled"
+          && conference.request?.type === "cancellation"
+          && conference.request?.state === "Approved",
       };
     })
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
   const scheduledConferenceStatuses = ["Scheduled", "Today", "Overdue", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
-  const scheduledConferenceList = conferenceList.filter((conference) => scheduledConferenceStatuses.includes(conference.status));
+  const scheduledConferenceList = conferenceList.filter((conference) =>
+    scheduledConferenceStatuses.includes(conference.status) || conference.canRequestNewSchedule
+  );
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
@@ -1854,8 +1859,18 @@ export default function StudentDashboard() {
                     </div>
                   </>
                 )}
+                {activeConferenceViewItem.canRequestNewSchedule && (
+                  <>
+                    <p className="s-conference-info">Your cancellation request was approved. You may request a new conference schedule.</p>
+                    <div className="s-conference-actions">
+                      <button type="button" onClick={() => { setConferenceRequestType("reschedule"); setConferenceRequestReason(""); }}>
+                        Request New Schedule
+                      </button>
+                    </div>
+                  </>
+                )}
                 {activeConferenceViewItem.status === "Completed" && <p className="s-conference-info completed">This conference has been completed.</p>}
-                {activeConferenceViewItem.status === "Cancelled" && <p className="s-conference-info">This conference was cancelled by the Prefect.</p>}
+                {activeConferenceViewItem.status === "Cancelled" && !activeConferenceViewItem.canRequestNewSchedule && <p className="s-conference-info">This conference was cancelled by the Prefect.</p>}
                 {activeConferenceViewItem.status === "No-show" && <p className="s-conference-info">This conference was marked as no-show by the Prefect.</p>}
               </div>
             </div>
@@ -1867,7 +1882,9 @@ export default function StudentDashboard() {
           <div className="s-modal-box s-conference-request-modal" onClick={(event) => event.stopPropagation()}>
             <div className="s-modal-header">
               <div>
-                <h3>{conferenceRequestType === "reschedule" ? "Request Reschedule" : "Cancel Conference?"}</h3>
+                <h3>{conferenceRequestType === "reschedule"
+                  ? activeConferenceViewItem.canRequestNewSchedule ? "Request New Schedule" : "Request Reschedule"
+                  : "Cancel Conference?"}</h3>
                 <p>Case #{activeConferenceViewItem.id}</p>
               </div>
               <button className="s-modal-close" onClick={() => setConferenceRequestType(null)} aria-label="Close request">
@@ -1877,7 +1894,11 @@ export default function StudentDashboard() {
             <form className="s-modal-body" onSubmit={handleSubmitConferenceRequest}>
               {conferenceRequestType === "reschedule" ? (
                 <>
-                  <p className="s-conference-confirm-text">Why do you need to reschedule?</p>
+                  <p className="s-conference-confirm-text">
+                    {activeConferenceViewItem.canRequestNewSchedule
+                      ? "Why are you requesting a new conference schedule?"
+                      : "Why do you need to reschedule?"}
+                  </p>
                   <label className="s-conference-request-label" htmlFor="conference-request-reason">Message (optional)</label>
                   <textarea
                     id="conference-request-reason"
@@ -1907,7 +1928,9 @@ export default function StudentDashboard() {
                 <button type="submit" className="s-submit-btn" disabled={conferenceRequestSaving}>
                   {conferenceRequestSaving
                     ? "Submitting..."
-                    : conferenceRequestType === "reschedule" ? "Submit Reschedule Request" : "Submit Cancellation Request"}
+                    : conferenceRequestType === "reschedule"
+                      ? activeConferenceViewItem.canRequestNewSchedule ? "Submit New Schedule Request" : "Submit Reschedule Request"
+                      : "Submit Cancellation Request"}
                 </button>
               </div>
             </form>

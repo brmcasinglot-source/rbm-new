@@ -297,7 +297,15 @@ begin
     conference->>'status',
     case when coalesce((conference->>'completed')::boolean, false) then 'Completed' else 'Scheduled' end
   );
-  if current_status not in ('Scheduled', 'Rescheduled') then
+  if not (
+    current_status in ('Scheduled', 'Rescheduled')
+    or (
+      request_type = 'reschedule'
+      and current_status = 'Cancelled'
+      and conference #>> '{request,type}' = 'cancellation'
+      and conference #>> '{request,state}' = 'Approved'
+    )
+  ) then
     raise exception 'This conference cannot accept a new request in its current status';
   end if;
 

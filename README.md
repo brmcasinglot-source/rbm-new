@@ -16,6 +16,10 @@
 
 [Open the editable database ERD](./system-erd.drawio) in diagrams.net or import it into draw.io.
 
+![CNHS Bullying Reporting & Management System entity relationship diagram](./public/system-erd.svg)
+
+See the [ERD data dictionary](./docs/erd-data-dictionary.md) for the table attributes, data types, constraints, and descriptions.
+
 ## Level 1 data flow diagram
 
 [Open the editable Level 1 DFD](./system-dfd-level-1.drawio) in diagrams.net or import it into draw.io.
