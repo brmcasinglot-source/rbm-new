@@ -408,6 +408,8 @@ export default function AdminDashboard() {
   const [exportFormat, setExportFormat] = useState("xlsx");
   const [exportError, setExportError] = useState("");
   const [exportSelectedIds, setExportSelectedIds] = useState(() => new Set());
+  const EXPORT_REPORTS_PAGE_SIZE = 10;
+  const [exportReportPreviewPage, setExportReportPreviewPage] = useState(0);
   const [previewOffenseDetail, setPreviewOffenseDetail] = useState(null);
   const exportOffenseRequestRef = useRef(0);
   const chartCanvasRef = useRef(null);
@@ -495,7 +497,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setExportSelectedIds(new Set());
+    setExportReportPreviewPage(0);
   }, [
+    exportDataset,
     exportSearch,
     exportTypes,
     exportStatuses,
@@ -1545,8 +1549,18 @@ export default function AdminDashboard() {
     (exportYearFilter === null || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
   );
   const exportPreviewRecords = exportReportsSelected
-    ? exportFilteredIncidents.slice(0, 10)
+    ? exportFilteredIncidents
     : exportOffensePreview.records;
+  const exportReportsTotalPages = Math.ceil(exportFilteredIncidents.length / EXPORT_REPORTS_PAGE_SIZE);
+  const currentExportReportsPage = Math.min(
+    exportReportPreviewPage,
+    Math.max(0, exportReportsTotalPages - 1)
+  );
+  const exportReportsPageStart = currentExportReportsPage * EXPORT_REPORTS_PAGE_SIZE;
+  const exportReportsPageRecords = exportFilteredIncidents.slice(
+    exportReportsPageStart,
+    exportReportsPageStart + EXPORT_REPORTS_PAGE_SIZE
+  );
   const selectedExportPreviewRecords = exportPreviewRecords.filter((record) =>
     exportSelectedIds.has(String(record.id))
   );
@@ -2393,7 +2407,7 @@ export default function AdminDashboard() {
                       <table className="analytics-export-table">
                         <thead><tr><th>Report No.</th><th>Date</th><th>Type</th><th>Location</th><th>Status</th><th>Reporter</th><th>Reporter role</th></tr></thead>
                         <tbody>
-                          {exportFilteredIncidents.slice(0, 10).map((report) => (
+                          {exportReportsPageRecords.map((report) => (
                             <tr
                               key={report.id}
                               className={exportSelectedIds.has(String(report.id)) ? "selected" : ""}
@@ -2424,6 +2438,27 @@ export default function AdminDashboard() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+                  {exportReportsSelected && exportReportsTotalPages > 1 && (
+                    <div className="analytics-records-pagination">
+                      <button
+                        type="button"
+                        onClick={() => setExportReportPreviewPage((page) => Math.max(0, page - 1))}
+                        disabled={currentExportReportsPage === 0}
+                      >
+                        <ChevronLeft size={14} /> Prev
+                      </button>
+                      <span>
+                        Showing {exportReportsPageStart + 1}–{Math.min(exportReportsPageStart + EXPORT_REPORTS_PAGE_SIZE, exportFilteredIncidents.length)} of {exportFilteredIncidents.length} · Page {currentExportReportsPage + 1} of {exportReportsTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setExportReportPreviewPage((page) => Math.min(exportReportsTotalPages - 1, page + 1))}
+                        disabled={currentExportReportsPage === exportReportsTotalPages - 1}
+                      >
+                        Next <ChevronRight size={14} />
+                      </button>
                     </div>
                   )}
                   {exportOffensesSelected && (

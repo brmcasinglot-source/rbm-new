@@ -5274,22 +5274,22 @@
 }
 
 .analytics-export-table-wrap {
-  max-height: 280px;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
   border: 1px solid #e3e8e4;
   border-radius: 8px;
 }
 
 .analytics-export-table {
-  width: max(100%, 760px);
+  width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
   white-space: normal;
 }
 
 .analytics-export-table--offenses {
-  width: max(100%, 1000px);
-  table-layout: fixed;
+  width: 100%;
 }
 
 .analytics-export-table--offenses th:nth-child(1) { width: 14%; }
@@ -5313,11 +5313,10 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.025em;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .analytics-export-table td {
-  max-width: 260px;
   padding: 8px 11px;
   border-top: 1px solid #edf0ed;
   color: #3e4d43;
@@ -5329,6 +5328,7 @@
 .analytics-export-row-select {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 7px;
   cursor: pointer;
 }
@@ -5430,7 +5430,7 @@
   border-radius: 5px;
   font-size: 10px;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .analytics-export-table .status-badge.pending,
