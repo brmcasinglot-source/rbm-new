@@ -31,7 +31,7 @@ import {
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
-  getGradeSections, addGradeSection, updateGradeSection, deleteGradeSection,
+  getGradeSections, addGradeSection, updateGradeSection,
   GRADE_OPTIONS,
   getStudentAccounts, getPendingStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
   getStudentOffenseRecords, downloadStudentOffenseRecords,
@@ -1450,12 +1450,6 @@ export default function AdminDashboard() {
     setNewSectionName("");
     setNewSectionAdviser("");
     showToast(`"${result.section.section}" added to ${sectionMgmtGrade} with adviser ${result.section.adviser}.`);
-  };
-
-  const handleDeleteSection = async (id, name) => {
-    if (!window.confirm(`Remove "${name}" from ${sectionMgmtGrade}?`)) return;
-    await deleteGradeSection(id);
-    setGradeSections(await getGradeSections());
   };
 
   const handleSaveSection = async (id, grade) => {
@@ -3505,14 +3499,9 @@ export default function AdminDashboard() {
                                   </button>
                                 </>
                               ) : (
-                                <>
-                                  <button type="button" className="grade-section-action edit" aria-label={`Edit ${s.section}`} title="Edit" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.section); setEditingSectionAdviser(s.adviser || ""); }}>
-                                    <Edit size={14} /> <span>Edit</span>
-                                  </button>
-                                  <button type="button" className="grade-section-action delete" aria-label={`Delete ${s.section}`} title="Delete" onClick={() => handleDeleteSection(s.id, s.section)}>
-                                    <Trash2 size={14} /> <span>Delete</span>
-                                  </button>
-                                </>
+                                <button type="button" className="grade-section-action edit" aria-label={`Edit ${s.section}`} title="Edit" onClick={() => { setEditingSectionId(s.id); setEditingSectionName(s.section); setEditingSectionAdviser(s.adviser || ""); }}>
+                                  <Edit size={14} /> <span>Edit</span>
+                                </button>
                               )}
                             </div>
                           </td>
