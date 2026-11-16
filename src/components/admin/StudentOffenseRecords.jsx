@@ -1022,7 +1022,6 @@ function StudentOffenseRecords() {
                                 <div><small>What happened?</small><p>{reportReview.description || "No incident description provided."}</p></div>
                                 <div><small>Events leading to the incident</small><p>{reportReview.descriptionLeadUp || "No prior events or context provided."}</p></div>
                                 <div><small>Impact on the victim</small><p>{reportReview.descriptionImpact || "No impact details provided."}</p></div>
-                                <div><small>Actions taken</small><p>{reportReview.descriptionActions || "No actions taken were provided."}</p></div>
                               </section>
 
                               <section className="student-offense-report-section student-offense-report-followup">
@@ -1359,10 +1358,6 @@ function StudentOffenseRecords() {
                       <div className="student-offense-report-story">
                         <span className="student-offense-report-label">Impact on the victim</span>
                         <p>{reportDetails.descriptionImpact || "No impact details provided."}</p>
-                      </div>
-                      <div className="student-offense-report-story">
-                        <span className="student-offense-report-label">Actions taken</span>
-                        <p>{reportDetails.descriptionActions || "No actions taken were provided."}</p>
                       </div>
                       </div>
                     </section>
