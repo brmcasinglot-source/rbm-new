@@ -21,7 +21,7 @@ import {
 } from "../../lib/studentOffensePlan";
 import "../../styles/StudentOffenseRecords.css";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 const GRADE_LEVELS = ["Grade 7", "Grade 8", "Grade 9", "Grade 10"];
 const OFFENSE_LEVELS = [
   { value: "1", label: "First Offense" },
