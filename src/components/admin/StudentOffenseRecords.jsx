@@ -46,8 +46,6 @@ const SORT_OPTIONS = [
 const DECISION_CHOICES = [
   { value: "Established", label: "Established", description: "The available information supports the allegation." },
   { value: "Not Established", label: "Not established", description: "The available information does not support the allegation." },
-  { value: "Needs Further Investigation", label: "Needs more evidence", description: "More information is needed before a decision." },
-  { value: "Resolved Through Mediation", label: "Resolved through mediation", description: "The matter was resolved through mediation." },
 ];
 const INTERVENTION_TEMPLATES = [
   {
