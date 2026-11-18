@@ -11,6 +11,8 @@ import {
   sendPasswordResetEmail,
   updatePassword,
   signOut as signOutUser,
+  verifyLoginOtp,
+  resendLoginOtp,
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
 import { optimizeImageFile } from "../lib/imageOptimization.js";
@@ -61,10 +63,11 @@ export default function Login() {
 
   const [mode,     setMode]     = useState(() => {
     const requestedMode = new URLSearchParams(window.location.search).get("mode");
-    return ["reset", "verify"].includes(requestedMode) ? requestedMode : "login";
+    return ["reset", "verify", "login-otp", "forgot"].includes(requestedMode) ? requestedMode : "login";
   });
   const [email,    setEmail]    = useState(() => new URLSearchParams(window.location.search).get("email") || "");
   const [verifyCode, setVerifyCode] = useState("");
+  const [loginOtpCode, setLoginOtpCode] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -142,7 +145,43 @@ export default function Login() {
       setError(result.error);
       return;
     }
+    if (result.needsLoginOtp) {
+      setPassword("");
+      setLoginOtpCode("");
+      setMode("login-otp");
+      setSuccess("A 6-digit sign-in code was sent to your email.");
+      window.history.replaceState({}, document.title, `${window.location.pathname}?mode=login-otp&email=${encodeURIComponent(email.trim())}`);
+      return;
+    }
     navigate(result.role === "admin" ? "/admindashboard" : "/studentdashboard");
+  };
+
+  const handleLoginOtpVerification = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!/^\d{6}$/.test(loginOtpCode.trim())) {
+      setError("Enter the 6-digit code sent to your email.");
+      return;
+    }
+    setLoading(true);
+    const result = await verifyLoginOtp(email.trim(), loginOtpCode.trim());
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    navigate(result.role === "admin" ? "/admindashboard" : "/studentdashboard");
+  };
+
+  const handleResendLoginOtp = async () => {
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    const result = await resendLoginOtp(email.trim());
+    setLoading(false);
+    if (!result.success) setError(result.error);
+    else setSuccess("A new sign-in code was sent to your email.");
   };
 
   const handlePasswordResetRequest = async (e) => {
@@ -364,7 +403,35 @@ export default function Login() {
             </div>
           )}
 
-          {mode === "verify" ? (
+          {mode === "login-otp" ? (
+            <>
+              <h2>Confirm it’s you</h2>
+              <p className="login-sub">Enter the 6-digit sign-in code sent to {email}. This code expires in 10 minutes.</p>
+              <form onSubmit={handleLoginOtpVerification} noValidate>
+                <div className="input-group">
+                  <label className="input-label">Sign-in Code</label>
+                  <input
+                    className={`input ${error ? "input-error" : ""}`}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={loginOtpCode}
+                    onChange={(event) => { setLoginOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                  />
+                </div>
+                {error && <div className="login-error"><span>⚠</span> {error}</div>}
+                {success && <div className="login-success"><span>✓</span> {success}</div>}
+                <button className={`login-btn ${loading ? "loading" : ""}`} type="submit" disabled={loading}>
+                  {loading ? "Verifying…" : "Verify and Sign In"}
+                </button>
+              </form>
+              <button className="back-btn" type="button" onClick={handleResendLoginOtp} disabled={loading}>
+                {loading ? "Sending…" : "Resend code"}
+              </button>
+              <button className="back-btn" type="button" onClick={() => switchMode("login")}>← Back to Sign In</button>
+            </>
+          ) : mode === "verify" ? (
             <>
               <h2>Verify your email</h2>
               <p className="login-sub">Enter the 6-digit code sent to {email}. You can request another code after 10 minutes.</p>

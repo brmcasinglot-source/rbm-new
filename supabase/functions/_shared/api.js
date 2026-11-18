@@ -332,8 +332,12 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
       email: senderEmail,
     },
     to: [{ email }],
-    subject: purpose === "signup" ? "Verify your CNHS account" : "Reset your CNHS password",
-    textContent: `${purpose === "signup" ? "Verify your account" : "Reset your password"}\n\nUse this verification code: ${code}\n\nThis code expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.`,
+    subject: purpose === "signup"
+      ? "Verify your CNHS account"
+      : purpose === "login"
+        ? "Sign in to the CNHS system"
+        : "Reset your CNHS password",
+    textContent: `${purpose === "signup" ? "Verify your account" : purpose === "login" ? "Sign in to your account" : "Reset your password"}\n\nUse this one-time code: ${code}\n\nThis code expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.`,
     htmlContent: `
       <!doctype html>
       <html lang="en">
@@ -341,7 +345,7 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta name="color-scheme" content="light">
-          <title>${purpose === "signup" ? "Verify your account" : "Reset your password"}</title>
+          <title>${purpose === "signup" ? "Verify your account" : purpose === "login" ? "Sign in to your account" : "Reset your password"}</title>
         </head>
         <body style="margin:0;padding:0;background-color:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1e2430;">
           <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">Your CNHS verification code expires in ${OTP_TTL_MINUTES} minutes.</span>
@@ -362,8 +366,8 @@ async function sendOtp(email, purpose, payload = null, origin = "") {
                   <tr>
                     <td style="padding:36px 32px 32px;">
                       <p style="margin:0 0 8px;color:#15803d;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Account security</p>
-                      <h1 style="margin:0 0 12px;color:#1e2430;font-size:24px;line-height:32px;font-weight:700;">${purpose === "signup" ? "Verify your account" : "Reset your password"}</h1>
-                      <p style="margin:0 0 24px;color:#64748b;font-size:15px;line-height:24px;">${purpose === "signup" ? "Enter this one-time code to finish creating your account." : "Use this one-time code to securely reset your password."}</p>
+                      <h1 style="margin:0 0 12px;color:#1e2430;font-size:24px;line-height:32px;font-weight:700;">${purpose === "signup" ? "Verify your account" : purpose === "login" ? "Sign in to your account" : "Reset your password"}</h1>
+                      <p style="margin:0 0 24px;color:#64748b;font-size:15px;line-height:24px;">${purpose === "signup" ? "Enter this one-time code to finish creating your account." : purpose === "login" ? "Enter this one-time code to complete your sign in." : "Use this one-time code to securely reset your password."}</p>
                       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f0fdf4;border:1px solid #dcfce7;border-radius:12px;">
                         <tr>
                           <td align="center" style="padding:20px 12px;">
@@ -1016,7 +1020,40 @@ async function handleAuth(action, body, req) {
         throw Object.assign(new Error("Your account is waiting for admin confirmation. You'll be able to log in once an administrator approves your registration."), { status: 403 });
       }
     }
+    await sendOtp(email, "login", { id: credential.id, role: credential.role }, req.headers.origin);
+    return { success: true, needsLoginOtp: true };
+  }
+
+  if (action === "verify-login") {
+    const challenge = await verifyOtp(email, "login", body.code);
+    const loginData = challenge.payload;
+    if (!loginData?.id || !["student", "admin"].includes(loginData.role)) {
+      throw Object.assign(new Error("The login request is invalid. Sign in again."), { status: 400 });
+    }
+    const credential = await getExistingAccount(email);
+    if (!credential || credential.id !== loginData.id || credential.role !== loginData.role) {
+      throw Object.assign(new Error("The login request is invalid. Sign in again."), { status: 400 });
+    }
+    if (credential.role === "student") {
+      const { data: student, error } = await db.from("students")
+        .select("id,name,email,lrn,age,sex,grade,section,approved,created_at")
+        .eq("id", credential.id).single();
+      if (error) throw error;
+      if (!student.approved) {
+        throw Object.assign(new Error("Your account is waiting for admin confirmation.", { status: 403 }));
+      }
+    }
+    await db.from("auth_otps").delete().eq("email", email).eq("purpose", "login");
     return createSession(credential);
+  }
+
+  if (action === "resend-login") {
+    if (!email) return { success: true };
+    const { data: challenge, error } = await db.from("auth_otps")
+      .select("payload").eq("email", email).eq("purpose", "login").maybeSingle();
+    if (error) throw error;
+    if (challenge) await sendOtp(email, "login", challenge.payload, req.headers.origin);
+    return { success: true };
   }
 
   if (action === "request-password-reset") {

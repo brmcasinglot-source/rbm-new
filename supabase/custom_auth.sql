@@ -31,7 +31,7 @@ create table if not exists public.auth_credentials (
 
 create table if not exists public.auth_otps (
   email      text not null,
-  purpose    text not null check (purpose in ('signup', 'reset')),
+  purpose    text not null check (purpose in ('signup', 'reset', 'login')),
   code_hash  text not null,
   payload    jsonb,
   attempts   integer not null default 0,

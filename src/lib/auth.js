@@ -59,6 +59,7 @@ export async function verifyStudentEmail(email, code) {
 export async function signIn(email, password) {
   try {
     const result = await authRequest("signin", { email, password });
+    if (result.needsLoginOtp) return { success: true, needsLoginOtp: true };
     if (typeof result.token !== "string" || !result.token) {
       throw new Error("The server did not create a session. Check the Supabase Edge Function deployment.");
     }
@@ -66,6 +67,30 @@ export async function signIn(email, password) {
     if (result.role === "admin") cacheAdminSession(result.profile);
     else cacheStudentSession(result.profile);
     return { success: true, role: result.role, [result.role]: result.profile };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function verifyLoginOtp(email, code) {
+  try {
+    const result = await authRequest("verify-login", { email, code });
+    if (typeof result.token !== "string" || !result.token) {
+      throw new Error("The server did not create a session.");
+    }
+    localStorage.setItem("cnhsSessionToken", result.token);
+    if (result.role === "admin") cacheAdminSession(result.profile);
+    else cacheStudentSession(result.profile);
+    return { success: true, role: result.role };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function resendLoginOtp(email) {
+  try {
+    await authRequest("resend-login", { email });
+    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
