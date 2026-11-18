@@ -630,7 +630,8 @@ async function handleAuth(action, body, req) {
       "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
       "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
       "evidence_count", "scheduled_conference", "conference_findings",
-      "conference_findings_updated_by", "conference_findings_updated_at", "submitted_at", "updated_at",
+      "conference_findings_updated_by", "conference_findings_updated_at",
+      "under_investigation_at", "resolved_at", "submitted_at", "updated_at",
     ].join(",");
     const { data: report, error } = await db.from("reports")
       .select(detailColumns).eq("id", reportId).maybeSingle();

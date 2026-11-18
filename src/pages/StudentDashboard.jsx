@@ -64,6 +64,28 @@ function formatConferenceDate(dateStr, language = "en") {
         year: "numeric",
       }).format(date);
 }
+function formatCaseStatusTimestamp(timestamp, language = "en") {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(language === "fil" ? "fil-PH" : "en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+function formatResolvedDate(timestamp, language = "en") {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(language === "fil" ? "fil-PH" : "en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 function getConferenceStatus(conference) {
   const status = conference.status || (conference.completed ? "Completed" : "Scheduled");
   if (!["Scheduled", "Rescheduled"].includes(status)) return status;
@@ -218,9 +240,11 @@ export default function StudentDashboard() {
       ]);
       setCaseViewItem((current) => current?.id === report.id
         ? {
+          ...current,
           ...details,
           evidence: [],
           evidenceLoaded: false,
+          resolvedAt: details.resolvedAt || current.resolvedAt || report.resolvedAt || null,
           offenseRecord: offenseResult.offenseRecord || null,
           hasCaseFollowUp: !!offenseResult.hasCaseFollowUp,
         }
@@ -1051,6 +1075,18 @@ export default function StudentDashboard() {
                         <div className="s-case-meta">
                           <span><Calendar size={13} aria-hidden="true" /> {r.date}{r.time ? ` at ${r.time}` : ""}</span>
                           {r.location && <span><MapPin size={13} aria-hidden="true" /> {r.location}</span>}
+                          {r.underInvestigationAt && (
+                            <span>
+                              <Clock size={13} aria-hidden="true" />
+                              Investigation started {formatCaseStatusTimestamp(r.underInvestigationAt, language)}
+                            </span>
+                          )}
+                          {r.resolvedAt && (
+                            <span>
+                              <CheckCircle size={13} aria-hidden="true" />
+                              Resolved {formatCaseStatusTimestamp(r.resolvedAt, language)}
+                            </span>
+                          )}
                           {r.evidenceCount > 0 && (
                             <span><Paperclip size={12} aria-hidden="true" /> {r.evidenceCount} evidence file{r.evidenceCount > 1 ? "s" : ""}</span>
                           )}
@@ -1531,7 +1567,9 @@ export default function StudentDashboard() {
           {
             key: "investigation",
             title: "Investigation Started",
-            desc: status === "Pending"
+            desc: r.underInvestigationAt
+              ? `Investigation started ${formatCaseStatusTimestamp(r.underInvestigationAt, language)}.`
+              : status === "Pending"
               ? "Waiting for a counselor to be assigned to the case."
               : "A counselor has been assigned and is reviewing the case.",
             state: status === "Pending" ? "pending" : "completed",
@@ -1566,7 +1604,9 @@ export default function StudentDashboard() {
             key: "resolved",
             title: "Resolved",
             desc: status === "Resolved"
-              ? "Resolution complete and case closed."
+              ? r.resolvedAt
+                ? `Resolved ${formatCaseStatusTimestamp(r.resolvedAt, language)}.`
+                : "Resolution complete and case closed."
               : "Case will be marked resolved once action is finalized.",
             state: status === "Resolved" ? "completed" : "upcoming",
           },
@@ -1595,6 +1635,12 @@ export default function StudentDashboard() {
                     {statusIcon(status)} {status}
                   </span>
                   <p>{statusDescriptions[status] || ""}</p>
+                  {status === "Resolved" && r.resolvedAt && (
+                    <p className="s-resolved-date">
+                      <Calendar size={11} aria-hidden="true" />
+                      {translateStudentUI("Resolved on", language)} {formatResolvedDate(r.resolvedAt, language)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Progress Tracker */}

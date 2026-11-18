@@ -105,6 +105,8 @@ function reportRowToObj(row) {
     conferenceFindings: row.conference_findings || "",
     conferenceFindingsUpdatedBy: row.conference_findings_updated_by || null,
     conferenceFindingsUpdatedAt: row.conference_findings_updated_at || null,
+    underInvestigationAt: row.under_investigation_at || null,
+    resolvedAt:          row.resolved_at || null,
     submittedAt:        row.submitted_at,
     updatedAt:           row.updated_at,
   };
@@ -158,14 +160,16 @@ const REPORT_COLUMNS_WITHOUT_EVIDENCE = [
   "witnesses", "status", "priority", "submitted_by", "submitted_id", "reporter_age",
   "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
   "evidence_count", "scheduled_conference", "conference_findings",
-  "conference_findings_updated_by", "conference_findings_updated_at", "submitted_at", "updated_at",
+  "conference_findings_updated_by", "conference_findings_updated_at",
+  "under_investigation_at", "resolved_at", "submitted_at", "updated_at",
 ].join(",");
 
 const REPORT_LIST_COLUMNS = [
   "id", "type", "date", "time", "location", "description", "reporter_type", "status", "priority",
   "submitted_by", "submitted_id", "reporter_age", "reporter_sex", "reporter_grade",
   "reporter_section", "is_anonymous", "admin_notes", "evidence_count",
-  "scheduled_conference", "conference_findings", "submitted_at", "updated_at",
+  "scheduled_conference", "conference_findings", "under_investigation_at", "resolved_at",
+  "submitted_at", "updated_at",
 ].join(",");
 
 export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0 } = {}) {

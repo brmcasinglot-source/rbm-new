@@ -95,9 +95,39 @@ create table reports (
     jsonb_array_length(case when jsonb_typeof(evidence) = 'array' then evidence else '[]'::jsonb end)
   ) stored,
   scheduled_conference  jsonb,
+  under_investigation_at timestamptz,
+  resolved_at           timestamptz,
   submitted_at          timestamptz default now(),
   updated_at            timestamptz
 );
+
+create or replace function set_report_status_timestamps()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.status = 'Under Investigation' and new.under_investigation_at is null then
+      new.under_investigation_at := now();
+    end if;
+    if new.status = 'Resolved' and new.resolved_at is null then
+      new.resolved_at := now();
+    end if;
+  elsif new.status is distinct from old.status then
+    if new.status = 'Under Investigation' then
+      new.under_investigation_at := now();
+    elsif new.status = 'Resolved' then
+      new.resolved_at := now();
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger reports_stamp_status_timestamps
+before insert or update of status on reports
+for each row execute function set_report_status_timestamps();
 
 -- ─── AWARENESS CONTENT ─────────────────────────────────────────────────────
 create table awareness_content (

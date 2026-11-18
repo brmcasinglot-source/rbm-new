@@ -189,6 +189,7 @@ const FILIPINO_TRANSLATIONS = {
   "The Prefect of Discipline has added notes — see below.": "Nagdagdag ng tala ang Prefect of Discipline — tingnan sa ibaba.",
   "Reviewing actions and documentation.": "Sinusuri ang mga hakbang at dokumentasyon.",
   "Resolved": "Nalutas",
+  "Resolved on": "Nalutas noong",
   "Resolution complete and case closed.": "Kumpleto na ang paglutas at isinara na ang kaso.",
   "Case will be marked resolved once action is finalized.": "Mamarkahang nalutas ang kaso kapag pinal na ang mga hakbang.",
   "COMPLETED": "NAKUMPLETO",

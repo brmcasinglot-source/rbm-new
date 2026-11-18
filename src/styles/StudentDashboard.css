@@ -3769,6 +3769,16 @@
   line-height: 1.45;
 }
 
+.s-case-detail-modal .s-case-status-banner .s-resolved-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #507b59;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .s-case-detail-modal .s-case-tracker {
   margin-bottom: 4px;
 }
