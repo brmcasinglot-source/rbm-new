@@ -1,5 +1,9 @@
 # CNHS Bullying & Incident Reporting System
 
+## System architecture
+
+[Open the editable system architecture diagram](./docs/system-architecture.drawio) in diagrams.net.
+
 ## System flowchart
 
 [Open the editable draw.io diagram](./system-flowchart.drawio) in diagrams.net or import it into draw.io.
