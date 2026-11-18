@@ -180,6 +180,13 @@ function formatConferenceDate(dateValue) {
     ? value
     : date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
+function formatResolvedDate(dateValue) {
+  if (!dateValue) return "";
+  const date = new Date(dateValue);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
 function formatGrade(grade) {
   return grade ? String(grade).replace(/^grade\s*/i, "").trim() : "";
 }
@@ -1124,9 +1131,7 @@ export default function AdminDashboard() {
       }
     }
     setSelectedReport({ ...report, evidence: [], evidenceLoaded: false, evidenceLoading: false, evidenceError: "" });
-    // Skip the redundant "Pending" step — managing a pending report means it's
-    // already being acted on, so jump straight to "Under Investigation".
-    setNewStatus(report.status === "Pending" ? "Under Investigation" : report.status);
+    setNewStatus(report.status);
     setAdminNotes(report.adminNotes || "");
     setAdditionalInfoRequest("");
     setConferenceDate(report.scheduledConference?.date || "");
@@ -1144,7 +1149,15 @@ export default function AdminDashboard() {
       const details = await getReportDetails(report.id);
       setConferenceFindingsDraft(details.conferenceFindings || "");
       setSelectedReport((current) => current?.id === report.id
-        ? { ...details, evidence: [], evidenceLoaded: false, evidenceLoading: false, evidenceError: "" }
+        ? {
+          ...current,
+          ...details,
+          evidence: [],
+          evidenceLoaded: false,
+          evidenceLoading: false,
+          evidenceError: "",
+          resolvedAt: details.resolvedAt || current.resolvedAt || report.resolvedAt || null,
+        }
         : current);
     } catch (err) {
       showToast(`Could not load report details: ${err.message}`, "error");
@@ -2069,6 +2082,11 @@ export default function AdminDashboard() {
                           {r.location && (
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                               <MapPin size={12} /> {r.location}
+                            </span>
+                          )}
+                          {r.status === "Resolved" && r.resolvedAt && (
+                            <span className="admin-resolved-date" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                              <CheckCircle size={12} /> Resolved {formatResolvedDate(r.resolvedAt)}
                             </span>
                           )}
                         </div>
@@ -3624,6 +3642,14 @@ export default function AdminDashboard() {
                   <label>Location</label>
                   <div className="detail-value">{selectedReport.location || "—"}</div>
                 </div>
+                {selectedReport.status === "Resolved" && selectedReport.resolvedAt && (
+                  <div className="detail-group">
+                    <label>Date Resolved</label>
+                    <div className="detail-value resolved-date-value">
+                      {formatResolvedDate(selectedReport.resolvedAt)}
+                    </div>
+                  </div>
+                )}
                 {!selectedReport.isAnonymous && selectedReport.reporterAge && (
                   <div className="detail-group">
                     <label>Reporter age</label>
@@ -3961,7 +3987,9 @@ export default function AdminDashboard() {
                   <label>Case status</label>
                   <select className="professional-select" style={{ width: "100%" }}
                     value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-                    <option value="Pending">Pending</option>
+                    <option value="Pending" disabled={selectedReport.status !== "Pending"}>
+                      Pending
+                    </option>
                     <option value="Under Investigation">Under Investigation</option>
                     <option value="Resolved">Resolved</option>
                   </select>

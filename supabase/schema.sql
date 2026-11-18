@@ -115,8 +115,12 @@ begin
       new.resolved_at := now();
     end if;
   elsif new.status is distinct from old.status then
-    if new.status = 'Under Investigation' then
+    if new.status = 'Pending' then
+      new.under_investigation_at := null;
+      new.resolved_at := null;
+    elsif new.status = 'Under Investigation' then
       new.under_investigation_at := now();
+      new.resolved_at := null;
     elsif new.status = 'Resolved' then
       new.resolved_at := now();
     end if;

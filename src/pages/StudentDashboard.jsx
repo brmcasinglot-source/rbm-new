@@ -1567,11 +1567,11 @@ export default function StudentDashboard() {
           {
             key: "investigation",
             title: "Investigation Started",
-            desc: r.underInvestigationAt
-              ? `Investigation started ${formatCaseStatusTimestamp(r.underInvestigationAt, language)}.`
-              : status === "Pending"
+            desc: status === "Pending"
               ? "Waiting for a counselor to be assigned to the case."
-              : "A counselor has been assigned and is reviewing the case.",
+              : r.underInvestigationAt
+                ? `Investigation started ${formatCaseStatusTimestamp(r.underInvestigationAt, language)}.`
+                : "A counselor has been assigned and is reviewing the case.",
             state: status === "Pending" ? "pending" : "completed",
           },
           ...(hasConferenceSchedule ? [{

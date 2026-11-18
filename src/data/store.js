@@ -464,6 +464,15 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
   if (fetchError) throw fetchError;
 
   const updates = { status: newStatus, updated_at: new Date().toISOString() };
+  if (newStatus === "Pending") {
+    updates.under_investigation_at = null;
+    updates.resolved_at = null;
+  } else if (newStatus === "Under Investigation") {
+    updates.under_investigation_at = new Date().toISOString();
+    updates.resolved_at = null;
+  } else if (newStatus === "Resolved") {
+    updates.resolved_at = new Date().toISOString();
+  }
   if (adminNotes !== undefined) updates.admin_notes = adminNotes;
 
   const allReports = (await getReportPriorityContext()).filter((r) => r.id !== reportId);
