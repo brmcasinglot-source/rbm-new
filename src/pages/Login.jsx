@@ -6,6 +6,7 @@ import "../styles/Login.css";
 import {
   signIn,
   signUpStudent,
+  isStudentLrnTaken,
   verifyStudentEmail,
   resendConfirmationEmail,
   sendPasswordResetEmail,
@@ -83,6 +84,9 @@ export default function Login() {
   // Registration fields
   const [regName,    setRegName]    = useState("");
   const [regLRN,     setRegLRN]     = useState("");
+  const [lrnCheckStatus, setLrnCheckStatus] = useState("idle");
+  const [lrnCheckMessage, setLrnCheckMessage] = useState("");
+  const lrnCheckRequestId = useRef(0);
   const [regEmail,   setRegEmail]   = useState("");
   const [regPass,    setRegPass]    = useState("");
   const [regConfirm, setRegConfirm] = useState("");
@@ -118,6 +122,8 @@ export default function Login() {
     setVerifyCode(""); setResetCode("");
     setNewPassword(""); setConfirmNewPassword("");
     setRegName(""); setRegLRN(""); setRegEmail(""); setRegPass(""); setRegConfirm("");
+    lrnCheckRequestId.current += 1;
+    setLrnCheckStatus("idle"); setLrnCheckMessage("");
     setRegAge(""); setRegSex(""); setRegGrade(""); setRegSection("");
     setRegStudentIdImages({ front: null, back: null });
     setStudentIdImageErrors({ front: "", back: "" });
@@ -284,6 +290,42 @@ export default function Login() {
     setSuccess("A new verification code has been sent to your email.");
   };
 
+  const checkStudentLrnAvailability = async (value) => {
+    const lrn = String(value).trim();
+    const requestId = ++lrnCheckRequestId.current;
+    if (!/^\d{12}$/.test(lrn)) {
+      setLrnCheckStatus("idle");
+      setLrnCheckMessage("");
+      return false;
+    }
+
+    setLrnCheckStatus("checking");
+    setLrnCheckMessage("");
+    try {
+      const taken = await isStudentLrnTaken(lrn);
+      if (requestId !== lrnCheckRequestId.current) return false;
+
+      if (taken) {
+        const message = "This LRN is already registered. Please sign in with the existing account or contact the school for help.";
+        setLrnCheckStatus("taken");
+        setLrnCheckMessage(message);
+        setError(message);
+        return false;
+      }
+
+      setLrnCheckStatus("available");
+      setLrnCheckMessage("LRN is available.");
+      return true;
+    } catch (checkError) {
+      if (requestId !== lrnCheckRequestId.current) return false;
+      const message = `Could not verify this LRN. ${checkError.message}`;
+      setLrnCheckStatus("error");
+      setLrnCheckMessage(message);
+      setError(message);
+      return false;
+    }
+  };
+
   const handleStudentIdImage = async (side, file) => {
     if (!file) return;
     setError("");
@@ -337,6 +379,7 @@ export default function Login() {
       setError("LRN must be exactly 12 digits.");
       return;
     }
+    if (!(await checkStudentLrnAvailability(regLRN))) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) {
       setError("Please enter a valid email address.");
       return;
@@ -613,12 +656,33 @@ export default function Login() {
                     value={regLRN}
                     onChange={(e) => {
                       setRegLRN(e.target.value.replace(/\D/g, "").slice(0, 12));
+                      lrnCheckRequestId.current += 1;
+                      setLrnCheckStatus("idle");
+                      setLrnCheckMessage("");
                       setError("");
+                    }}
+                    onBlur={() => {
+                      if (regLRN.length === 12) {
+                        checkStudentLrnAvailability(regLRN);
+                      }
                     }}
                   />
                   <p style={{ fontSize: 11, color: regLRN.length === 12 ? "#16a34a" : "#94a3b8", marginTop: 5, fontWeight: 600 }}>
                     {regLRN.length}/12 digits
                   </p>
+                  {lrnCheckStatus !== "idle" && (
+                    <p
+                      role={lrnCheckStatus === "taken" || lrnCheckStatus === "error" ? "alert" : "status"}
+                      style={{
+                        fontSize: 11,
+                        color: lrnCheckStatus === "available" ? "#16a34a" : lrnCheckStatus === "checking" ? "#64748b" : "#b91c1c",
+                        marginTop: 5,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {lrnCheckStatus === "checking" ? "Checking LRN…" : lrnCheckMessage}
+                    </p>
+                  )}
                 </div>
 
                 <div className="input-group">
@@ -886,7 +950,14 @@ export default function Login() {
                 <button
                   className={`login-btn ${loading ? "loading" : ""}`}
                   type="submit"
-                  disabled={loading || processingIdImage || !regStudentIdImages.front || !regStudentIdImages.back}
+                  disabled={
+                    loading ||
+                    processingIdImage ||
+                    lrnCheckStatus === "checking" ||
+                    lrnCheckStatus === "taken" ||
+                    !regStudentIdImages.front ||
+                    !regStudentIdImages.back
+                  }
                 >
                   {loading ? "Creating account…" : "Create Account"}
                 </button>

@@ -1,4 +1,4 @@
-import { authRequest } from "./apiClient.js";
+import { authRequest, supabase } from "./apiClient.js";
 
 if (localStorage.getItem("cnhsDemoMode") === "true") {
   ["studentName", "studentId", "studentAge", "studentSex", "studentGrade", "studentSection", "userRole"]
@@ -41,6 +41,15 @@ export async function signUpStudent(details) {
   } catch (error) {
     return { success: false, error: error.message };
   }
+}
+
+export async function isStudentLrnTaken(lrn) {
+  const { data, error } = await supabase.rpc("is_lrn_taken", { check_lrn: String(lrn) });
+  if (error) throw new Error(error.message || "Could not verify this LRN.");
+  if (typeof data !== "boolean") {
+    throw new Error("The LRN verification service returned an invalid response.");
+  }
+  return data;
 }
 
 export async function getStudentIdImages(studentId) {
