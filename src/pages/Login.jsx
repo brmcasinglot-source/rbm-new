@@ -16,6 +16,7 @@ import {
 } from "../lib/auth.js";
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
 import { optimizeImageFile } from "../lib/imageOptimization.js";
+import { checkImageQuality } from "../utils/imageQuality.js";
 
 const MAX_STUDENT_ID_IMAGE_SIZE = 350_000;
 
@@ -90,6 +91,7 @@ export default function Login() {
   const [regGrade,   setRegGrade]   = useState("");
   const [regSection, setRegSection] = useState("");
   const [regStudentIdImages, setRegStudentIdImages] = useState({ front: null, back: null });
+  const [studentIdImageErrors, setStudentIdImageErrors] = useState({ front: "", back: "" });
   const [processingIdImage, setProcessingIdImage] = useState(false);
   const studentIdFileInputs = useRef({});
   const [studentIdUploadSide, setStudentIdUploadSide] = useState(null);
@@ -118,6 +120,7 @@ export default function Login() {
     setRegName(""); setRegLRN(""); setRegEmail(""); setRegPass(""); setRegConfirm("");
     setRegAge(""); setRegSex(""); setRegGrade(""); setRegSection("");
     setRegStudentIdImages({ front: null, back: null });
+    setStudentIdImageErrors({ front: "", back: "" });
     setProcessingIdImage(false);
   };
 
@@ -284,12 +287,33 @@ export default function Login() {
   const handleStudentIdImage = async (side, file) => {
     if (!file) return;
     setError("");
+    setStudentIdImageErrors((current) => ({ ...current, [side]: "" }));
+    setRegStudentIdImages((current) => ({ ...current, [side]: null }));
     setProcessingIdImage(true);
     try {
+      const quality = await checkImageQuality(file);
+      if (import.meta.env.DEV) {
+        console.debug(`Student ID ${side} image blur score:`, quality.blurScore);
+      }
+      if (!quality.ok) {
+        const messages = {
+          blurry: "This photo is blurry. Please retake it.",
+          "too-dark": "This photo is too dark. Please retake it in better lighting.",
+          "too-bright": "This photo is too bright. Please reduce the glare and retake it.",
+          "too-small": "This photo is too small. Use an image at least 600 × 400 pixels.",
+          "invalid-image": "Choose a JPG, PNG, or WebP image.",
+        };
+        setStudentIdImageErrors((current) => ({
+          ...current,
+          [side]: messages[quality.reason] || "This photo could not be checked. Please retake it.",
+        }));
+        return;
+      }
+
       const image = await prepareStudentIdImage(file);
       setRegStudentIdImages((current) => ({ ...current, [side]: image }));
     } catch (imageError) {
-      setError(imageError.message);
+      setStudentIdImageErrors((current) => ({ ...current, [side]: imageError.message }));
     } finally {
       setProcessingIdImage(false);
     }
@@ -704,6 +728,22 @@ export default function Login() {
                               </>
                             )}
                           </button>
+                          {studentIdImageErrors[side] && (
+                            <div role="alert">
+                              <p className="student-id-upload-help" style={{ color: "#b91c1c", margin: "8px 0 0" }}>
+                                {studentIdImageErrors[side]}
+                              </p>
+                              <div className="student-id-modal-actions" style={{ marginTop: 8 }}>
+                                <button
+                                  type="button"
+                                  disabled={processingIdImage || loading}
+                                  onClick={() => studentIdFileInputs.current[`${side}-camera`]?.click()}
+                                >
+                                  Retake
+                                </button>
+                              </div>
+                            </div>
+                          )}
                           <div className="student-id-file-inputs">
                             <input
                               ref={(element) => { studentIdFileInputs.current[`${side}-file`] = element; }}
