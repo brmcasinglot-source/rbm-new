@@ -29,6 +29,12 @@ const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 const MAX_EVIDENCE_FILE_BYTES = 1_000_000;
 const MAX_EVIDENCE_TOTAL_BYTES = 1_800_000;
+const CASE_STATUS_FILTERS = [
+  { value: "Pending", label: "Pending", className: "filter-tab-pending" },
+  { value: "Under Investigation", label: "Under Investigation", className: "filter-tab-under-investigation" },
+  { value: "Resolved", label: "Resolved", className: "filter-tab-resolved" },
+  { value: "all", label: "All", className: "filter-tab-all" },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusIcon(status) {
@@ -112,6 +118,7 @@ export default function StudentDashboard() {
   const profileGender = localStorage.getItem("studentSex") || "";
   const profileLrn = localStorage.getItem("studentLRN") || "";
   const [activeTab,   setActiveTab]   = useState("dashboard");
+  const [caseStatusFilter, setCaseStatusFilter] = useState("Pending");
   const [language, setLanguage] = useState(() => localStorage.getItem(languagePreferenceKey) || "en");
   const [hubSearchQuery, setHubSearchQuery] = useState("");
   const [hubFilter,   setHubFilter]   = useState("all");
@@ -578,6 +585,9 @@ export default function StudentDashboard() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const myReports  = reports.filter((r) => r.submittedBy === studentName);
+  const filteredMyReports = myReports.filter((report) =>
+    caseStatusFilter === "all" || report.status === caseStatusFilter
+  );
   const conferenceList = [...myReports]
     .filter((r) => r.scheduledConference && (r.scheduledConference.date || r.scheduledConference.time || r.scheduledConference.location))
     .map((r) => {
@@ -996,37 +1006,60 @@ export default function StudentDashboard() {
                 <button className="s-submit-btn" onClick={() => setActiveTab("report")}>Submit a Report</button>
               </div>
             ) : (
-              <div className="s-case-list">
-                {myReports.map((r) => (
-                  <button
-                    type="button"
-                    className="s-panel s-case-card s-case-card-clickable"
-                    key={r.id}
-                    onClick={() => openCaseDetails(r)}
-                    aria-label={`View details for case ${r.id}, ${r.status}`}
-                  >
-                    <div className="s-case-top">
-                      <div>
-                        <span className="s-case-id">Case #{r.id}</span>
-                        <span className="s-case-type">{r.type}</span>
-                      </div>
-                      <div className="s-case-status">
-                        <span className={`s-status-badge ${r.status.toLowerCase().replace(/\s/g, "-")}`}>
-                          {statusIcon(r.status)} {r.status}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="s-case-desc">{r.description}</p>
-                    <div className="s-case-meta">
-                      <span><Calendar size={13} aria-hidden="true" /> {r.date}{r.time ? ` at ${r.time}` : ""}</span>
-                      {r.location && <span><MapPin size={13} aria-hidden="true" /> {r.location}</span>}
-                      {r.evidenceCount > 0 && (
-                        <span><Paperclip size={12} aria-hidden="true" /> {r.evidenceCount} evidence file{r.evidenceCount > 1 ? "s" : ""}</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="filter-tabs s-case-status-filters" role="group" aria-label="Filter cases by status">
+                  {CASE_STATUS_FILTERS.map(({ value, label, className }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`filter-tab ${className} ${caseStatusFilter === value ? "active" : ""}`}
+                      aria-pressed={caseStatusFilter === value}
+                      onClick={() => setCaseStatusFilter(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {filteredMyReports.length === 0 ? (
+                  <div className="s-panel s-empty-state">
+                    <Shield size={40} color="#d1fae5" />
+                    <h3>No {caseStatusFilter.toLowerCase()} cases</h3>
+                    <p>There are no cases with this status among the cases currently loaded.</p>
+                  </div>
+                ) : (
+                  <div className="s-case-list">
+                    {filteredMyReports.map((r) => (
+                      <button
+                        type="button"
+                        className="s-panel s-case-card s-case-card-clickable"
+                        key={r.id}
+                        onClick={() => openCaseDetails(r)}
+                        aria-label={`View details for case ${r.id}, ${r.status}`}
+                      >
+                        <div className="s-case-top">
+                          <div>
+                            <span className="s-case-id">Case #{r.id}</span>
+                            <span className="s-case-type">{r.type}</span>
+                          </div>
+                          <div className="s-case-status">
+                            <span className={`s-status-badge ${r.status.toLowerCase().replace(/\s/g, "-")}`}>
+                              {statusIcon(r.status)} {r.status}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="s-case-desc">{r.description}</p>
+                        <div className="s-case-meta">
+                          <span><Calendar size={13} aria-hidden="true" /> {r.date}{r.time ? ` at ${r.time}` : ""}</span>
+                          {r.location && <span><MapPin size={13} aria-hidden="true" /> {r.location}</span>}
+                          {r.evidenceCount > 0 && (
+                            <span><Paperclip size={12} aria-hidden="true" /> {r.evidenceCount} evidence file{r.evidenceCount > 1 ? "s" : ""}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
             {hasMoreReports && (
               <button type="button" className="s-submit-btn" onClick={loadMoreReports} disabled={loadingMoreReports} style={{ marginTop: 16 }}>
