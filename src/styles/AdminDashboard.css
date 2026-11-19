@@ -4510,7 +4510,7 @@
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: start;
   gap: 8px;
-  height: 200px;
+  height: 210px;
   padding: 2px 4px 0 0;
 }
 
@@ -4530,7 +4530,7 @@
   min-width: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: 176px 24px;
+  grid-template-rows: 176px 34px;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -4583,13 +4583,16 @@
 
 .analytics-grade-label {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
+  width: calc(100% - 4px);
   color: #64748b;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  white-space: nowrap;
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
 }
 
 .analytics-grade-bar {
@@ -4716,7 +4719,7 @@
     padding: 12px !important;
   }
 
-  .analytics-grade-label {
+  .analytics-grade-chart .analytics-grade-label {
     font-size: 9px;
   }
 
@@ -8199,4 +8202,196 @@
 .admin-theme .awareness-admin-page .awareness-card-actions .read-btn:hover {
   border-color: #b7d8c6;
   background: #eff8f3;
+}
+
+.admin-theme .analytics-overview .mf-filters-panel {
+  border-color: #dce9e1;
+  background: #fff;
+}
+
+.admin-theme .analytics-overview .mf-filters-panel-header {
+  border-bottom-color: #dce9e1;
+  background: #f1f8f3;
+  color: #315d43;
+}
+
+.admin-theme .analytics-overview .mf-filters-panel-count {
+  background: #07864b;
+  color: #fff;
+}
+
+.admin-theme .analytics-overview .mf-filter-row:not(.mf-dropdowns-inline):not(.mf-clear-row) {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.admin-theme .analytics-overview .mf-filter-row + .mf-filter-row {
+  border-top: 1px solid #edf2ee;
+}
+
+.admin-theme .analytics-overview .mf-filter-label {
+  min-width: 0;
+  color: #657369;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-theme .analytics-overview .analytics-chip {
+  border-color: #dfe7e0;
+  background: #fff;
+  color: #5c6b60;
+}
+
+.admin-theme .analytics-overview .analytics-chip-selection .analytics-chip::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+
+.admin-theme .analytics-overview .analytics-chip-selection:nth-of-type(1) .analytics-chip::before { background: #D6455D; }
+.admin-theme .analytics-overview .analytics-chip-selection:nth-of-type(2) .analytics-chip::before { background: #E07824; }
+.admin-theme .analytics-overview .analytics-chip-selection:nth-of-type(3) .analytics-chip::before { background: #5368D5; }
+.admin-theme .analytics-overview .analytics-chip-selection:nth-of-type(4) .analytics-chip::before { background: #159985; }
+.admin-theme .analytics-overview .analytics-chip-selection:nth-of-type(5) .analytics-chip::before { background: #C28A16; }
+.admin-theme .analytics-overview .analytics-chip-selection:nth-of-type(6) .analytics-chip::before { background: #8562C8; }
+
+.admin-theme .analytics-overview .analytics-chip-selection .analytics-chip.active {
+  border-color: #07864b;
+  background: #07864b;
+  color: #fff;
+}
+
+.admin-theme .analytics-overview .mf-status-filter-chips {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #dfe7e0;
+  border-radius: 9px;
+}
+
+.admin-theme .analytics-overview .mf-status-filter-chips .filter-tab {
+  min-height: 36px;
+  border: 0;
+  border-right: 1px solid #dfe7e0;
+  border-radius: 0;
+  background: #f8fafc;
+  color: #5c6b60;
+}
+
+.admin-theme .analytics-overview .mf-status-filter-chips .filter-tab:last-child {
+  border-right: 0;
+}
+
+.admin-theme .analytics-overview .mf-status-filter-chips .filter-tab.active {
+  border-color: #07864b;
+  background: #07864b;
+  color: #fff;
+}
+
+.admin-theme .analytics-overview .mf-dropdowns-inline {
+  border-top-color: #edf2ee;
+  background: #fff;
+}
+
+.admin-theme .analytics-overview .mf-select {
+  color-scheme: light;
+  border-color: #dfe7e0;
+  background-color: #fff;
+  color: #3e4f43;
+}
+
+.admin-theme .analytics-overview .mf-select:hover,
+.admin-theme .analytics-overview .mf-select:focus {
+  border-color: #91b49a;
+}
+
+.admin-theme .analytics-overview .mf-clear-row {
+  border-top-color: #edf2ee;
+  background: #fff;
+}
+
+.admin-theme .analytics-overview .mf-clear-filters-btn,
+.admin-theme .analytics-overview .mf-clear-filters-btn.active {
+  border-color: #d9e4da;
+  background: #fff;
+  color: #526457;
+}
+
+.admin-theme .analytics-overview .mf-clear-filters-btn.active:hover {
+  border-color: #07864b;
+  background: #edf5ef;
+  color: #386547;
+}
+
+.admin-theme .analytics-overview .mf-filters-panel-header {
+  padding: 8px 12px;
+}
+
+.admin-theme .analytics-overview .mf-filter-row:not(.mf-dropdowns-inline):not(.mf-clear-row) {
+  gap: 5px;
+  padding: 8px 12px;
+}
+
+.admin-theme .analytics-overview .mf-filter-label {
+  font-size: 11px;
+}
+
+.admin-theme .analytics-overview .mf-type-chips {
+  gap: 5px;
+}
+
+.admin-theme .analytics-overview .analytics-chip {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+.admin-theme .analytics-overview .analytics-chip-selection .analytics-chip::before {
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+}
+
+.admin-theme .analytics-overview .mf-status-filter-chips .filter-tab {
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+.admin-theme .analytics-overview .mf-dropdowns-inline {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  padding: 7px 12px;
+}
+
+.admin-theme .analytics-overview .mf-inline-field {
+  gap: 3px;
+}
+
+.admin-theme .analytics-overview .mf-select {
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.admin-theme .analytics-overview .mf-clear-row {
+  padding: 6px 12px;
+}
+
+.admin-theme .analytics-overview .mf-clear-filters-btn,
+.admin-theme .analytics-overview .mf-clear-filters-btn.active {
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .admin-theme .analytics-overview .mf-dropdowns-inline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

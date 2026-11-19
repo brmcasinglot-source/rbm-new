@@ -492,7 +492,7 @@ export default function AdminDashboard() {
   const [mfSection, setMfSection] = useState("All");
   const [mfStatus,  setMfStatus]  = useState("All");
   const [mfMonth,   setMfMonth]   = useState("All");
-  const [mfYear,    setMfYear]    = useState("All");
+  const [mfYear,    setMfYear]    = useState(() => String(new Date().getFullYear()));
   const [monthlyTypeMonth, setMonthlyTypeMonth] = useState("All");
   const [monthlyTypeYear, setMonthlyTypeYear] = useState(() => String(new Date().getFullYear()));
   const [exportTypes, setExportTypes] = useState(null);
@@ -858,7 +858,9 @@ export default function AdminDashboard() {
     : [...new Set(gradeSections
       .filter(({ grade }) => grade === mfGrade)
       .map(({ section }) => section))].sort((a, b) => a.localeCompare(b));
-  const allYears    = [...new Set(incidents.filter(r=>r.date).map(r=>new Date(r.date).getFullYear()))].sort((a,b)=>b-a);
+  const allYears    = [...new Set([new Date().getFullYear(), ...incidents
+    .filter((report) => report.date)
+    .map((report) => new Date(report.date).getFullYear())])].sort((a,b)=>b-a);
   const monthlyTypeYears = [...new Set([new Date().getFullYear(), ...allYears])].sort((a, b) => b - a);
 
   const mfFiltered = incidents.filter(r => {
@@ -2712,7 +2714,7 @@ export default function AdminDashboard() {
                           <button
                             className={`analytics-chip ${mfType.length === 0 ? "active" : ""}`}
                             onClick={() => handleMultiFilterChange(setMfType, [])}
-                          >All</button>
+                          >All types</button>
                           {mfTypes.map((type) => (
                             <span className="analytics-chip-selection" key={type}>
                               <button
@@ -2741,14 +2743,11 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Divider */}
-                      <div style={{ borderTop: "1px solid #f1f5f9", margin: "0 -2px" }} />
-
                       {/* Row: Status chips */}
-                      <div className="mf-filter-row">
+                      <div className="mf-filter-row mf-status-filter-row">
                         <span className="mf-filter-label">Status</span>
-                        <div className="mf-type-chips">
-                          {["Pending","Under Investigation","Resolved","All"].map(s => (
+                        <div className="mf-type-chips mf-status-filter-chips">
+                          {["All","Pending","Under Investigation","Resolved"].map(s => (
                             <button
                               key={s}
                               className={`filter-tab filter-tab-${s.toLowerCase().replace(/\s/g,"-")} ${mfStatus === s ? "active" : ""}`}
@@ -2757,9 +2756,6 @@ export default function AdminDashboard() {
                           ))}
                         </div>
                       </div>
-
-                      {/* Divider */}
-                      <div style={{ borderTop: "1px solid #f1f5f9", margin: "0 -2px" }} />
 
                       {/* Row 2: Dropdowns inline */}
                       <div className="mf-filter-row mf-dropdowns-inline">
@@ -2819,7 +2815,7 @@ export default function AdminDashboard() {
                             handleMultiFilterChange(setMfSection, "All");
                             handleMultiFilterChange(setMfStatus, "All");
                             handleMultiFilterChange(setMfMonth, "All");
-                            handleMultiFilterChange(setMfYear, "All");
+                            handleMultiFilterChange(setMfYear, String(new Date().getFullYear()));
                           }}
                           disabled={!mfHasFilters}
                         >
@@ -3024,7 +3020,9 @@ export default function AdminDashboard() {
                                 className="analytics-grade-bars"
                                 style={{
                                   gridTemplateColumns: `repeat(${gradeChartData.categories.length}, minmax(0, 1fr))`,
-                                  minWidth: `${Math.max(0, gradeChartData.categories.length * 70)}px`,
+                                  minWidth: gradeChartData.categories.length > 6
+                                    ? `${gradeChartData.categories.length * 60}px`
+                                    : "100%",
                                 }}
                               >
                                 {gradeChartData.categories.map(({ label, count }) => {
