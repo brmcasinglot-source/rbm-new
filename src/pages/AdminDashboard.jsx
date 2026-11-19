@@ -60,6 +60,30 @@ const ANALYTICS_TYPE_COLORS = {
 };
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+const LOCATION_DONUT_COLORS = [
+  "#3977B8",
+  "#CF6B42",
+  "#20A985",
+  "#D79A22",
+  "#9A9DA1",
+  "#C84B59",
+  "#5368D5",
+];
+
+function getLocationDonutGradient(entries, total) {
+  if (!entries.length || total <= 0) return "#25303a";
+
+  let cursor = 0;
+  const stops = entries.map(([location, count], index) => {
+    const start = cursor;
+    cursor += (count / total) * 100;
+    const color = LOCATION_DONUT_COLORS[index % LOCATION_DONUT_COLORS.length];
+    return `${color} ${start}% ${cursor}%`;
+  });
+
+  return `conic-gradient(${stops.join(", ")})`;
+}
+
 async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -445,6 +469,7 @@ export default function AdminDashboard() {
   // Location Breakdown pagination
   const LOCATION_PAGE_SIZE = 7;
   const [locationPage, setLocationPage] = useState(0);
+  const [locationZoneFilter, setLocationZoneFilter] = useState("all");
 
   // Incident Records table pagination (Analytics tab)
   const RECORDS_PAGE_SIZE = 10;
@@ -890,6 +915,22 @@ export default function AdminDashboard() {
     () => mfTypes.map((t) => mfFiltered.filter((r) => r.type === t).length),
     [mfFiltered, mfTypes]
   );
+  const gradeBreakdownData = useMemo(() => {
+    const counts = GRADE_OPTIONS.map((grade) => ({
+      grade,
+      count: mfFiltered.filter((report) => report.reporterGrade === grade).length,
+    }));
+    const total = counts.reduce((sum, item) => sum + item.count, 0);
+    const highest = counts.reduce(
+      (current, item) => item.count > current.count ? item : current,
+      counts[0] || { grade: "", count: 0 }
+    );
+    const maxCount = Math.max(0, ...counts.map((item) => item.count));
+    const step = maxCount <= 10 ? 2 : maxCount <= 20 ? 5 : maxCount <= 50 ? 10 : Math.ceil(maxCount / 5);
+    const axisMax = Math.max(step, Math.ceil((maxCount * 1.25) / step) * step);
+    const ticks = Array.from({ length: Math.floor(axisMax / step) + 1 }, (_, index) => axisMax - index * step);
+    return { grades: counts, total, highest, axisMax, ticks };
+  }, [mfFiltered]);
   const mfChartColors = useMemo(() => ["#D6455D", "#E07824", "#5368D5", "#159985", "#C28A16", "#8562C8"], []);
 
   const mfTopIdx   = mfChartData.indexOf(Math.max(...mfChartData));
@@ -2765,98 +2806,88 @@ export default function AdminDashboard() {
                       >Add Place</button>
                     </div>
 
-                    {/* Zone legend */}
-                    <div className="analytics-zone-legend">
-                      <span className="analytics-zone-chip inside">Inside School</span>
-                      <span className="analytics-zone-chip outside">Outside / Other</span>
+                    <div className="analytics-location-tabs" role="tablist" aria-label="Location zone filter">
+                      {[
+                        ["all", "All"],
+                        ["inside", "Inside School"],
+                        ["outside", "Outside / Other"],
+                      ].map(([zone, label]) => (
+                        <button
+                          key={zone}
+                          type="button"
+                          role="tab"
+                          aria-selected={locationZoneFilter === zone}
+                          className={locationZoneFilter === zone ? "active" : ""}
+                          onClick={() => {
+                            setLocationZoneFilter(zone);
+                            setLocationPage(0);
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
                     </div>
-
-                    {/* Custom places are grouped by their configured zone. */}
-                    {customLocations.length > 0 && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 8 }}>
-                        {["inside", "outside"].map((zone) => {
-                          const zoneLocations = customLocations.filter((loc) =>
-                            (loc.zone === "outside" ? "outside" : "inside") === zone
-                          );
-                          if (zoneLocations.length === 0) return null;
-                          const colors = ANALYTICS_LOCATION_COLORS[zone];
-                          return (
-                            <div key={zone}>
-                              <p style={{ color: colors.text, fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
-                                Custom places — {zone === "outside" ? "Outside / Other" : "Inside School"}
-                              </p>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                {zoneLocations.map((loc) => (
-                                  <span key={loc.key} style={{
-                                    display: "inline-flex", alignItems: "center", gap: 5,
-                                    fontSize: 10.5, fontWeight: 700, padding: "3px 6px 3px 9px", borderRadius: 20,
-                                    background: colors.soft,
-                                    color: colors.text,
-                                    border: `1px solid ${colors.border}`,
-                                  }}>
-                                    {loc.key}
-                                    <button
-                                      onClick={() => handleDeleteLocation(loc.key)}
-                                      aria-label={`Remove ${loc.key}`}
-                                      style={{
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        width: 16, height: 16, borderRadius: "50%", border: "none",
-                                        background: "rgba(0,0,0,0.08)", color: "inherit", cursor: "pointer", padding: 0,
-                                      }}
-                                    ><X size={10} /></button>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
 
                     {locationSorted.length === 0 ? (
                       <p style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.6 }}>
                         No location data yet. Students need to include a location when submitting a report.
                       </p>
                     ) : (() => {
-                      const locationTotalPages = Math.max(1, Math.ceil(locationSorted.length / LOCATION_PAGE_SIZE));
+                      const filteredLocations = locationSorted.filter(([loc]) => {
+                        if (locationZoneFilter === "all") return true;
+                        const meta = allLocationMeta.find((item) => item.key === loc);
+                        const zone = meta?.zone || "inside";
+                        return zone === locationZoneFilter;
+                      });
+                      const filteredTotal = filteredLocations.reduce((sum, [, count]) => sum + count, 0);
+                      const locationTotalPages = Math.max(1, Math.ceil(filteredLocations.length / LOCATION_PAGE_SIZE));
                       const locPage = Math.min(locationPage, locationTotalPages - 1);
-                      const locationPageItems = locationSorted.slice(
+                      const locationPageItems = filteredLocations.slice(
                         locPage * LOCATION_PAGE_SIZE,
                         locPage * LOCATION_PAGE_SIZE + LOCATION_PAGE_SIZE
                       );
+                      const visibleLocations = filteredLocations;
+
+                      if (filteredLocations.length === 0) {
+                        return (
+                          <p style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.6 }}>
+                            No incidents match this location filter.
+                          </p>
+                        );
+                      }
+
                       return (
                         <>
-                          <div className="breakdown-list">
-                            {locationPageItems.map(([loc, count]) => {
-                              const pct   = Math.round((count / incidents.length) * 100);
-                              const meta  = allLocationMeta.find((m) => m.key === loc);
-                              const zone  = meta?.zone  || "inside";
-                              const colors = ANALYTICS_LOCATION_COLORS[zone === "outside" ? "outside" : "inside"];
-                              return (
-                                <div className="bk-row" key={loc}>
-                                  <div className="bk-top">
-                                    <span className="bk-label">
-                                      {loc}
-                                      {zone === "outside" && (
-                                        <span style={{
-                                          marginLeft: 6, fontSize: 10, fontWeight: 700,
-                                          color: ANALYTICS_LOCATION_COLORS.outside.text,
-                                          background: ANALYTICS_LOCATION_COLORS.outside.soft,
-                                          padding: "1px 6px", borderRadius: 8,
-                                        }}>Outside</span>
-                                      )}
-                                    </span>
-                                    <span className="bk-stats">
-                                      <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
-                                      <span className="bk-pct" style={{ color: colors.text }}>{pct}%</span>
+                          <div className="analytics-location-donut-layout">
+                            <div
+                              className="analytics-location-donut"
+                              style={{ background: getLocationDonutGradient(visibleLocations, filteredTotal) }}
+                              aria-label={`${filteredTotal} incidents`}
+                            >
+                              <div className="analytics-location-donut-center">
+                                <strong>{filteredTotal}</strong>
+                                <span>Incidents</span>
+                              </div>
+                            </div>
+                            <div className="analytics-location-donut-legend">
+                              {locationPageItems.map(([loc, count]) => {
+                                const pct = filteredTotal > 0 ? Math.round((count / filteredTotal) * 100) : 0;
+                                const locationIndex = filteredLocations.findIndex(([key]) => key === loc);
+                                return (
+                                  <div className="analytics-location-legend-row" key={loc}>
+                                    <span
+                                      className="analytics-location-legend-dot"
+                                      style={{ background: LOCATION_DONUT_COLORS[locationIndex % LOCATION_DONUT_COLORS.length] }}
+                                    />
+                                    <span className="analytics-location-legend-name">{loc}</span>
+                                    <span className="analytics-location-legend-stats">
+                                      <strong>{count}</strong>
+                                      <span>{pct}%</span>
                                     </span>
                                   </div>
-                                  <div className="bk-track">
-                                    <div className="bk-fill" style={{ width: `${pct}%`, background: colors.bar }} />
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
                           {locationTotalPages > 1 && (
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 14, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
@@ -2891,22 +2922,83 @@ export default function AdminDashboard() {
 
                     {/* Prefect Hotspot Alert */}
                     {topLocation && (
-                      <div style={{
-                        marginTop: 10, padding: "9px 11px", borderRadius: 9,
-                        background: ANALYTICS_LOCATION_COLORS.outside.soft,
-                        border: `1px solid ${ANALYTICS_LOCATION_COLORS.outside.border}`,
-                      }}>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: ANALYTICS_LOCATION_COLORS.outside.text }}>
-                            Prefect Hotspot Alert
-                          </p>
-                          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#70474A", lineHeight: 1.5 }}>
-                            <strong>{topLocation}</strong> has the most reported incidents ({locationCounts[topLocation]}).
-                            Deploy prefects or increase monitoring in this area.
-                          </p>
-                        </div>
+                      <div className="analytics-hotspot-alert">
+                        <p>
+                          <strong>{topLocation}</strong> has the most reported incidents ({locationCounts[topLocation]}).
+                          Deploy prefects or increase monitoring in this area.
+                        </p>
                       </div>
                     )}
+                    </div>
+
+                    <div className="card-panel analytics-grade-panel">
+                      <div className="analytics-grade-header">
+                        <div className="analytics-grade-title">
+                          <span className="analytics-grade-icon"><FileBarChart size={18} /></span>
+                          <div className="title-group">
+                            <h3>Incidents by Grade Level</h3>
+                            <p className="panel-subtitle">Reported incidents per grade level</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {gradeBreakdownData.total > 0 ? (
+                        <>
+                          <div className="analytics-grade-chart" role="img" aria-label={`${gradeBreakdownData.total} incidents by grade level`}>
+                            <div className="analytics-grade-y-axis" aria-hidden="true">
+                              {gradeBreakdownData.ticks.map((tick) => <span key={tick}>{tick}</span>)}
+                            </div>
+                            <div className="analytics-grade-plot">
+                              <div className="analytics-grade-bars">
+                                {gradeBreakdownData.grades.map(({ grade, count }) => {
+                                  const barHeight = (count / gradeBreakdownData.axisMax) * 100;
+                                  const isHighest = count > 0 && count === gradeBreakdownData.highest.count;
+                                  return (
+                                    <div className="analytics-grade-column" key={grade}>
+                                      <div
+                                        className="analytics-grade-bar-label"
+                                        style={{ bottom: `calc(${barHeight}% + 5px)` }}
+                                      >
+                                        <strong>{count}</strong>
+                                      </div>
+                                      <div
+                                        className={`analytics-grade-bar${isHighest ? " is-highest" : ""}`}
+                                        style={{ height: `${barHeight}%` }}
+                                      />
+                                      <span className={`analytics-grade-label${isHighest ? " is-highest" : ""}`}>{grade}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="analytics-grade-gridlines" aria-hidden="true">
+                                {gradeBreakdownData.ticks.map((tick, index) => (
+                                  <span key={tick} style={{ top: `${(index / (gradeBreakdownData.ticks.length - 1)) * 100}%` }} />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="analytics-grade-footer">
+                            <div className="analytics-grade-insight">
+                              <p>
+                                <strong>Key Insight</strong>
+                                <span>
+                                  {gradeBreakdownData.highest.count > 0
+                                  ? `${gradeBreakdownData.highest.grade} leads: ${gradeBreakdownData.highest.count} reports.`
+                                  : "No incidents match the current filters."}
+                                </span>
+                              </p>
+                            </div>
+                            <div className="analytics-grade-total">
+                              <span>Total Incidents</span>
+                              <strong>{gradeBreakdownData.total}</strong>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="analytics-grade-empty">
+                          No incidents found for this level.
+                        </div>
+                      )}
                     </div>
                   </div>
 
