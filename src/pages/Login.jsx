@@ -280,7 +280,7 @@ export default function Login() {
     setMode("login");
     setPassword("");
     setVerifyCode("");
-    setSuccess("Email verified. An admin still needs to approve your account before you can sign in.");
+    setSuccess("Email verified. Your student account is approved. You can now sign in.");
     window.history.replaceState({}, document.title, window.location.pathname);
   };
 
@@ -313,7 +313,7 @@ export default function Login() {
       if (requestId !== lrnCheckRequestId.current) return false;
 
       if (taken) {
-        const message = "This LRN is already registered. Please sign in with the existing account or contact the school for help.";
+        const message = "An account already exists for this student ID. Please sign in or contact the school for help.";
         setLrnCheckStatus("taken");
         setLrnCheckMessage(message);
         setError(message);
@@ -384,6 +384,7 @@ export default function Login() {
           );
           setRegSection(matchingSection?.section || "");
         }
+        await checkStudentLrnAvailability(scan.lrn);
       }
     } catch (imageError) {
       setStudentIdImageErrors((current) => ({ ...current, [side]: imageError.message }));

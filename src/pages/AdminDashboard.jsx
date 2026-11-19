@@ -3248,7 +3248,7 @@ export default function AdminDashboard() {
               <div className="title-group account-section-heading">
                 <h3>Account Confirmations</h3>
                 <p className="panel-subtitle">
-                  Verified student sign-ups land here — approve or decline before they can log in.
+                  Older pending accounts remain here for review. New sign-ups are approved after ID and email verification.
                 </p>
               </div>
 
