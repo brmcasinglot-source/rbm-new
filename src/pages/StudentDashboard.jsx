@@ -8,7 +8,7 @@ import bg   from "../assets/cnhs.jpg";
 import {
   LayoutDashboard, FileText, Shield, BookOpen, User, Image,
   ExternalLink, Upload, HelpCircle, Lock, Bell,
-  CheckCircle, Clock, AlertTriangle, ArrowUpRight, X, Paperclip,
+  CheckCircle, Clock, AlertTriangle, X, Paperclip,
   Eye, Play, AlertCircle, Calendar, Send,
   Menu, ChevronDown, LogOut, MapPin,
 } from "lucide-react";

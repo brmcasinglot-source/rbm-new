@@ -1331,7 +1331,6 @@ export async function downloadStudentOffenseRecords(records, format) {
       AlignmentType,
       BorderStyle,
       Document,
-      HeadingLevel,
       Packer,
       Paragraph,
       Table,

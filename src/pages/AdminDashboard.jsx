@@ -28,7 +28,7 @@ import {
   updateConferenceSchedule, cancelConference,
   getAwarenessContent, addAwarenessContent, updateAwarenessContent, deleteAwarenessContent,
   getAdminNotifications, markAdminNotifRead, markAllAdminNotifRead,
-  LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
+  LOCATION_META, getCustomLocations, addCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection,
   GRADE_OPTIONS,
   getStudentAccounts,
@@ -46,10 +46,6 @@ import { getYouTubeThumbnail } from "../lib/videoUtils";
 const DASHBOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
 const ACCOUNT_PAGE_SIZE = 25;
-const ANALYTICS_LOCATION_COLORS = {
-  inside: { bar: "#3977B8", text: "#285B91", soft: "#EEF5FD", border: "#C9DDF2" },
-  outside: { bar: "#C84B59", text: "#A63846", soft: "#FFF1F2", border: "#F0CDD1" },
-};
 const ANALYTICS_TYPE_COLORS = {
   Physical: "#d6455d",
   Verbal: "#e07824",
@@ -71,10 +67,10 @@ const LOCATION_DONUT_COLORS = [
 ];
 
 function getLocationDonutGradient(entries, total) {
-  if (!entries.length || total <= 0) return "#25303a";
+  if (!Array.isArray(entries) || entries.length === 0 || total <= 0) return "#25303a";
 
   let cursor = 0;
-  const stops = entries.map(([location, count], index) => {
+  const stops = entries.map(([, count], index) => {
     const start = cursor;
     cursor += (count / total) * 100;
     const color = LOCATION_DONUT_COLORS[index % LOCATION_DONUT_COLORS.length];
@@ -313,14 +309,6 @@ function cleanDisplayValue(value) {
   const cleaned = value == null ? "" : String(value).trim();
   return cleaned && cleaned.toLowerCase() !== "none" ? cleaned : "";
 }
-function hexToRgba(hex, alpha = 1) {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.length === 3 ? h[0] + h[0] : h.substring(0, 2), 16);
-  const g = parseInt(h.length === 3 ? h[1] + h[1] : h.substring(2, 4), 16);
-  const b = parseInt(h.length === 3 ? h[2] + h[2] : h.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
 const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
 const EXPORT_OFFENSE_TYPES = ["Verbal", "Physical", "Social", "Cyber"];
@@ -372,7 +360,7 @@ function ExportChecklist({ title, options, selected, setSelected, className = ""
 
 function getLocationCounts(reports, customLocations = []) {
   const counts = {};
-  reports.forEach((r) => {
+  (Array.isArray(reports) ? reports : []).forEach((r) => {
     const loc = r.location || "Other";
     const lower = loc.toLowerCase();
 
@@ -1166,7 +1154,7 @@ export default function AdminDashboard() {
       },
     });
     return () => { if (chartInstanceRef.current) { chartInstanceRef.current.destroy(); chartInstanceRef.current = null; } };
-  }, [activeTab, mfType, mfGrade, mfGender, mfSection, mfStatus, incidents, mfChartColors, mfChartData]);
+  }, [activeTab, mfType, mfGrade, mfGender, mfSection, mfStatus, incidents, mfFiltered, mfTypes, mfChartColors, mfChartData]);
 
   const mfActiveTags = [
     ...mfType.map((type) => ({
@@ -1580,12 +1568,6 @@ export default function AdminDashboard() {
     setCustomLocations(await getCustomLocations());
     setShowLocationModal(false);
     showToast(`"${result.location.key}" added to Location Breakdown.`);
-  };
-
-  const handleDeleteLocation = async (key) => {
-    if (!window.confirm(`Remove "${key}" from custom places?`)) return;
-    await deleteCustomLocation(key);
-    setCustomLocations(await getCustomLocations());
   };
 
   const handleAddSection = async () => {
