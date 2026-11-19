@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Chart, BarController, BarElement, LineController, LineElement, PointElement,
-  CategoryScale, LinearScale, Tooltip, Filler,
+  Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip,
 } from "chart.js";
 import "../styles/StudentDashboard.css";
 import "../styles/AdminDashboard.css";
 
 Chart.register(
-  BarController, BarElement, LineController, LineElement, PointElement,
-  CategoryScale, LinearScale, Tooltip, Filler
+  BarController, BarElement, CategoryScale, LinearScale, Tooltip
 );
 
 import logo from "../assets/logo.png";
@@ -53,6 +51,15 @@ const ANALYTICS_LOCATION_COLORS = {
   inside: { bar: "#3977B8", text: "#285B91", soft: "#EEF5FD", border: "#C9DDF2" },
   outside: { bar: "#C84B59", text: "#A63846", soft: "#FFF1F2", border: "#F0CDD1" },
 };
+const ANALYTICS_TYPE_COLORS = {
+  Physical: "#d6455d",
+  Verbal: "#e07824",
+  Cyber: "#5368d5",
+  Social: "#159985",
+  Property: "#c28a16",
+  Others: "#8562c8",
+};
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -113,28 +120,6 @@ function formatReportNumber(id) {
     : String(id ?? "—");
 }
 
-/** Returns last N months as { label, count } from reports */
-function getMonthlyTrend(reports, n = 6) {
-  const months = [];
-  const now = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      label: d.toLocaleString("default", { month: "short" }),
-      year:  d.getFullYear(),
-      month: d.getMonth(),
-      count: 0,
-    });
-  }
-  reports.forEach((r) => {
-    if (!r.date) return;
-    const d = new Date(r.date);
-    const slot = months.find((m) => m.year === d.getFullYear() && m.month === d.getMonth());
-    if (slot) slot.count++;
-  });
-  return months;
-}
-
 /** Recommendation text based on dominant type */
 function getRecommendations(typeCounts, total) {
   if (total === 0) return ["No incidents on record yet. Keep monitoring.", "Promote the Awareness Hub resources.", "Encourage students to report anonymously."];
@@ -157,6 +142,105 @@ function getRecommendations(typeCounts, total) {
   if (total >= 5) recs.push("High volume of reports — consider forming a dedicated Student Safety Committee.");
   recs.push("Update the Awareness Hub with targeted resources matching current incident trends.");
   return recs;
+}
+
+function MonthlyTypeBreakdown({
+  monthlyTypeData,
+  month,
+  year,
+  years,
+  onMonthChange,
+  onYearChange,
+  className = "",
+}) {
+  return (
+    <section className={["card-panel", "analytics-monthly-types", className].filter(Boolean).join(" ")}>
+      <div className="analytics-monthly-types-header">
+        <div className="title-group">
+          <h3>Incidents by Type &amp; Month</h3>
+          <p className="panel-subtitle">
+            {monthlyTypeData.total} incident{monthlyTypeData.total !== 1 ? "s" : ""} in the selected period
+          </p>
+        </div>
+        <div className="analytics-monthly-types-filters">
+          <label>
+            <span>Month</span>
+            <select
+              className="mf-select"
+              aria-label="Filter monthly type analytics by month"
+              value={month}
+              onChange={(event) => onMonthChange(event.target.value)}
+            >
+              <option value="All">All months</option>
+              {MONTH_NAMES.map((monthName) => <option key={monthName} value={monthName}>{monthName}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Year</span>
+            <select
+              className="mf-select"
+              aria-label="Filter monthly type analytics by year"
+              value={year}
+              onChange={(event) => onYearChange(event.target.value)}
+            >
+              <option value="All">All years</option>
+              {years.map((yearOption) => <option key={yearOption} value={yearOption}>{yearOption}</option>)}
+            </select>
+          </label>
+        </div>
+      </div>
+      <div className="analytics-monthly-types-table-wrap">
+        <table className="analytics-monthly-types-table">
+          <thead>
+            <tr>
+              <th scope="col">Type</th>
+              {monthlyTypeData.monthIndexes.map((monthIndex) => (
+                <th scope="col" key={monthIndex}>{MONTH_NAMES[monthIndex].slice(0, 3)}</th>
+              ))}
+              <th scope="col">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monthlyTypeData.rows.map(({ type, byMonth, total }) => (
+              <tr key={type}>
+                <th scope="row">
+                  <span className="analytics-monthly-type-name">
+                    <span style={{ backgroundColor: ANALYTICS_TYPE_COLORS[type] }} />
+                    {type}
+                  </span>
+                </th>
+                {byMonth.map((count, index) => {
+                  const intensity = count === 0
+                    ? 0
+                    : 0.08 + (count / Math.max(1, monthlyTypeData.maxMonthTotal)) * 0.2;
+                  return (
+                    <td key={`${type}-${monthlyTypeData.monthIndexes[index]}`}>
+                      <span
+                        className={`analytics-monthly-type-count${count > 0 ? " has-count" : ""}`}
+                        style={count > 0 ? { backgroundColor: `rgba(7, 134, 75, ${intensity})` } : undefined}
+                      >{count}</span>
+                    </td>
+                  );
+                })}
+                <td className="analytics-monthly-types-total">
+                  <strong>{total}</strong>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              {monthlyTypeData.totalsByMonth.map((count, index) => (
+                <td key={`total-${monthlyTypeData.monthIndexes[index]}`}>{count}</td>
+              ))}
+              <td>{monthlyTypeData.total}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  );
 }
 
 // ─── Time formatter: "17:00" → "5:00 PM" ─────────────────────────────────────
@@ -205,16 +289,6 @@ function hexToRgba(hex, alpha = 1) {
   const b = parseInt(h.length === 3 ? h[2] + h[2] : h.substring(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
-
-// ─── Inline Donut / Progress bars ─────────────────────────────────────────────
-const TYPE_COLORS = {
-  Physical: "#C83F4B",
-  Verbal:   "#C66A08",
-  Cyber:    "#3F5FE0",
-  Social:   "#078773",
-  Property: "#9B6900",
-  Others:   "#7950C4",
-};
 
 const EXPORT_INCIDENT_TYPES = ["Physical", "Verbal", "Cyber", "Social", "Property", "Others"];
 const EXPORT_STATUSES = ["Pending", "Under Investigation", "Resolved"];
@@ -365,10 +439,6 @@ export default function AdminDashboard() {
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [conferenceActionSaving, setConferenceActionSaving] = useState(false);
 
-  // Keep the common incident types visible together while retaining paging for custom types.
-  const TYPE_BREAKDOWN_PAGE_SIZE = 6;
-  const [typeBreakdownPage, setTypeBreakdownPage] = useState(0);
-
   // Incidents tab pagination
   const INCIDENTS_PAGE_SIZE = 6;
   const [incidentsPage, setIncidentsPage] = useState(0);
@@ -391,6 +461,8 @@ export default function AdminDashboard() {
   const [mfStatus,  setMfStatus]  = useState("All");
   const [mfMonth,   setMfMonth]   = useState("All");
   const [mfYear,    setMfYear]    = useState("All");
+  const [monthlyTypeMonth, setMonthlyTypeMonth] = useState("All");
+  const [monthlyTypeYear, setMonthlyTypeYear] = useState(() => String(new Date().getFullYear()));
   const [exportTypes, setExportTypes] = useState(null);
   const [exportStatuses, setExportStatuses] = useState(null);
   const [exportGradeFilter, setExportGradeFilter] = useState(null);
@@ -421,8 +493,6 @@ export default function AdminDashboard() {
   const exportOffenseRequestRef = useRef(0);
   const chartCanvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
-  const trendCanvasRef = useRef(null);
-  const trendChartInstanceRef = useRef(null);
 
   // Awareness modal
   const [showAwarenessModal, setShowAwarenessModal] = useState(false);
@@ -745,9 +815,7 @@ export default function AdminDashboard() {
   const selectedConferenceRequest = selectedConference.request;
 
   const typeCounts  = getTypeCounts(incidents);
-  const monthlyData = useMemo(() => getMonthlyTrend(incidents, 6), [incidents]);
   const recs        = getRecommendations(typeCounts, incidents.length);
-  const totalSorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
 
   const locationCounts = getLocationCounts(incidents, customLocations);
   const allLocationMeta = [...LOCATION_META, ...customLocations];
@@ -797,7 +865,7 @@ export default function AdminDashboard() {
       .filter(({ grade }) => grade === mfGrade)
       .map(({ section }) => section))].sort((a, b) => a.localeCompare(b));
   const allYears    = [...new Set(incidents.filter(r=>r.date).map(r=>new Date(r.date).getFullYear()))].sort((a,b)=>b-a);
-  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const monthlyTypeYears = [...new Set([new Date().getFullYear(), ...allYears])].sort((a, b) => b - a);
 
   const mfFiltered = incidents.filter(r => {
     const d = r.date ? new Date(r.date) : null;
@@ -827,6 +895,36 @@ export default function AdminDashboard() {
   });
 
   const mfTypes = useMemo(() => ["Physical","Verbal","Cyber","Social","Property","Others"], []);
+  const monthlyTypeData = useMemo(() => {
+    const monthIndexes = monthlyTypeMonth === "All"
+      ? MONTH_NAMES.map((_, index) => index)
+      : [MONTH_NAMES.indexOf(monthlyTypeMonth)];
+    const counts = mfTypes.map((type) => {
+      const byMonth = monthIndexes.map((monthIndex) => incidents.filter((report) => {
+        if (!report.date) return false;
+        const date = new Date(report.date);
+        return !Number.isNaN(date.getTime()) &&
+          (monthlyTypeYear === "All" || date.getFullYear().toString() === monthlyTypeYear) &&
+          date.getMonth() === monthIndex &&
+          (report.type || "Others") === type;
+      }).length);
+      return { type, byMonth, total: byMonth.reduce((sum, count) => sum + count, 0) };
+    });
+    const totalsByMonth = monthIndexes.map((monthIndex) => incidents.filter((report) => {
+      if (!report.date) return false;
+      const date = new Date(report.date);
+      return !Number.isNaN(date.getTime()) &&
+        (monthlyTypeYear === "All" || date.getFullYear().toString() === monthlyTypeYear) &&
+        date.getMonth() === monthIndex;
+    }).length);
+    return {
+      monthIndexes,
+      rows: counts,
+      totalsByMonth,
+      total: totalsByMonth.reduce((sum, count) => sum + count, 0),
+      maxMonthTotal: Math.max(0, ...totalsByMonth),
+    };
+  }, [incidents, mfTypes, monthlyTypeMonth, monthlyTypeYear]);
   const mfChartData = useMemo(
     () => mfTypes.map((t) => mfFiltered.filter((r) => r.type === t).length),
     [mfFiltered, mfTypes]
@@ -995,84 +1093,6 @@ export default function AdminDashboard() {
     });
     return () => { if (chartInstanceRef.current) { chartInstanceRef.current.destroy(); chartInstanceRef.current = null; } };
   }, [activeTab, mfType, mfGrade, mfGender, mfSection, mfStatus, incidents, mfChartColors, mfChartData]);
-
-  // ── Chart.js modern area/line trend chart (Dashboard tab) ────────────────
-  useEffect(() => {
-    if (activeTab !== "dashboard") return;
-    const canvas = trendCanvasRef.current;
-    if (!canvas) return;
-    if (trendChartInstanceRef.current) { trendChartInstanceRef.current.destroy(); trendChartInstanceRef.current = null; }
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.05)";
-    const tickColor = isDark ? "#a1a1aa" : "#64748b";
-    const accent = "#07864B";
-
-    trendChartInstanceRef.current = new Chart(canvas, {
-      type: "line",
-      data: {
-        labels: monthlyData.map((m) => m.label),
-        datasets: [{
-          data: monthlyData.map((m) => m.count),
-          borderColor: accent,
-          borderWidth: 2.5,
-          pointBackgroundColor: "#ffffff",
-          pointBorderColor: accent,
-          pointBorderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          pointHoverBackgroundColor: accent,
-          pointHoverBorderColor: "#ffffff",
-          tension: 0.4,
-          fill: true,
-          backgroundColor: (ctx) => {
-            const { chart } = ctx;
-            const { ctx: c, chartArea } = chart;
-            if (!chartArea) return "rgba(7,134,75,0.12)";
-            const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            gradient.addColorStop(0, "rgba(7,134,75,0.2)");
-            gradient.addColorStop(1, "rgba(7,134,75,0)");
-            return gradient;
-          },
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        layout: { padding: { top: 16, right: 8 } },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            enabled: true,
-            backgroundColor: isDark ? "#1f2937" : "#0f172a",
-            titleColor: "#fff",
-            bodyColor: "#e2e8f0",
-            padding: 10,
-            cornerRadius: 10,
-            displayColors: false,
-            titleFont: { size: 12, weight: "700", family: "Nunito" },
-            bodyFont: { size: 12, family: "Nunito" },
-            callbacks: {
-              label: (ctx) => `${ctx.parsed.y} incident${ctx.parsed.y !== 1 ? "s" : ""}`,
-            },
-          },
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            border: { display: false },
-            ticks: { color: tickColor, font: { size: 12, weight: "600" } },
-          },
-          y: {
-            grid: { color: gridColor, drawTicks: false },
-            border: { display: false },
-            ticks: { color: tickColor, font: { size: 11 }, precision: 0, maxTicksLimit: 5 },
-            beginAtZero: true,
-          },
-        },
-        animation: { duration: 500, easing: "easeOutQuart" },
-      },
-    });
-    return () => { if (trendChartInstanceRef.current) { trendChartInstanceRef.current.destroy(); trendChartInstanceRef.current = null; } };
-  }, [activeTab, incidents, monthlyData]);
 
   const mfActiveTags = [
     ...mfType.map((type) => ({
@@ -1853,95 +1873,16 @@ export default function AdminDashboard() {
 
                 {/* Charts Row */}
                 <div className="db-grid-chart">
-                  {/* Monthly Trend */}
-                  <div className="card-panel dashboard-chart-card">
-                    <div className="panel-header-flex">
-                      <div className="title-group">
-                        <h3>Monthly Incident Trend</h3>
-                        <p className="panel-subtitle">Reports submitted per month (last 6 months)</p>
-                      </div>
-                    </div>
-                    <div className="chart-canvas-wrap" style={{ height: 180 }}>
-                      <canvas ref={trendCanvasRef} role="img" aria-label="Line chart showing monthly incident trend" />
-                    </div>
-                    <div className="mini-stats-row dashboard-mini-stats">
-                      <div className="mini-stat">
-                        <span className="mini-stat-val">
-                          {Math.max(...monthlyData.map((m) => m.count))}
-                        </span>
-                        <span className="mini-stat-label">Peak month</span>
-                      </div>
-                      <div className="mini-stat">
-                        <span className="mini-stat-val">
-                          {incidents.length}
-                        </span>
-                        <span className="mini-stat-label">Total reports</span>
-                      </div>
-                      <div className="mini-stat">
-                        <span className="mini-stat-val">
-                          {monthlyData[monthlyData.length - 1].count}
-                        </span>
-                        <span className="mini-stat-label">This month</span>
-                      </div>
-                    </div>
-                  </div>
+                  <MonthlyTypeBreakdown
+                    className="dashboard-chart-card"
+                    monthlyTypeData={monthlyTypeData}
+                    month={monthlyTypeMonth}
+                    year={monthlyTypeYear}
+                    years={monthlyTypeYears}
+                    onMonthChange={setMonthlyTypeMonth}
+                    onYearChange={setMonthlyTypeYear}
+                  />
 
-                  {/* Type Breakdown */}
-                  <div className="card-panel dashboard-chart-card dashboard-breakdown-card">
-                    <div className="title-group" style={{ marginBottom: 16 }}>
-                      <h3>Incident Type Breakdown</h3>
-                      <p className="panel-subtitle">Distribution of all reported cases</p>
-                    </div>
-                    {totalSorted.length === 0 ? (
-                      <p style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.6 }}>
-                        No incidents reported yet — this breakdown will fill in automatically as reports come in.
-                      </p>
-                    ) : (() => {
-                      const typeTotalPages = Math.max(1, Math.ceil(totalSorted.length / TYPE_BREAKDOWN_PAGE_SIZE));
-                      const typePage = Math.min(typeBreakdownPage, typeTotalPages - 1);
-                      const typePageItems = totalSorted.slice(
-                        typePage * TYPE_BREAKDOWN_PAGE_SIZE,
-                        typePage * TYPE_BREAKDOWN_PAGE_SIZE + TYPE_BREAKDOWN_PAGE_SIZE
-                      );
-                      return (
-                        <>
-                          <div className="breakdown-list">
-                            {typePageItems.map(([type, count]) => {
-                              const pct = Math.round((count / incidents.length) * 100);
-                              const color = TYPE_COLORS[type] || "#68736B";
-                              return (
-                                <div className="bk-row" key={type}>
-                                  <div className="bk-top">
-                                    <span className="bk-label"><span className="bk-dot" style={{ background: color }} />{type}</span>
-                                    <span className="dashboard-breakdown-stats">
-                                      <span className="bk-count">{count} incident{count !== 1 ? "s" : ""}</span>
-                                      <span className="bk-pct" style={{ color }}>{pct}%</span>
-                                    </span>
-                                  </div>
-                                  <div className="bk-track"><div className="bk-fill" style={{ width: `${pct}%`, background: color }} /></div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {typeTotalPages > 1 && (
-                            <div className="dashboard-type-pagination">
-                              <button
-                                onClick={() => setTypeBreakdownPage((p) => Math.max(0, p - 1))}
-                                disabled={typePage === 0}
-                              ><ChevronLeft size={14} /> Prev</button>
-                              <span>
-                                Page {typePage + 1} of {typeTotalPages}
-                              </span>
-                              <button
-                                onClick={() => setTypeBreakdownPage((p) => Math.min(typeTotalPages - 1, p + 1))}
-                                disabled={typePage === typeTotalPages - 1}
-                              >Next <ChevronRight size={14} /></button>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
                 </div>
 
                 {/* Recent incidents table */}
@@ -2919,8 +2860,18 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Location Breakdown card */}
-                  <div className="card-panel analytics-location-panel">
+                  <div className="analytics-right-column">
+                    <MonthlyTypeBreakdown
+                      monthlyTypeData={monthlyTypeData}
+                      month={monthlyTypeMonth}
+                      year={monthlyTypeYear}
+                      years={monthlyTypeYears}
+                      onMonthChange={setMonthlyTypeMonth}
+                      onYearChange={setMonthlyTypeYear}
+                    />
+
+                    {/* Location Breakdown card */}
+                    <div className="card-panel analytics-location-panel">
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                       <div className="title-group" style={{ marginBottom: 0 }}>
                         <h3>Location Breakdown</h3>
@@ -3074,6 +3025,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     )}
+                    </div>
                   </div>
 
                 </div>

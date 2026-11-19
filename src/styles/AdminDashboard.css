@@ -1216,110 +1216,6 @@
   font-size: 11.5px;
 }
 
-.dashboard-mini-stats {
-  margin-top: 16px !important;
-  padding-top: 12px;
-  border-top: 1px solid #e7ece8;
-}
-
-.dashboard-mini-stats .mini-stat-val {
-  color: #426a4b;
-  font-size: 18px;
-}
-
-.dashboard-mini-stats .mini-stat-label {
-  color: #68766d;
-}
-
-.dashboard-breakdown-card .title-group {
-  margin-bottom: 12px !important;
-}
-
-.dashboard-breakdown-card .breakdown-list {
-  gap: 11px;
-  margin-bottom: 10px;
-}
-
-.dashboard-breakdown-card .bk-top {
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.dashboard-breakdown-card .bk-label {
-  gap: 7px;
-  color: #34463a;
-  font-size: 12px;
-}
-
-.dashboard-breakdown-card .bk-dot {
-  width: 7px;
-  height: 7px;
-}
-
-.dashboard-breakdown-stats {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.dashboard-breakdown-card .bk-count {
-  display: inline;
-  margin: 0;
-  color: #68766d;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.dashboard-breakdown-card .bk-pct {
-  min-width: 30px;
-  font-size: 11px;
-  text-align: right;
-}
-
-.dashboard-breakdown-card .bk-track {
-  height: 5px;
-  background: #f0f3f0;
-}
-
-.dashboard-type-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid #e7ece8;
-}
-
-.dashboard-type-pagination > span {
-  color: #68766d;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.dashboard-type-pagination button {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 5px 8px;
-  border: 1px solid #dfe6e0;
-  border-radius: 6px;
-  background: #fff;
-  color: #426a4b;
-  font: 700 10.5px "Nunito", sans-serif;
-  cursor: pointer;
-}
-
-.dashboard-type-pagination button:hover:not(:disabled) {
-  background: #f3f7f3;
-}
-
-.dashboard-type-pagination button:disabled {
-  color: #a3ada5;
-  cursor: not-allowed;
-}
-
 /* Activity feed */
 .activity-feed {
   display: flex;
@@ -4326,7 +4222,7 @@
 }
 
 .analytics-overview .analytics-main-row {
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(480px, 1fr);
   gap: 16px;
   margin-bottom: 18px;
 }
@@ -4515,9 +4411,163 @@
   color: #4c6251;
 }
 
-.analytics-overview .analytics-location-panel {
-  top: 16px;
+.analytics-right-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 16px;
+}
+
+.analytics-overview .analytics-right-column .analytics-location-panel {
+  position: static;
+  top: auto;
   align-self: start;
+}
+
+.analytics-overview .analytics-monthly-types {
+  margin-bottom: 0;
+  padding: 14px;
+}
+
+.admin-theme .analytics-overview .card-panel.analytics-monthly-types {
+  padding: 12px;
+}
+
+.analytics-monthly-types-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.analytics-monthly-types .title-group h3 {
+  font-size: 13px;
+}
+
+.analytics-monthly-types .panel-subtitle {
+  font-size: 10px;
+}
+
+.analytics-monthly-types-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: auto;
+}
+
+.analytics-monthly-types-filters label {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+.analytics-monthly-types-filters label:first-child {
+  width: 112px;
+}
+
+.analytics-monthly-types-filters label:last-child {
+  width: 88px;
+}
+
+.analytics-monthly-types-filters label > span {
+  color: #657369;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.35px;
+}
+
+.analytics-monthly-types-filters .mf-select {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+.analytics-monthly-types-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #edf1ed;
+  border-radius: 9px;
+}
+
+.analytics-monthly-types-table {
+  width: calc(100% - 2px);
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #334139;
+  font-size: 11px;
+  text-align: center;
+}
+
+.analytics-monthly-types-table th,
+.analytics-monthly-types-table td {
+  padding: 6px 3px;
+  border-bottom: 1px solid #eff2ef;
+}
+
+.analytics-monthly-types-table thead th {
+  background: #f8faf8;
+  color: #68766d;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.analytics-monthly-types-table th:first-child {
+  width: 82px;
+  min-width: 82px;
+  text-align: left;
+}
+
+.analytics-monthly-types-table tbody th {
+  font-weight: 700;
+}
+
+.analytics-monthly-type-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.analytics-monthly-type-name > span {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 2px;
+}
+
+.analytics-monthly-type-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 22px;
+  padding: 2px 3px;
+  border-radius: 4px;
+  color: #88938b;
+}
+
+.analytics-monthly-type-count.has-count {
+  color: #244d35;
+  font-weight: 800;
+}
+
+.analytics-monthly-types-total {
+  width: 40px;
+}
+
+.analytics-monthly-types-total strong {
+  display: block;
+}
+
+.analytics-monthly-types-table tfoot th,
+.analytics-monthly-types-table tfoot td {
+  border-bottom: 0;
+  background: #f8faf8;
+  color: #334139;
+  font-weight: 800;
 }
 
 .analytics-overview .analytics-add-place-btn {
@@ -6820,22 +6870,6 @@
   border-color: #dce8df;
 }
 
-.admin-theme .dashboard-mini-stats {
-  border-top-color: #e3eee6;
-}
-
-.admin-theme .dashboard-mini-stats .mini-stat-val {
-  color: #187647;
-}
-
-.admin-theme .dashboard-breakdown-card .bk-track {
-  background: #edf2ef;
-}
-
-.admin-theme .dashboard-breakdown-card .bk-fill {
-  box-shadow: 0 1px 4px rgba(24, 43, 37, 0.16);
-}
-
 .admin-theme .db-grid-bottom .cases-table.compact th {
   border-bottom-color: #d8e7dc;
   background: #eff7f1;
@@ -7006,22 +7040,6 @@
 .admin-theme .account-section {
   border-color: #dce9e1;
   box-shadow: 0 3px 12px rgba(24, 72, 46, 0.045);
-}
-
-.admin-theme .dashboard-mini-stats {
-  border-top-color: #dce9e1;
-}
-
-.admin-theme .dashboard-mini-stats .mini-stat-val {
-  color: #07864b;
-}
-
-.admin-theme .dashboard-breakdown-card .bk-track {
-  background: #e9f1ec;
-}
-
-.admin-theme .dashboard-breakdown-card .bk-fill {
-  box-shadow: 0 1px 5px rgba(24, 43, 37, 0.18);
 }
 
 .admin-theme .db-grid-bottom .cases-table.compact th,
