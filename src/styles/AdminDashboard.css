@@ -140,7 +140,7 @@
   background: var(--accent-dim);
   color: var(--accent);
   font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: none;
 }
 
 /* Admin Identity Pill — top-bar profile trigger + logout menu */
