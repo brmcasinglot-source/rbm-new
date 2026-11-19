@@ -46,8 +46,8 @@
 }
 
 .logo-box {
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
   margin: 0 auto 18px;
   display: flex;
   align-items: center;
@@ -57,11 +57,11 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
 }
 
-.logo-box img { width: 68px; height: 68px; object-fit: contain; }
+.logo-box img { width: 76px; height: 76px; object-fit: contain; }
 
 .left-content h2 {
-  font-size: 16px;
-  letter-spacing: 1.5px;
+  font-size: 17px;
+  letter-spacing: 1px;
   margin-bottom: 8px;
   color: rgba(255,255,255,0.9);
   font-weight: 700;
