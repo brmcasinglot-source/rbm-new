@@ -19,7 +19,7 @@ import {
   Filter, Plus, Trash2, Edit, AlertTriangle, CheckCircle, FileBarChart,
   TrendingUp, Clock, Download, Calendar, Bell, ArrowUpRight,
   ChevronLeft, ChevronRight, MapPin, LogOut,
-  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, UserCheck, Menu, Eye,
+  Paperclip, ZoomIn, Upload, ChevronDown, GraduationCap, Menu, Eye,
   History, Send,
 } from "lucide-react";
 
@@ -31,11 +31,10 @@ import {
   LOCATION_META, getCustomLocations, addCustomLocation, deleteCustomLocation,
   getGradeSections, addGradeSection, updateGradeSection,
   GRADE_OPTIONS,
-  getStudentAccounts, getPendingStudentAccounts, getPendingStudentAccountCount, approveStudentAccount, declineStudentAccount,
+  getStudentAccounts,
   getStudentOffenseRecords, downloadStudentOffenseRecords,
-  getStudentIdImagesForAdmin, getReportDetails, getReportEvidence, getUnreadNotificationCount,
+  getReportDetails, getReportEvidence, getUnreadNotificationCount,
   saveReportConferenceFindings,
-  getUnconfirmedSignups, resendConfirmationEmail,
   downloadCSV, downloadDOCX, downloadXLSX,
 } from "../data/store";
 import StudentOffenseRecords from "../components/admin/StudentOffenseRecords";
@@ -527,18 +526,10 @@ export default function AdminDashboard() {
   const [customLocations,  setCustomLocations]  = useState([]);
   const [gradeSections,    setGradeSections]    = useState([]);
   const [studentAccounts,    setStudentAccounts]    = useState([]);
-  const [pendingAccounts, setPendingAccounts] = useState([]);
   const [hasMoreStudentAccounts, setHasMoreStudentAccounts] = useState(false);
-  const [hasMorePendingAccounts, setHasMorePendingAccounts] = useState(false);
   const [studentAccountPage, setStudentAccountPage] = useState(0);
-  const [pendingAccountPage, setPendingAccountPage] = useState(0);
   const [studentAccountsLoading, setStudentAccountsLoading] = useState(true);
   const [studentAccountsError, setStudentAccountsError] = useState("");
-  const [pendingAccountsError, setPendingAccountsError] = useState("");
-  const [studentIdViewer, setStudentIdViewer] = useState(null);
-  const [pendingAccountCount, setPendingAccountCount] = useState(0);
-  const [unconfirmedSignups, setUnconfirmedSignups] = useState([]);
-  const [unconfirmedError,   setUnconfirmedError]   = useState("");
 
   const profileRef = useRef(null);
   const notifRef   = useRef(null);
@@ -610,7 +601,6 @@ export default function AdminDashboard() {
     const setCustomLocationsIfChanged = setIfChanged(setCustomLocations);
     const setGradeSectionsIfChanged      = setIfChanged(setGradeSections);
     const setStudentAccountsIfChanged    = setIfChanged(setStudentAccounts);
-    const setUnconfirmedSignupsIfChanged = setIfChanged(setUnconfirmedSignups);
     let cancelled = false;
     let refreshing = false;
     let timeoutId;
@@ -725,35 +715,6 @@ export default function AdminDashboard() {
           } finally {
             if (!cancelled) setStudentAccountsLoading(false);
           }
-          try {
-            const pendingAccountsData = await getPendingStudentAccounts(pendingAccountPage, ACCOUNT_PAGE_SIZE);
-            if (cancelled) return;
-            setPendingAccounts(pendingAccountsData.accounts);
-            setHasMorePendingAccounts(pendingAccountsData.hasMore);
-            setPendingAccountsError("");
-          } catch (err) {
-            if (cancelled) return;
-            console.error("getPendingStudentAccounts failed:", err.message);
-            setPendingAccountsError(err.message);
-          }
-          try {
-            const unconfirmedData = await getUnconfirmedSignups();
-            if (cancelled) return;
-            setUnconfirmedSignupsIfChanged(unconfirmedData);
-            setUnconfirmedError("");
-          } catch (err) {
-            if (cancelled) return;
-            console.error("getUnconfirmedSignups failed:", err.message);
-            setUnconfirmedError(err.message);
-          }
-        } else if (activeTab === "dashboard") {
-          try {
-            const count = await getPendingStudentAccountCount();
-            if (cancelled) return;
-            setPendingAccountCount(count);
-          } catch (err) {
-            console.error("getPendingStudentAccountCount failed:", err);
-          }
         }
       } finally {
         refreshing = false;
@@ -774,7 +735,7 @@ export default function AdminDashboard() {
       clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeTab, unseenReportsStorageKey, studentAccountPage, pendingAccountPage]);
+  }, [activeTab, unseenReportsStorageKey, studentAccountPage]);
 
   const handleToggleNotifications = async () => {
     const opening = !notifOpen;
@@ -1499,70 +1460,6 @@ export default function AdminDashboard() {
     showToast(`Section renamed to "${result.section.section}".`);
   };
 
-  const refreshStudentAccountPages = async () => {
-    const [accounts, pending] = await Promise.all([
-      getStudentAccounts(studentAccountPage, ACCOUNT_PAGE_SIZE),
-      getPendingStudentAccounts(pendingAccountPage, ACCOUNT_PAGE_SIZE),
-    ]);
-    setStudentAccounts(accounts.accounts);
-    setHasMoreStudentAccounts(accounts.hasMoreAccounts);
-    setPendingAccounts(pending.accounts);
-    setHasMorePendingAccounts(pending.hasMore);
-    setPendingAccountCount(await getPendingStudentAccountCount());
-    setStudentAccountsError("");
-    setPendingAccountsError("");
-    setStudentAccountsLoading(false);
-    if (studentAccountPage > 0 && accounts.accounts.length === 0) {
-      setStudentAccountPage((page) => page - 1);
-    }
-    if (pendingAccountPage > 0 && pending.accounts.length === 0) {
-      setPendingAccountPage((page) => page - 1);
-    }
-  };
-
-  const handleApproveAccount = async (id, name) => {
-    try {
-      await approveStudentAccount(id);
-      await refreshStudentAccountPages();
-      showToast(`${name}'s account has been confirmed. They can now log in.`);
-    } catch (err) {
-      setStudentAccountsError(err.message);
-      showToast(`Could not approve ${name}: ${err.message}`, "error");
-    }
-  };
-
-  const handleViewStudentId = async (student) => {
-    setStudentIdViewer({ id: student.id, name: student.name, loading: true, error: "", images: null });
-    try {
-      const images = await getStudentIdImagesForAdmin(student.id);
-      setStudentIdViewer((current) => current?.id === student.id
-        ? { ...current, loading: false, images }
-        : current);
-    } catch (err) {
-      setStudentIdViewer((current) => current?.id === student.id
-        ? { ...current, loading: false, error: err.message }
-        : current);
-    }
-  };
-
-  const handleDeclineAccount = async (id, name) => {
-    if (!window.confirm(`Decline and remove "${name}"'s registration? This cannot be undone.`)) return;
-    try {
-      await declineStudentAccount(id);
-      await refreshStudentAccountPages();
-      showToast(`${name}'s registration was declined.`);
-    } catch (error) {
-      setStudentAccountsError(error.message);
-      showToast(`Could not decline ${name}: ${error.message}`, "error");
-    }
-  };
-
-  const handleResendConfirmation = async (email) => {
-    const result = await resendConfirmationEmail(email);
-    if (!result.success) { showToast(result.error, "error"); return; }
-    showToast(`Verification code sent to ${email}.`);
-  };
-
   /* Export helpers */
   const exportFilteredIncidents = incidents.filter((report) =>
     (!exportSearch.trim() || [
@@ -1704,18 +1601,12 @@ export default function AdminDashboard() {
           {[
             { tab: "dashboard",      icon: <LayoutDashboard size={16} />, label: "Dashboard" },
             { tab: "incidents",      icon: <FileText size={16} />,        label: "Incidents" },
-            { tab: "confirmations",  icon: <UserCheck size={16} />,       label: "Confirmations" },
+            { tab: "confirmations",  icon: <User size={16} />,            label: "Student Accounts" },
             { tab: "analytics",      icon: <FileBarChart size={16} />,    label: "Analytics" },
             { tab: "student-offenses", icon: <History size={16} />,       label: "Student Offense Records" },
           ].map(({ tab, icon, label }) => (
             <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => handleAdminTabSelect(tab)}>
               {icon} {label}
-              {tab === "confirmations" && pendingAccountCount > 0 && (
-                <span style={{
-                  marginLeft: "auto", background: "#ef4444", color: "#fff",
-                  fontSize: 10, fontWeight: 800, padding: "1px 7px", borderRadius: 10,
-                }}>{pendingAccountCount}</span>
-              )}
             </button>
           ))}
         </nav>
@@ -3197,130 +3088,15 @@ export default function AdminDashboard() {
         )}
 
         {/* ══════════════════════════════
-            CONFIRMATIONS TAB
+            STUDENT ACCOUNTS TAB
         ══════════════════════════════ */}
         {activeTab === "confirmations" && (
           <div className="admin-content admin-confirmations-page">
-            <section className="card-panel account-section">
-              <div className="title-group account-section-heading">
-                <h3>Awaiting Email Confirmation</h3>
-                <p className="panel-subtitle">
-                  Signed up but haven't entered their Brevo verification code yet — they'll move to the queue below once verified.
-                </p>
-              </div>
-
-              {unconfirmedError ? (
-                <p className="account-alert account-alert-error">
-                  Couldn't load this list: {unconfirmedError}
-                </p>
-              ) : unconfirmedSignups.length === 0 ? (
-                <p className="account-empty-state">
-                  No sign-ups waiting for email verification right now.
-                </p>
-              ) : (
-                <div className="account-request-list">
-                  {unconfirmedSignups.map((s) => (
-                    <div key={s.id} className="account-request-row">
-                      <div className="account-request-info">
-                        <div className="account-request-title">
-                          <strong>{s.name || "(name unavailable)"}</strong>
-                          <span className="account-request-status verifying">Verifying email</span>
-                        </div>
-                        <div className="account-request-meta">
-                          <span>{s.email}</span>
-                          <span>LRN {s.lrn || "—"}</span>
-                          <span>{s.grade || "—"} · {s.section || "—"}</span>
-                          <span>Signed up {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="account-action-button resend"
-                        onClick={() => handleResendConfirmation(s.email)}
-                      >Resend Code</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="card-panel account-section">
-              <div className="title-group account-section-heading">
-                <h3>Account Confirmations</h3>
-                <p className="panel-subtitle">
-                  Older pending accounts remain here for review. New sign-ups are approved after ID and email verification.
-                </p>
-              </div>
-
-              {studentAccountsError && (
-                <p className="account-alert account-alert-error">
-                  Couldn't load student accounts: {studentAccountsError}
-                </p>
-              )}
-              {pendingAccountsError && (
-                <p className="account-alert account-alert-error">
-                  Couldn't load the approval queue: {pendingAccountsError}
-                </p>
-              )}
-              {studentAccountsLoading && pendingAccounts.length === 0 ? (
-                <p className="account-empty-state">Loading student accounts…</p>
-              ) : !pendingAccountsError && pendingAccounts.length === 0 && !hasMorePendingAccounts ? (
-                <p className="account-empty-state">
-                  No accounts waiting for admin approval right now.
-                </p>
-              ) : pendingAccounts.length > 0 ? (
-                <div className="account-request-list">
-                  {pendingAccounts.map((s) => (
-                    <div key={s.id} className="account-request-row">
-                      <div className="account-request-info">
-                        <div className="account-request-title">
-                          <strong>{s.name}</strong>
-                          <span className="account-request-status pending">Pending approval</span>
-                        </div>
-                        <div className="account-request-meta">
-                          <span>{s.email}</span>
-                          <span>LRN {s.lrn || "—"}</span>
-                          <span>{s.grade || "—"} · {s.section || "—"}</span>
-                          <span>Registered {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
-                        </div>
-                      </div>
-                      <div className="account-request-actions">
-                        <button
-                          type="button"
-                          className="account-action-button view-id"
-                          onClick={() => handleViewStudentId(s)}
-                        ><Image size={14} /> View ID Photos</button>
-                        <button
-                          type="button"
-                          className="account-action-button approve"
-                          onClick={() => handleApproveAccount(s.id, s.name)}
-                        ><UserCheck size={14} /> Approve</button>
-                        <button
-                          type="button"
-                          className="account-action-button decline"
-                          onClick={() => handleDeclineAccount(s.id, s.name)}
-                        ><X size={14} /> Decline</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {(pendingAccountPage > 0 || hasMorePendingAccounts) && (
-                <div className="account-pagination">
-                  <span>Pending approvals · Page {pendingAccountPage + 1}</span>
-                  <div className="account-pagination-actions">
-                    <button className="read-btn tiny" disabled={pendingAccountPage === 0} onClick={() => setPendingAccountPage((page) => page - 1)}>Previous</button>
-                    <button className="read-btn tiny" disabled={!hasMorePendingAccounts} onClick={() => setPendingAccountPage((page) => page + 1)}>Next</button>
-                  </div>
-                </div>
-              )}
-            </section>
-
             <section className="card-panel account-section account-directory-section">
               <div className="title-group account-section-heading">
                 <h3>All Student Accounts</h3>
                 <p className="panel-subtitle">
-                  Verified student profiles, including pending and approved accounts.
+                  Verified student profiles.
                 </p>
               </div>
               {studentAccountsLoading && studentAccounts.length === 0 ? (
@@ -3333,7 +3109,7 @@ export default function AdminDashboard() {
                 </p>
               ) : studentAccounts.length === 0 ? (
                 <p className="account-empty-state">
-                  No verified student accounts yet. Sign-ups awaiting email verification are listed above.
+                  No student accounts yet.
                 </p>
               ) : (
                 <div className="table-container">
@@ -4169,61 +3945,6 @@ export default function AdminDashboard() {
             style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 12, boxShadow: "0 0 40px rgba(0,0,0,0.4)" }} />
           <X size={28} style={{ position: "absolute", top: 20, right: 24, color: "white", cursor: "pointer" }}
             onClick={() => setLightboxSrc(null)} />
-        </div>
-      )}
-
-      {studentIdViewer && (
-        <div className="admin-modal-overlay" onClick={() => setStudentIdViewer(null)}>
-          <div className="admin-modal" style={{ maxWidth: 760 }} onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header-admin">
-              <div className="title-wrap">
-                <Image size={18} color="var(--accent-color)" />
-                <h3>Student ID Photos — {studentIdViewer.name}</h3>
-              </div>
-              <X size={20} className="close-modal-btn" onClick={() => setStudentIdViewer(null)} />
-            </div>
-            <div className="admin-modal-content">
-              {studentIdViewer.loading ? (
-                <p>Loading private ID photos…</p>
-              ) : studentIdViewer.error ? (
-                <p role="alert" style={{ color: "#b91c1c" }}>Could not load ID photos: {studentIdViewer.error}</p>
-              ) : (
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: studentIdViewer.images?.back ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)",
-                  gap: 16,
-                }}>
-                  {[
-                    { label: "Front", url: studentIdViewer.images?.front },
-                    ...(studentIdViewer.images?.back
-                      ? [{ label: "Back", url: studentIdViewer.images.back }]
-                      : []),
-                  ].map(({ label, url }) => (
-                    <div key={label}>
-                      <strong style={{ display: "block", marginBottom: 8 }}>{label} of Student ID</strong>
-                      {url ? (
-                        <a href={url} target="_blank" rel="noreferrer" aria-label={`Open full-size ${label.toLowerCase()} of student ID`}>
-                          <img
-                            src={url}
-                            alt={`${label} of ${studentIdViewer.name}'s student ID`}
-                            loading="lazy"
-                            decoding="async"
-                            style={{ width: "100%", maxHeight: "55vh", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}
-                          />
-                          <span style={{ display: "block", marginTop: 6, color: "#2563eb", fontSize: 12 }}>Open full size</span>
-                        </a>
-                      ) : (
-                        <p style={{ color: "#64748b" }}>No photo on file.</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer-bar">
-              <button className="cancel-btn" onClick={() => setStudentIdViewer(null)}>Close</button>
-            </div>
-          </div>
         </div>
       )}
 
