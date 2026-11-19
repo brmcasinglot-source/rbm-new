@@ -3,13 +3,15 @@
 -- creates an offense record. Mediation resolves reports without an offense
 -- record and notifies the reporting student; established decisions carry a
 -- follow-up date for monitoring.
+-- Also installs per-case monitoring dates and an admin-only resolve/reopen history.
 -- After applying, deploy the updated `api` Edge Function so its admin-only
 -- RPC allowlist can call these database functions.
 
 alter table public.reports
   add column if not exists conference_findings text,
   add column if not exists conference_findings_updated_by uuid references public.admins(id) on delete set null,
-  add column if not exists conference_findings_updated_at timestamptz;
+  add column if not exists conference_findings_updated_at timestamptz,
+  add column if not exists monitoring_until date;
 
 create table if not exists public.report_student_links (
   id bigint generated always as identity primary key,
@@ -427,7 +429,8 @@ begin
       end as follow_up_status,
       o.disciplinary_action, o.approved_by, o.approved_at,
       o.student_name, o.student_lrn as lrn, o.student_grade as grade, o.student_section as section,
-      r.type as incident_type, r.date as incident_date, a.name as approved_by_name,
+      r.type as incident_type, r.date as incident_date, r.status as report_status,
+      a.name as approved_by_name,
       d.findings as decision_findings,
       count(*) over (partition by o.person_key) as student_offense_count
     from public.student_offense_records o
@@ -446,6 +449,8 @@ begin
         when offense_filter = '4+' then m.offense_number >= 4
         else m.offense_number = offense_filter::integer
       end)
+      and (sort_by <> 'most_offenses'
+        or (m.student_offense_count >= 2 and m.offense_number >= 2))
       and (bullying_type_filter is null
         or lower(m.incident_type) = lower(bullying_type_filter)
         or lower(m.incident_type) = lower(bullying_type_filter) || ' bullying'
@@ -472,7 +477,8 @@ begin
       end as follow_up_status,
       o.disciplinary_action, o.approved_by, o.approved_at,
       o.student_name, o.student_lrn as lrn, o.student_grade as grade, o.student_section as section,
-      r.type as incident_type, r.date as incident_date, a.name as approved_by_name,
+      r.type as incident_type, r.date as incident_date, r.status as report_status,
+      a.name as approved_by_name,
       d.findings as decision_findings,
       count(*) over (partition by o.person_key) as student_offense_count
     from public.student_offense_records o
@@ -491,6 +497,8 @@ begin
         when offense_filter = '4+' then m.offense_number >= 4
         else m.offense_number = offense_filter::integer
       end)
+      and (sort_by <> 'most_offenses'
+        or (m.student_offense_count >= 2 and m.offense_number >= 2))
       and (bullying_type_filter is null
         or lower(m.incident_type) = lower(bullying_type_filter)
         or lower(m.incident_type) = lower(bullying_type_filter) || ' bullying'
@@ -968,6 +976,132 @@ begin
 end;
 $$;
 
+create or replace function public.update_report_case_status(
+  actor_id uuid,
+  target_report_id bigint,
+  next_status text,
+  staff_notes text,
+  audit_reason text,
+  monitor_until date,
+  next_priority text
+) returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  current_report public.reports%rowtype;
+  updated_report public.reports%rowtype;
+  clean_reason text := trim(coalesce(audit_reason, ''));
+  state_changed boolean;
+begin
+  if not exists (select 1 from public.admins where id = actor_id) then
+    raise exception 'Not authorized';
+  end if;
+  if next_status is null
+    or next_status not in ('Pending', 'Under Investigation', 'Resolved', 'More Information Requested') then
+    raise exception 'Invalid incident status';
+  end if;
+  if next_priority is null or next_priority not in ('High', 'Medium', 'Low') then
+    raise exception 'Invalid incident priority';
+  end if;
+
+  select * into current_report
+  from public.reports
+  where id = target_report_id
+  for update;
+  if not found then raise exception 'Incident report not found'; end if;
+
+  state_changed := current_report.status is distinct from next_status
+    or current_report.monitoring_until is distinct from monitor_until;
+  if state_changed and clean_reason = '' then
+    raise exception 'Add a private reason for this status or monitoring change';
+  end if;
+  if current_report.status = 'Resolved'
+    and next_status not in ('Resolved', 'Under Investigation') then
+    raise exception 'Reopen the case before changing its status';
+  end if;
+  if next_status = 'Pending' and current_report.status <> 'Pending' then
+    raise exception 'An active incident cannot be returned to Pending';
+  end if;
+
+  update public.reports
+  set status = next_status,
+      admin_notes = coalesce(staff_notes, ''),
+      monitoring_until = monitor_until,
+      priority = next_priority,
+      updated_at = now()
+  where id = target_report_id
+  returning * into updated_report;
+
+  if state_changed then
+    insert into public.student_offense_audit (action, report_id, actor_id, details)
+    values (
+      case
+        when current_report.status is distinct from 'Resolved' and next_status = 'Resolved'
+          then 'case_resolved'
+        when current_report.status = 'Resolved' and next_status = 'Under Investigation'
+          then 'case_reopened'
+        when current_report.status is distinct from next_status
+          then 'case_status_changed'
+        else 'case_monitoring_updated'
+      end,
+      target_report_id,
+      actor_id,
+      jsonb_build_object(
+        'fromStatus', current_report.status,
+        'toStatus', next_status,
+        'reason', clean_reason,
+        'previousMonitoringUntil', current_report.monitoring_until,
+        'monitoringUntil', monitor_until,
+        'previousResolvedAt', current_report.resolved_at,
+        'resolvedAt', updated_report.resolved_at
+      )
+    );
+  end if;
+
+  return to_jsonb(updated_report);
+end;
+$$;
+
+create or replace function public.get_report_status_history(
+  actor_id uuid,
+  target_report_id bigint
+) returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  result jsonb;
+begin
+  if not exists (select 1 from public.admins where id = actor_id) then
+    raise exception 'Not authorized';
+  end if;
+  if not exists (select 1 from public.reports where id = target_report_id) then
+    raise exception 'Incident report not found';
+  end if;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'id', history.id,
+      'action', history.action,
+      'actorName', coalesce(nullif(admin.name, ''), admin.email, history.actor_id::text),
+      'details', history.details,
+      'createdAt', history.created_at
+    ) order by history.created_at desc
+  ), '[]'::jsonb)
+  into result
+  from (
+    select audit.id, audit.action, audit.actor_id, audit.details, audit.created_at
+    from public.student_offense_audit as audit
+    where audit.report_id = target_report_id
+      and audit.action in ('case_resolved', 'case_reopened', 'case_status_changed', 'case_monitoring_updated')
+    order by audit.created_at desc
+    limit 20
+  ) as history
+  left join public.admins as admin on admin.id = history.actor_id;
+
+  return result;
+end;
+$$;
+
 revoke all on function public.search_offense_students(uuid, text, text, text, integer) from public, anon, authenticated;
 revoke all on function public.search_offense_reports(uuid, text, uuid, integer, integer) from public, anon, authenticated;
 revoke all on function public.get_student_offense_filter_options(uuid) from public, anon, authenticated;
@@ -978,6 +1112,8 @@ revoke all on function public.link_report_student(uuid, bigint, uuid) from publi
 revoke all on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date, date, bigint[]) from public, anon, authenticated;
 revoke all on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) from public, anon, authenticated;
 revoke all on function public.save_report_conference_findings(uuid, bigint, text) from public, anon, authenticated;
+revoke all on function public.update_report_case_status(uuid, bigint, text, text, text, date, text) from public, anon, authenticated;
+revoke all on function public.get_report_status_history(uuid, bigint) from public, anon, authenticated;
 grant execute on function public.search_offense_students(uuid, text, text, text, integer) to service_role;
 grant execute on function public.search_offense_reports(uuid, text, uuid, integer, integer) to service_role;
 grant execute on function public.get_student_offense_filter_options(uuid) to service_role;
@@ -988,5 +1124,7 @@ grant execute on function public.link_report_student(uuid, bigint, uuid) to serv
 grant execute on function public.save_offense_decision(uuid, bigint, text, text, text, text, text, text, text, text, text, date, date, bigint[]) to service_role;
 grant execute on function public.create_student_offense_record(uuid, bigint, text, text, text, text, bigint[]) to service_role;
 grant execute on function public.save_report_conference_findings(uuid, bigint, text) to service_role;
+grant execute on function public.update_report_case_status(uuid, bigint, text, text, text, date, text) to service_role;
+grant execute on function public.get_report_status_history(uuid, bigint) to service_role;
 
 notify pgrst, 'reload schema';

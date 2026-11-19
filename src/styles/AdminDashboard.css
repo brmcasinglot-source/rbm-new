@@ -2213,6 +2213,14 @@
   text-transform: none;
 }
 
+.incident-student-note-guidance {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .incident-management .incident-more-info {
   border-top: 1px solid #e8edf2;
 }
@@ -3447,6 +3455,150 @@
   font-weight: 800;
 }
 
+.admin-incident-modal .case-history-section {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-incident-modal .case-history-section > h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 0;
+}
+
+.admin-incident-modal .case-history-section > h4 svg {
+  flex: 0 0 auto;
+  color: #64748b;
+}
+
+.admin-incident-modal .case-history-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-incident-modal .case-history-item {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-incident-modal .case-history-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.admin-incident-modal .case-history-action {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-incident-modal .case-history-action[data-action="case_resolved"] {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.admin-incident-modal .case-history-action[data-action="case_reopened"] {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.admin-incident-modal .case-history-action[data-action="case_monitoring_updated"] {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.admin-incident-modal .case-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px 10px;
+  color: #64748b;
+  font-size: 11px;
+  text-align: right;
+}
+
+.admin-incident-modal .case-history-meta time {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-incident-modal .case-history-transition {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-incident-modal .case-history-transition > span:first-child,
+.admin-incident-modal .case-history-transition > span:last-child {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #f8fafc;
+}
+
+.admin-incident-modal .case-history-transition > span[aria-hidden="true"] {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.admin-incident-modal .case-history-monitoring,
+.admin-incident-modal .case-history-message {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-incident-modal .case-history-reason {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.admin-incident-modal .case-history-reason > span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-incident-modal .case-history-reason > p {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.admin-incident-modal .case-history-error {
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .admin-incident-modal .modal-section-grid {
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   gap: 9px;
@@ -3647,6 +3799,16 @@
 
   .admin-incident-modal .incident-narrative-grid > .detail-group:first-child {
     grid-column: auto;
+  }
+
+  .admin-incident-modal .case-history-topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-incident-modal .case-history-meta {
+    justify-content: flex-start;
+    text-align: left;
   }
 }
 

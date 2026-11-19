@@ -519,7 +519,7 @@ async function handleAuth(action, body, req) {
       "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
       "evidence_count", "scheduled_conference", "conference_findings",
       "conference_findings_updated_by", "conference_findings_updated_at",
-      "under_investigation_at", "resolved_at", "submitted_at", "updated_at",
+      "under_investigation_at", "resolved_at", "monitoring_until", "submitted_at", "updated_at",
     ].join(",");
     const { data: report, error } = await db.from("reports")
       .select(detailColumns).eq("id", reportId).maybeSingle();
@@ -1635,6 +1635,8 @@ async function runRpc(functionName, args, req) {
       "save_offense_decision",
       "create_student_offense_record",
       "save_report_conference_findings",
+      "update_report_case_status",
+      "get_report_status_history",
     ]);
     if (offenseFunctions.has(functionName)) {
       const session = await getSession(req);
@@ -1642,7 +1644,7 @@ async function runRpc(functionName, args, req) {
       const { data, error } = await db.rpc(functionName, { ...args, actor_id: session.id });
       if (error) {
         if (error.code === "PGRST202" || error.code === "42883") {
-          throw Object.assign(new Error("Student Offense Records is not installed yet. Apply supabase/student_offense_records.sql."), { status: 503 });
+          throw Object.assign(new Error("The admin database workflow is not installed yet. Apply the updated supabase/student_offense_records.sql."), { status: 503 });
         }
         if (error.code === "23505") {
           throw Object.assign(new Error("This incident is already recorded for this student."), { status: 409 });

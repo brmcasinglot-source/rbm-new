@@ -107,6 +107,7 @@ function reportRowToObj(row) {
     conferenceFindingsUpdatedAt: row.conference_findings_updated_at || null,
     underInvestigationAt: row.under_investigation_at || null,
     resolvedAt:          row.resolved_at || null,
+    monitoringUntil:     row.monitoring_until || null,
     submittedAt:        row.submitted_at,
     updatedAt:           row.updated_at,
   };
@@ -161,7 +162,7 @@ const REPORT_COLUMNS_WITHOUT_EVIDENCE = [
   "reporter_sex", "reporter_grade", "reporter_section", "is_anonymous", "admin_notes",
   "evidence_count", "scheduled_conference", "conference_findings",
   "conference_findings_updated_by", "conference_findings_updated_at",
-  "under_investigation_at", "resolved_at", "submitted_at", "updated_at",
+  "under_investigation_at", "resolved_at", "monitoring_until", "submitted_at", "updated_at",
 ].join(",");
 
 const REPORT_LIST_COLUMNS = [
@@ -169,7 +170,7 @@ const REPORT_LIST_COLUMNS = [
   "submitted_by", "submitted_id", "reporter_age", "reporter_sex", "reporter_grade",
   "reporter_section", "is_anonymous", "admin_notes", "evidence_count",
   "scheduled_conference", "conference_findings", "under_investigation_at", "resolved_at",
-  "submitted_at", "updated_at",
+  "monitoring_until", "submitted_at", "updated_at",
 ].join(",");
 
 export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0 } = {}) {
@@ -296,6 +297,7 @@ export async function getStudentOffenseRecords(filters = {}) {
       followUpStatus: record.follow_up_status,
       incidentType: record.incident_type,
       incidentDate: record.incident_date,
+      reportStatus: record.report_status,
       approvedBy: record.approved_by_name || "Administrator",
       decisionFindings: record.decision_findings || "",
       studentOffenseCount: Number(record.student_offense_count || 0),
@@ -381,6 +383,10 @@ export async function saveReportConferenceFindings(reportId, findings) {
   });
 }
 
+export async function getReportStatusHistory(reportId) {
+  return offenseRpc("get_report_status_history", { target_report_id: reportId });
+}
+
 async function getReportPriorityContext() {
   const { data, error } = await supabase.from("reports")
     .select("id,type,date,status,submitted_by");
@@ -463,7 +469,10 @@ export async function submitReport(reportData, evidenceFiles = []) {
   return reportRowToObj(data);
 }
 
-export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
+export async function updateReportStatus(reportId, newStatus, adminNotes = "", {
+  auditReason = "",
+  monitoringUntil,
+} = {}) {
   if (newStatus === "More Information Requested" && !adminNotes.trim()) {
     throw new Error("Please explain what additional proof or information is needed.");
   }
@@ -471,23 +480,28 @@ export async function updateReportStatus(reportId, newStatus, adminNotes = "") {
   const { data: currentRow, error: fetchError } = await supabase.from("reports").select(REPORT_COLUMNS_WITHOUT_EVIDENCE).eq("id", reportId).single();
   if (fetchError) throw fetchError;
 
-  const updates = { status: newStatus, updated_at: new Date().toISOString() };
-  if (newStatus === "Pending") {
-    updates.under_investigation_at = null;
-    updates.resolved_at = null;
-  } else if (newStatus === "Under Investigation") {
-    updates.under_investigation_at = new Date().toISOString();
-    updates.resolved_at = null;
-  } else if (newStatus === "Resolved") {
-    updates.resolved_at = new Date().toISOString();
-  }
-  if (adminNotes !== undefined) updates.admin_notes = adminNotes;
-
+  const nextMonitoringUntil = monitoringUntil === undefined
+    ? currentRow.monitoring_until || null
+    : monitoringUntil || null;
   const allReports = (await getReportPriorityContext()).filter((r) => r.id !== reportId);
-  updates.priority = computePriority(reportRowToObj({ ...currentRow, ...updates }), allReports);
-
-  const { data, error } = await supabase.from("reports").update(updates).eq("id", reportId).select(REPORT_COLUMNS_WITHOUT_EVIDENCE).single();
-  if (error) throw error;
+  const priority = computePriority(reportRowToObj({
+    ...currentRow,
+    status: newStatus,
+    admin_notes: adminNotes,
+    monitoring_until: nextMonitoringUntil,
+  }), allReports);
+  const data = await offenseRpc("update_report_case_status", {
+    target_report_id: reportId,
+    next_status: newStatus,
+    staff_notes: adminNotes,
+    audit_reason: auditReason || (
+      newStatus === "More Information Requested"
+        ? "Additional information was requested from the student."
+        : ""
+    ),
+    monitor_until: nextMonitoringUntil,
+    next_priority: priority,
+  });
 
   const conference = data.scheduled_conference;
   const conferenceStatus = conference?.status || (conference?.completed ? "Completed" : "Scheduled");

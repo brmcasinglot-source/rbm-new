@@ -97,6 +97,7 @@ create table reports (
   scheduled_conference  jsonb,
   under_investigation_at timestamptz,
   resolved_at           timestamptz,
+  monitoring_until      date,
   submitted_at          timestamptz default now(),
   updated_at            timestamptz
 );

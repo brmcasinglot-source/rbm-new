@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, ChevronLeft, ChevronRight, ClipboardList,
+  AlertTriangle, ChevronLeft, ChevronRight, ClipboardList, Filter,
   FileText, History, LoaderCircle, Search, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import {
@@ -40,7 +40,7 @@ const SORT_OPTIONS = [
   ["oldest", "Oldest Offense"],
   ["name_asc", "Student Name (A–Z)"],
   ["name_desc", "Student Name (Z–A)"],
-  ["most_offenses", "Highest Number of Offenses"],
+  ["most_offenses", "Most Offenses (2+)"],
   ["least_offenses", "Lowest Number of Offenses"],
 ];
 const DECISION_CHOICES = [
@@ -49,7 +49,7 @@ const DECISION_CHOICES = [
 ];
 const INITIAL_FILTERS = {
   search: "", grade: "", section: "", offenseNumber: "", type: "",
-  dateFrom: "", dateTo: "", action: "", sort: "recent",
+  sort: "recent",
 };
 
 function formatDate(value) {
@@ -79,13 +79,6 @@ function formatIncidentTime(value) {
   if (hours > 23 || minutes > 59) return raw;
   const period = hours >= 12 ? "PM" : "AM";
   return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
-
-function formatActionDisplay(value) {
-  const action = String(value || "").trim();
-  if (/^(yes|true)$/i.test(action)) return "Intervention recorded";
-  if (/^(no|false)$/i.test(action)) return "No intervention recorded";
-  return action || "—";
 }
 
 function normalizeStudentLrn(value) {
@@ -135,9 +128,9 @@ function formatPeople(items = []) {
   }).filter(Boolean).join(", ");
 }
 
-function StudentOffenseRecords() {
+function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
-  const [filterOptions, setFilterOptions] = useState({ grades: [], sections: [], actions: [] });
+  const [filterOptions, setFilterOptions] = useState({ grades: [], sections: [] });
   const [result, setResult] = useState({ records: [], total: 0, stats: { students: 0, offenses: 0, firstOffenses: 0, repeatOffenses: 0 } });
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -158,6 +151,8 @@ function StudentOffenseRecords() {
   const [reportSearchHasMore, setReportSearchHasMore] = useState(false);
   const reportSearchRequestRef = useRef(0);
   const reportReviewRequestRef = useRef(0);
+  const recordsQueryRef = useRef({ filters: INITIAL_FILTERS, page: 0 });
+  const recordsRefreshKeyRef = useRef(refreshKey);
   const decisionFormRef = useRef(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportReview, setReportReview] = useState(null);
@@ -277,6 +272,16 @@ function StudentOffenseRecords() {
   }, []);
 
   useEffect(() => {
+    recordsQueryRef.current = { filters, page };
+  }, [filters, page]);
+
+  useEffect(() => {
+    if (recordsRefreshKeyRef.current === refreshKey) return;
+    recordsRefreshKeyRef.current = refreshKey;
+    loadRecords(recordsQueryRef.current.filters, recordsQueryRef.current.page);
+  }, [refreshKey, loadRecords]);
+
+  useEffect(() => {
     if (!formOpen || gradeSections.length) return;
     let active = true;
     getGradeSections()
@@ -308,10 +313,6 @@ function StudentOffenseRecords() {
 
   const applyFilters = async (event) => {
     event.preventDefault();
-    if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
-      setError("Start date must be on or before end date.");
-      return;
-    }
     await loadRecords(filters);
     setFiltersOpen(false);
   };
@@ -683,6 +684,7 @@ function StudentOffenseRecords() {
       {notice && <div className="student-offense-notice" role="status">{notice}<button type="button" onClick={() => setNotice("")}><X size={14} /></button></div>}
 
       <section className="student-offense-panel">
+        <div className="student-offense-toolbar">
         <form className="student-offense-search" onSubmit={applyFilters}>
           <Search size={17} />
           <input
@@ -695,7 +697,10 @@ function StudentOffenseRecords() {
         </form>
 
         <details className="student-offense-filter-panel" open={filtersOpen} onToggle={(event) => setFiltersOpen(event.currentTarget.open)}>
-          <summary><span>Filters and sorting</span><small>{result.total} matching records</small></summary>
+          <summary>
+            <span><Filter size={14} aria-hidden="true" /> Filters and sorting</span>
+            <small>{result.total} matching</small>
+          </summary>
           <form onSubmit={applyFilters}>
             <div className="student-offense-filter-grid">
               <label>Grade level
@@ -722,14 +727,6 @@ function StudentOffenseRecords() {
                   {BULLYING_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                 </select>
               </label>
-              <label>Date recorded from<input type="date" value={filters.dateFrom} onChange={(event) => updateFilter("dateFrom", event.target.value)} /></label>
-              <label>Date recorded to<input type="date" value={filters.dateTo} onChange={(event) => updateFilter("dateTo", event.target.value)} /></label>
-              <label>Disciplinary action
-                <select value={filters.action} onChange={(event) => updateFilter("action", event.target.value)}>
-                  <option value="">All actions</option>
-                  {filterOptions.actions.map((action) => <option key={action} value={action}>{formatActionDisplay(action)}</option>)}
-                </select>
-              </label>
               <label>Sort by
                 <select value={filters.sort} onChange={(event) => updateFilter("sort", event.target.value)}>
                   {SORT_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
@@ -743,6 +740,7 @@ function StudentOffenseRecords() {
             </div>
           </form>
         </details>
+        </div>
 
         <div className="student-offense-table-wrap">
           {loading ? (
@@ -764,6 +762,13 @@ function StudentOffenseRecords() {
                         <button key={reportId} type="button" className="student-offense-link student-offense-linked-report" onClick={() => openReport(reportId)}>{formatReportNumber(reportId)}</button>
                       ))}
                       <small>{record.incidentType} · {formatDate(record.incidentDate)}</small>
+                      <button
+                        type="button"
+                        className="student-offense-case-action"
+                        onClick={() => onManageCase?.(record.incidentReportId)}
+                      >
+                        Case status
+                      </button>
                     </td>
                     <td>
                       {record.followUpDate ? (
