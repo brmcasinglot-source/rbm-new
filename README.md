@@ -8,8 +8,6 @@
 
 [Open the editable draw.io diagram](./system-flowchart.drawio) in diagrams.net or import it into draw.io.
 
-![CNHS Bullying Reporting & Management System flowchart](./public/system-flowchart.svg)
-
 ## Core activity diagram
 
 [Open the editable activity diagram](./system-activity-diagram.drawio) in diagrams.net or import it into draw.io.

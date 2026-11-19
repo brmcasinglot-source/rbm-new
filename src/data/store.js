@@ -183,6 +183,14 @@ export async function getReports({ includeEvidence = false, summaryOnly = true, 
   return (data || []).map(reportRowToObj);
 }
 
+export async function getLatestReportSubmissionAt() {
+  const { data, error } = await supabase.from("reports").select("submitted_at")
+    .order("submitted_at", { ascending: false }).order("id", { ascending: false })
+    .limit(1).maybeSingle();
+  if (error) throw error;
+  return data?.submitted_at || null;
+}
+
 async function offenseRpc(functionName, args = {}) {
   const { data, error } = await supabase.rpc(functionName, args);
   if (error) {

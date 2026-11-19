@@ -4208,6 +4208,14 @@
   border-top: 1px solid #e6ece7;
 }
 
+.s-report-cooldown {
+  flex-basis: 100%;
+  margin: 0;
+  color: #64736a;
+  font-size: 12px;
+  text-align: right;
+}
+
 .s-report-layout .s-cancel-btn,
 .s-report-layout .s-submit-btn {
   min-height: 38px;

@@ -1079,6 +1079,24 @@ async function runQuery(body, req) {
   if (table === "reports" && operation !== "select" && role !== "admin") {
     if (operation !== "insert") requireRole(session, "admin");
   }
+  if (table === "reports" && operation === "insert" && role === "student") {
+    const { data: latestReport, error } = await getDatabase().from("reports")
+      .select("submitted_at").eq("submitted_id", session.id)
+      .order("submitted_at", { ascending: false }).order("id", { ascending: false })
+      .limit(1).maybeSingle();
+    if (error) throw error;
+    const remainingMs = latestReport
+      ? new Date(latestReport.submitted_at).getTime() + 5 * 60 * 1000 - Date.now()
+      : 0;
+    if (remainingMs > 0) {
+      const minutes = Math.floor(remainingMs / 60_000);
+      const seconds = Math.ceil((remainingMs % 60_000) / 1000);
+      throw Object.assign(
+        new Error(`Please wait ${minutes}:${String(seconds).padStart(2, "0")} before submitting another report.`),
+        { status: 429 },
+      );
+    }
+  }
   if (table === "awareness_content" && operation !== "select") requireRole(session, "admin");
   if (["custom_locations", "grade_sections"].includes(table) && operation !== "select") requireRole(session, "admin");
   if (table === "students" && role !== "admin" &&

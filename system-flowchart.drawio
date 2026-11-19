@@ -1,0 +1,132 @@
+<mxfile host="app.diagrams.net" modified="2026-11-19T22:53:39.589Z" agent="Copilot" version="24.7.17" type="device">
+  <diagram id="cnhs-system-flow" name="System Flowchart">
+    <mxGraphModel dx="1800" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="start" value="Start" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="20" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="landing" value="Open the CNHS&#xa;Bullying Reporting System" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="745" y="100" width="310" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="has-account" value="Has an&#xa;account?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="200" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="register" value="Register with profile details&#xa;and front of student ID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="430" y="215" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="verify-register" value="Verify email&#xa;using 6-digit code" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="430" y="315" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="account-created" value="Account created" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="430" y="415" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="login" value="Log in with email&#xa;and password" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="745" y="360" width="310" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="verify-login" value="Verify sign-in code" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="745" y="460" width="310" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="valid" value="Code&#xa;valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="555" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="role" value="Check user role" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="685" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="student-dashboard" value="Student Dashboard" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="830" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="view-awareness" value="View awareness content&#xa;and notifications" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="submit-report" value="Submit a bullying report&#xa;with details and evidence" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="360" y="940" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="report-saved" value="Report submitted&#xa;Status: Pending" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="360" y="1040" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="student-update" value="View case updates&#xa;and conference notices" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="360" y="1140" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="student-end" value="End" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="435" y="1260" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="admin-dashboard" value="Administrator Dashboard" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="830" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="manage-system" value="Manage accounts, awareness content,&#xa;locations, and conferences" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="940" width="310" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="review-report" value="Review submitted report" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="940" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="need-info" value="Need more&#xa;information?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1040" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="request-info" value="Request additional information&#xa;and notify the student" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1055" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="update-status" value="Update case status and&#xa;record conference findings" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="1180" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="allegation-established" value="Allegation&#xa;established?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="1165" width="150" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="create-offense-record" value="Create or update Student Offense Record&#xa;Set offense level, intervention plan,&#xa;and follow-up date" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="1300" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="manage-offense-records" value="View, search, filter, and export&#xa;Student Offense Records" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="1410" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="not-established" value="Close case as&#xa;not established" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="1300" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="resolved" value="Case resolved?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1400" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-end" value="End" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1155" y="1510" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="start" target="landing"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="landing" target="has-account"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="has-account" target="register"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="register" target="verify-register"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="verify-register" target="account-created"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="has-account" target="login"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="account-created" target="login"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="login" target="verify-login"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="verify-login" target="valid"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="valid" target="login"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1030" y="605"/><mxPoint x="1030" y="395"/></Array></mxGeometry></mxCell>
+        <mxCell id="e11" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="valid" target="role"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" value="Student" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="role" target="student-dashboard"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" value="Administrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="role" target="admin-dashboard"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="student-dashboard" target="view-awareness"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="student-dashboard" target="submit-report"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e16" value="Submit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="submit-report" target="report-saved"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="report-saved" target="student-update"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="student-update" target="student-end"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="admin-dashboard" target="review-report"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="review-report" target="need-info"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e21" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="need-info" target="request-info"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="request-info" target="student-update"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e23" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="need-info" target="update-status"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e24" value="Review allegation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="update-status" target="allegation-established"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e28" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="allegation-established" target="create-offense-record"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e29" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="allegation-established" target="not-established"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="create-offense-record" target="resolved"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="not-established" target="resolved"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e32" value="Student Offense Records" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="admin-dashboard" target="manage-offense-records"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e25" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="resolved" target="admin-end"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e26" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="resolved" target="update-status"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1000" y="1330"/><mxPoint x="1000" y="1215"/></Array></mxGeometry></mxCell>
+        <mxCell id="e27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="admin-dashboard" target="manage-system"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

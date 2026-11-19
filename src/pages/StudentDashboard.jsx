@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import {
-  getReports, submitReport, addReportEvidence,
+  getReports, getLatestReportSubmissionAt, submitReport, addReportEvidence,
   getAwarenessContent,
   getStudentNotifications, markStudentNotifRead, markAllStudentNotifRead,
   requestConferenceChange,
@@ -27,6 +27,7 @@ import { getYouTubeThumbnail } from "../lib/videoUtils";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
+const REPORT_COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_EVIDENCE_FILE_BYTES = 1_000_000;
 const MAX_EVIDENCE_TOTAL_BYTES = 1_800_000;
 const CASE_STATUS_FILTERS = [
@@ -196,6 +197,38 @@ export default function StudentDashboard() {
   const [evidenceFiles,  setEvidenceFiles]  = useState([]); // { name, type, data }[]
   const [submitSuccess,  setSubmitSuccess]  = useState(false);
   const [formError,      setFormError]      = useState("");
+  const [reportCooldownUntil, setReportCooldownUntil] = useState(0);
+  const [cooldownTick, setCooldownTick] = useState(Date.now());
+  const [cooldownLoading, setCooldownLoading] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const cooldownSeconds = Math.max(0, Math.ceil((reportCooldownUntil - cooldownTick) / 1000));
+
+  useEffect(() => {
+    if (activeTab !== "report") return undefined;
+    let cancelled = false;
+    setCooldownLoading(true);
+    getLatestReportSubmissionAt()
+      .then((submittedAt) => {
+        if (!cancelled) {
+          setReportCooldownUntil(submittedAt
+            ? new Date(submittedAt).getTime() + REPORT_COOLDOWN_MS
+            : 0);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setFormError(`Could not check report cooldown: ${error.message}`);
+      })
+      .finally(() => {
+        if (!cancelled) setCooldownLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined;
+    const timer = setInterval(() => setCooldownTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   // Load report-form options only when the student opens that form.
   const [gradeSectionsList, setGradeSectionsList] = useState([]);
@@ -557,6 +590,11 @@ export default function StudentDashboard() {
   const handleReportSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
+    if (reportSubmitting || cooldownLoading) return;
+    if (cooldownSeconds > 0) {
+      setFormError(`Please wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, "0")} before submitting another report.`);
+      return;
+    }
     if (!reportForm.type || !reportForm.date || !reportForm.description) {
       setFormError("Please fill in Type, Date, and Description.");
       return;
@@ -573,6 +611,7 @@ export default function StudentDashboard() {
       setFormError("Approximate Time cannot be in the future.");
       return;
     }
+    setReportSubmitting(true);
     try {
       await submitReport({
         ...reportForm,
@@ -584,8 +623,12 @@ export default function StudentDashboard() {
       }, evidenceFiles);
     } catch (err) {
       setFormError("Could not submit report: " + err.message);
+      setReportSubmitting(false);
       return;
     }
+    setReportCooldownUntil(Date.now() + REPORT_COOLDOWN_MS);
+    setCooldownTick(Date.now());
+    setReportSubmitting(false);
     const refreshedReports = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE });
     setReports(refreshedReports);
     setHasMoreReports(refreshedReports.length === REPORT_PAGE_SIZE);
@@ -1443,7 +1486,14 @@ export default function StudentDashboard() {
 
                   <div className="s-form-actions">
                     <button type="button" className="s-cancel-btn" onClick={() => setActiveTab("dashboard")}>Discard</button>
-                    <button type="submit" className="s-submit-btn">Submit Report</button>
+                    {cooldownSeconds > 0 && (
+                      <p className="s-report-cooldown" role="status">
+                        You can submit another report in {Math.floor(cooldownSeconds / 60)}:{String(cooldownSeconds % 60).padStart(2, "0")}.
+                      </p>
+                    )}
+                    <button type="submit" className="s-submit-btn" disabled={reportSubmitting || cooldownLoading || cooldownSeconds > 0}>
+                      {reportSubmitting ? "Submitting…" : cooldownLoading ? "Checking cooldown…" : "Submit Report"}
+                    </button>
                   </div>
                 </form>
               </div>
