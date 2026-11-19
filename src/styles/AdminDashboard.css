@@ -4695,6 +4695,7 @@
 }
 
 .analytics-grade-plot {
+  position: relative;
   min-width: 0;
   height: 100%;
   display: grid;
