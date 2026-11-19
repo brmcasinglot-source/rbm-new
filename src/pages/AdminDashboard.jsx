@@ -2258,112 +2258,109 @@ export default function AdminDashboard() {
                       </>
                     ) : (
                     <div className="analytics-export-offense-filters">
-                      <div className="analytics-export-section-heading analytics-export-heading-row">
-                        <div>
-                          <p>Filter by student, grade, offense type, action, or date.</p>
-                        </div>
-                        <button type="button" className="analytics-export-clear-btn" onClick={clearExportOffenseFilters}>
-                          Clear filters
-                        </button>
-                      </div>
-                      <label className="analytics-export-search">
-                        <Search size={16} />
-                        <input
-                          type="search"
-                          value={exportOffenseFilters.search}
-                          onChange={(event) => setExportOffenseFilters((current) => ({ ...current, search: event.target.value }))}
-                          placeholder="Search student name, student ID/LRN, or incident report ID"
-                        />
-                      </label>
-                      <div className="analytics-export-offense-filter-grid">
-                        <label>
-                          Grade level
-                          <select
-                            value={exportOffenseFilters.grade}
-                            onChange={(event) => setExportOffenseFilters((current) => ({
-                              ...current, grade: event.target.value, section: "",
-                            }))}
-                          >
-                            <option value="">All grades</option>
-                            {exportOffensePreview.options.grades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Section
-                          <select
-                            value={exportOffenseFilters.section}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, section: event.target.value }))}
-                          >
-                            <option value="">All sections</option>
-                            {exportOffenseSections.map((section) => <option key={section} value={section}>{section}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Offense number
-                          <select
-                            value={exportOffenseFilters.offenseNumber}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, offenseNumber: event.target.value }))}
-                          >
-                            {EXPORT_OFFENSE_LEVELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Bullying type
-                          <select
-                            value={exportOffenseFilters.type}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, type: event.target.value }))}
-                          >
-                            <option value="">All types</option>
-                            {EXPORT_OFFENSE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Date recorded from
+                      <div className="analytics-export-offense-toolbar">
+                        <form
+                          className="analytics-export-offense-search"
+                          onSubmit={(event) => event.preventDefault()}
+                        >
+                          <Search size={17} />
                           <input
-                            type="date"
-                            value={exportOffenseFilters.dateFrom}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, dateFrom: event.target.value }))}
+                            type="search"
+                            value={exportOffenseFilters.search}
+                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, search: event.target.value }))}
+                            placeholder="Search student name, student ID/LRN, or incident report ID"
+                            aria-label="Search offense records"
                           />
-                        </label>
-                        <label>
-                          Date recorded to
-                          <input
-                            type="date"
-                            value={exportOffenseFilters.dateTo}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, dateTo: event.target.value }))}
-                          />
-                        </label>
-                        <label>
-                          Disciplinary action
-                          <select
-                            value={exportOffenseFilters.action}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, action: event.target.value }))}
+                          <button type="submit" disabled={exportOffenseLoading}>
+                            {exportOffenseLoading ? "Searching…" : "Search"}
+                          </button>
+                        </form>
+
+                        <details className="analytics-export-offense-filter-panel">
+                          <summary>
+                            <span><Filter size={14} aria-hidden="true" /> Filters and sorting</span>
+                            <small>{exportOffensePreview.total} matching</small>
+                          </summary>
+                          <form
+                            onSubmit={(event) => event.preventDefault()}
                           >
-                            <option value="">All actions</option>
-                            {exportOffensePreview.options.actions.map((action) => (
-                              <option key={action} value={action}>{action === "yes" ? "Intervention recorded" : action === "no" ? "No intervention recorded" : action}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Sort by
-                          <select
-                            value={exportOffenseFilters.sort}
-                            onChange={(event) => setExportOffenseFilters((current) => ({ ...current, sort: event.target.value }))}
-                          >
-                            <option value="recent">Most recent offense</option>
-                            <option value="oldest">Oldest offense</option>
-                            <option value="name_asc">Student name (A–Z)</option>
-                            <option value="name_desc">Student name (Z–A)</option>
-                            <option value="most_offenses">Most offenses (2+)</option>
-                            <option value="least_offenses">Lowest number of offenses</option>
-                          </select>
-                        </label>
+                            <div className="analytics-export-offense-filter-grid">
+                              <label>
+                                Grade level
+                                <select
+                                  value={exportOffenseFilters.grade}
+                                  onChange={(event) => setExportOffenseFilters((current) => ({
+                                    ...current, grade: event.target.value, section: "",
+                                  }))}
+                                >
+                                  <option value="">All grades</option>
+                                  {exportOffensePreview.options.grades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                                </select>
+                              </label>
+                              <label>
+                                Section
+                                <select
+                                  value={exportOffenseFilters.section}
+                                  onChange={(event) => setExportOffenseFilters((current) => ({ ...current, section: event.target.value }))}
+                                >
+                                  <option value="">All sections</option>
+                                  {exportOffenseSections.map((section) => <option key={section} value={section}>{section}</option>)}
+                                </select>
+                              </label>
+                              <label>
+                                Offense number
+                                <select
+                                  value={exportOffenseFilters.offenseNumber}
+                                  onChange={(event) => setExportOffenseFilters((current) => ({ ...current, offenseNumber: event.target.value }))}
+                                >
+                                  {EXPORT_OFFENSE_LEVELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </select>
+                              </label>
+                              <label>
+                                Bullying type
+                                <select
+                                  value={exportOffenseFilters.type}
+                                  onChange={(event) => setExportOffenseFilters((current) => ({ ...current, type: event.target.value }))}
+                                >
+                                  <option value="">All types</option>
+                                  {EXPORT_OFFENSE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                                </select>
+                              </label>
+                              <label>
+                                Sort by
+                                <select
+                                  value={exportOffenseFilters.sort}
+                                  onChange={(event) => setExportOffenseFilters((current) => ({ ...current, sort: event.target.value }))}
+                                >
+                                  <option value="recent">Most recent offense</option>
+                                  <option value="oldest">Oldest offense</option>
+                                  <option value="name_asc">Student name (A–Z)</option>
+                                  <option value="name_desc">Student name (Z–A)</option>
+                                  <option value="most_offenses">Most offenses (2+)</option>
+                                  <option value="least_offenses">Lowest number of offenses</option>
+                                </select>
+                              </label>
+                            </div>
+                            {exportOffenseError && <p className="analytics-export-error" role="alert">{exportOffenseError}</p>}
+                            <div className="analytics-export-offense-filter-actions">
+                              <button
+                                type="button"
+                                className="analytics-export-offense-secondary"
+                                onClick={clearExportOffenseFilters}
+                                disabled={exportOffenseLoading}
+                              >
+                                Clear all filters
+                              </button>
+                              <button type="submit" className="analytics-export-offense-primary" disabled={exportOffenseLoading}>
+                                {exportOffenseLoading ? "Applying…" : "Apply filters"}
+                              </button>
+                            </div>
+                          </form>
+                        </details>
                       </div>
                       <div className="analytics-export-preview-count">
                         Showing <strong>{exportOffensePreview.records.length}</strong> of {exportOffensePreview.total} matching student offense records
                       </div>
-                      {exportOffenseError && <p className="analytics-export-error" role="alert">{exportOffenseError}</p>}
                     </div>
                     )}
                   </details>
