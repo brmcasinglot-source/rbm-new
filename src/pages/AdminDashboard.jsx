@@ -2861,15 +2861,6 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="analytics-right-column">
-                    <MonthlyTypeBreakdown
-                      monthlyTypeData={monthlyTypeData}
-                      month={monthlyTypeMonth}
-                      year={monthlyTypeYear}
-                      years={monthlyTypeYears}
-                      onMonthChange={setMonthlyTypeMonth}
-                      onYearChange={setMonthlyTypeYear}
-                    />
-
                     {/* Location Breakdown card */}
                     <div className="card-panel analytics-location-panel">
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
