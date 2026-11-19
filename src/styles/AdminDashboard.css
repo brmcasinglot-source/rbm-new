@@ -7777,7 +7777,7 @@
 .admin-theme .menu button.active {
   background: #e1f5e9;
   color: #087443;
-  box-shadow: inset 3px 0 0 #0b9a59;
+  box-shadow: none;
 }
 
 .admin-theme .menu button:hover {
