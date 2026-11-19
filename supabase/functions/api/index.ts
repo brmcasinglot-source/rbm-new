@@ -1,9 +1,13 @@
 import handler from "../_shared/api.js";
 
-const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = [
+  ...((Deno.env.get("ALLOWED_ORIGINS") || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)),
+  "http://localhost:5173",
+  "https://cnhs-brms.vercel.app",
+];
 
 Deno.serve(async (request) => {
   const origin = request.headers.get("origin");
