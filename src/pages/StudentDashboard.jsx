@@ -1506,11 +1506,11 @@ export default function StudentDashboard() {
                 </div>
                 <ul className="s-help-steps">
                   {[
-                    ["01", "Identify the Type",           "Choose the category that best describes the incident."],
-                    ["02", "Be Specific",                  "Provide exact location and time to help admin investigate faster."],
-                    ["03", "Detailed Description",         "Explain what happened before, during, and after."],
-                    ["04", "Attach Evidence",              "Upload photos or screenshots — this greatly strengthens the case."],
-                    ["05", "Confidentiality Guaranteed",   "Your identity is protected. Only authorized personnel will see this report."],
+                    ["01", "Identify the Type", "Choose the category that best describes the incident. Pili-a ang category nga pinakabagay sa nahitabo."],
+                    ["02", "Be Specific", "Provide the exact location and time. Ibutang ang sakto nga lugar ug oras aron mas dali ma-investigate sa Prefect."],
+                    ["03", "Detailed Description", "Explain what happened before, during, and after the incident. Isaysay kung unsay nahitabo before, during, ug after sa incident."],
+                    ["04", "Attach Evidence", "Upload photos or screenshots if available. Kung naa kay pictures or screenshots nga makatabang sa investigation, pwede nimo i-attach."],
+                    ["05", "Confidentiality Guaranteed", "Your identity is protected. Ang imong report makita lamang sa authorized school personnel."],
                   ].map(([num, strong, p]) => (
                     <li key={num}>
                       <span className="s-step-num">{num}</span>
@@ -1518,10 +1518,11 @@ export default function StudentDashboard() {
                     </li>
                   ))}
                 </ul>
-                <div className="s-privacy-note">
-                  <Lock size={13} color="var(--s-accent)" />
-                  <span>Your report is fully confidential.</span>
+                <div className="s-friendly-reminder">
+                  <strong>A Friendly Reminder</strong>
+                  <p>You are free to use either English or Bisaya when submitting your report. Pwede ra kaayo ka mag-Bisaya sa pag-report para mas sayon ug klaro nimo ma-explain ang nahitabo.</p>
                 </div>
+                <p className="s-help-closing"><Lock size={13} aria-hidden="true" /> Your report is fully confidential. Your voice matters, and we're here to listen.</p>
               </div>
             </div>
           </div>
