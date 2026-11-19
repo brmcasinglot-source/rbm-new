@@ -84,6 +84,14 @@ function getLocationDonutGradient(entries, total) {
   return `conic-gradient(${stops.join(", ")})`;
 }
 
+function getAnalyticsBarScale(counts) {
+  const maxCount = Math.max(0, ...counts);
+  const step = maxCount <= 10 ? 2 : maxCount <= 20 ? 5 : maxCount <= 50 ? 10 : Math.ceil(maxCount / 5);
+  const axisMax = Math.max(step, Math.ceil((maxCount * 1.25) / step) * step);
+  const ticks = Array.from({ length: Math.floor(axisMax / step) + 1 }, (_, index) => axisMax - index * step);
+  return { axisMax, ticks };
+}
+
 async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -916,21 +924,48 @@ export default function AdminDashboard() {
     [mfFiltered, mfTypes]
   );
   const gradeBreakdownData = useMemo(() => {
-    const counts = GRADE_OPTIONS.map((grade) => ({
-      grade,
+    const categories = GRADE_OPTIONS.map((grade) => ({
+      label: grade,
       count: mfFiltered.filter((report) => report.reporterGrade === grade).length,
     }));
-    const total = counts.reduce((sum, item) => sum + item.count, 0);
-    const highest = counts.reduce(
+    const total = categories.reduce((sum, item) => sum + item.count, 0);
+    const highest = categories.reduce(
       (current, item) => item.count > current.count ? item : current,
-      counts[0] || { grade: "", count: 0 }
+      categories[0] || { label: "", count: 0 }
     );
-    const maxCount = Math.max(0, ...counts.map((item) => item.count));
-    const step = maxCount <= 10 ? 2 : maxCount <= 20 ? 5 : maxCount <= 50 ? 10 : Math.ceil(maxCount / 5);
-    const axisMax = Math.max(step, Math.ceil((maxCount * 1.25) / step) * step);
-    const ticks = Array.from({ length: Math.floor(axisMax / step) + 1 }, (_, index) => axisMax - index * step);
-    return { grades: counts, total, highest, axisMax, ticks };
+    const { axisMax, ticks } = getAnalyticsBarScale(categories.map((item) => item.count));
+    return { categories, total, highest, axisMax, ticks };
   }, [mfFiltered]);
+  const sectionBreakdownData = useMemo(() => {
+    if (mfGrade === "All") return null;
+
+    const reports = mfFiltered.filter((report) => report.reporterGrade === mfGrade);
+    const sectionNames = new Set([
+      ...gradeSections
+        .filter((item) => item.grade === mfGrade)
+        .map((item) => item.section?.trim())
+        .filter(Boolean),
+      ...reports.map((report) => report.reporterSection?.trim()).filter(Boolean),
+    ]);
+    const categories = [...sectionNames]
+      .sort((a, b) => a.localeCompare(b))
+      .map((label) => ({
+        label,
+        count: reports.filter((report) => report.reporterSection?.trim() === label).length,
+      }));
+    const unspecifiedCount = reports.filter((report) => !report.reporterSection?.trim()).length;
+    if (unspecifiedCount > 0) categories.push({ label: "Unspecified", count: unspecifiedCount });
+
+    const total = categories.reduce((sum, item) => sum + item.count, 0);
+    const highest = categories.reduce(
+      (current, item) => item.count > current.count ? item : current,
+      categories[0] || { label: "", count: 0 }
+    );
+    const { axisMax, ticks } = getAnalyticsBarScale(categories.map((item) => item.count));
+    return { categories, total, highest, axisMax, ticks };
+  }, [gradeSections, mfFiltered, mfGrade]);
+  const gradeChartData = sectionBreakdownData || gradeBreakdownData;
+  const gradeChartTitle = sectionBreakdownData ? "Incidents by Section" : "Incidents by Grade Level";
   const mfChartColors = useMemo(() => ["#D6455D", "#E07824", "#5368D5", "#159985", "#C28A16", "#8562C8"], []);
 
   const mfTopIdx   = mfChartData.indexOf(Math.max(...mfChartData));
@@ -2936,25 +2971,39 @@ export default function AdminDashboard() {
                         <div className="analytics-grade-title">
                           <span className="analytics-grade-icon"><FileBarChart size={18} /></span>
                           <div className="title-group">
-                            <h3>Incidents by Grade Level</h3>
-                            <p className="panel-subtitle">Reported incidents per grade level</p>
+                            <h3>{gradeChartTitle}</h3>
+                            <p className="panel-subtitle">
+                              {sectionBreakdownData
+                                ? `${mfGrade} · Reported incidents per section`
+                                : "Select a grade filter to view its sections"}
+                            </p>
                           </div>
                         </div>
                       </div>
 
-                      {gradeBreakdownData.total > 0 ? (
+                      {gradeChartData.total > 0 ? (
                         <>
-                          <div className="analytics-grade-chart" role="img" aria-label={`${gradeBreakdownData.total} incidents by grade level`}>
+                          <div
+                            className="analytics-grade-chart"
+                            role="img"
+                            aria-label={`${gradeChartData.total} incidents by ${sectionBreakdownData ? `${mfGrade} section` : "grade level"}`}
+                          >
                             <div className="analytics-grade-y-axis" aria-hidden="true">
-                              {gradeBreakdownData.ticks.map((tick) => <span key={tick}>{tick}</span>)}
+                              {gradeChartData.ticks.map((tick) => <span key={tick}>{tick}</span>)}
                             </div>
                             <div className="analytics-grade-plot">
-                              <div className="analytics-grade-bars">
-                                {gradeBreakdownData.grades.map(({ grade, count }) => {
-                                  const barHeight = (count / gradeBreakdownData.axisMax) * 100;
-                                  const isHighest = count > 0 && count === gradeBreakdownData.highest.count;
+                              <div
+                                className="analytics-grade-bars"
+                                style={{
+                                  gridTemplateColumns: `repeat(${gradeChartData.categories.length}, minmax(0, 1fr))`,
+                                  minWidth: `${Math.max(0, gradeChartData.categories.length * 70)}px`,
+                                }}
+                              >
+                                {gradeChartData.categories.map(({ label, count }) => {
+                                  const barHeight = (count / gradeChartData.axisMax) * 100;
+                                  const isHighest = count > 0 && count === gradeChartData.highest.count;
                                   return (
-                                    <div className="analytics-grade-column" key={grade}>
+                                    <div className="analytics-grade-column" key={label}>
                                       <div
                                         className="analytics-grade-bar-label"
                                         style={{ bottom: `calc(${barHeight}% + 5px)` }}
@@ -2965,14 +3014,14 @@ export default function AdminDashboard() {
                                         className={`analytics-grade-bar${isHighest ? " is-highest" : ""}`}
                                         style={{ height: `${barHeight}%` }}
                                       />
-                                      <span className={`analytics-grade-label${isHighest ? " is-highest" : ""}`}>{grade}</span>
+                                      <span className={`analytics-grade-label${isHighest ? " is-highest" : ""}`}>{label}</span>
                                     </div>
                                   );
                                 })}
                               </div>
                               <div className="analytics-grade-gridlines" aria-hidden="true">
-                                {gradeBreakdownData.ticks.map((tick, index) => (
-                                  <span key={tick} style={{ top: `${(index / (gradeBreakdownData.ticks.length - 1)) * 100}%` }} />
+                                {gradeChartData.ticks.map((tick, index) => (
+                                  <span key={tick} style={{ top: `${(index / (gradeChartData.ticks.length - 1)) * 100}%` }} />
                                 ))}
                               </div>
                             </div>
@@ -2982,15 +3031,15 @@ export default function AdminDashboard() {
                               <p>
                                 <strong>Key Insight</strong>
                                 <span>
-                                  {gradeBreakdownData.highest.count > 0
-                                  ? `${gradeBreakdownData.highest.grade} leads: ${gradeBreakdownData.highest.count} reports.`
-                                  : "No incidents match the current filters."}
+                                  {gradeChartData.highest.count > 0
+                                    ? `${gradeChartData.highest.label} leads: ${gradeChartData.highest.count} reports.`
+                                    : "No incidents match the current filters."}
                                 </span>
                               </p>
                             </div>
                             <div className="analytics-grade-total">
                               <span>Total Incidents</span>
-                              <strong>{gradeBreakdownData.total}</strong>
+                              <strong>{gradeChartData.total}</strong>
                             </div>
                           </div>
                         </>
