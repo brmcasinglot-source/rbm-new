@@ -4222,7 +4222,7 @@
 }
 
 .analytics-overview .analytics-main-row {
-  grid-template-columns: minmax(0, 1.35fr) minmax(480px, 1fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(400px, 0.75fr);
   gap: 16px;
   margin-bottom: 18px;
 }
@@ -4414,11 +4414,19 @@
 .analytics-right-column {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "grade"
+    "location";
   align-content: start;
   gap: 16px;
 }
 
+.analytics-overview .analytics-right-column .analytics-grade-panel {
+  grid-area: grade;
+}
+
 .analytics-overview .analytics-right-column .analytics-location-panel {
+  grid-area: location;
   position: static;
   top: auto;
   align-self: start;
@@ -4429,18 +4437,19 @@
   border-color: #dce9e1;
   color: #182b25;
   min-height: 0;
+  padding: 14px;
 }
 
 .analytics-location-panel .title-group h3 {
   color: #182b25;
-  font-size: 22px;
+  font-size: 17px;
   line-height: 1.2;
 }
 
 .analytics-location-panel .panel-subtitle {
   color: #64748b;
-  font-size: 14px;
-  margin-top: 5px;
+  font-size: 12px;
+  margin-top: 3px;
 }
 
 .analytics-grade-panel {
@@ -4578,7 +4587,7 @@
   left: 50%;
   transform: translateX(-50%);
   color: #64748b;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -4744,8 +4753,8 @@
 }
 
 .analytics-location-tabs button {
-  min-height: 36px;
-  padding: 6px 12px;
+  min-height: 30px;
+  padding: 5px 8px;
   border: 1.5px solid #d5e0db;
   border-radius: 11px;
   background: #ffffff;
@@ -4762,15 +4771,15 @@
 
 .analytics-location-donut-layout {
   display: grid;
-  grid-template-columns: 170px minmax(220px, 1fr);
+  grid-template-columns: 150px minmax(0, 1fr);
   align-items: center;
-  gap: 20px;
+  gap: 14px;
   flex: 1;
-  min-height: 200px;
+  min-height: 160px;
 }
 
 .analytics-location-donut {
-  width: 170px;
+  width: 150px;
   aspect-ratio: 1;
   border-radius: 50%;
   position: relative;
@@ -4780,14 +4789,14 @@
 .analytics-location-donut::after {
   content: "";
   position: absolute;
-  inset: 38px;
+  inset: 34px;
   border-radius: 50%;
   background: #ffffff;
 }
 
 .analytics-location-donut-center {
   position: absolute;
-  inset: 38px;
+  inset: 34px;
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -4797,7 +4806,7 @@
 }
 
 .analytics-location-donut-center strong {
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1;
   color: #182b25;
 }
@@ -4811,7 +4820,7 @@
 .analytics-location-donut-legend {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -4870,16 +4879,16 @@
 
 @media (max-width: 1100px) {
   .analytics-location-donut-layout {
-    grid-template-columns: 180px minmax(200px, 1fr);
+    grid-template-columns: 150px minmax(0, 1fr);
   }
 
   .analytics-location-donut {
-    width: 180px;
+    width: 150px;
   }
 
   .analytics-location-donut::after,
   .analytics-location-donut-center {
-    inset: 42px;
+    inset: 34px;
   }
 }
 

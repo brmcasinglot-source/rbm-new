@@ -475,7 +475,7 @@ export default function AdminDashboard() {
   const [incidentsPage, setIncidentsPage] = useState(0);
 
   // Location Breakdown pagination
-  const LOCATION_PAGE_SIZE = 7;
+  const LOCATION_PAGE_SIZE = 4;
   const [locationPage, setLocationPage] = useState(0);
   const [locationZoneFilter, setLocationZoneFilter] = useState("all");
 
@@ -983,139 +983,167 @@ export default function AdminDashboard() {
       ? "No incidents have been reported yet. Once students start submitting reports, insights will appear here automatically."
       : "No incidents match the current filters. Try adjusting your selection.";
 
-  // ── Chart.js modern vertical bar chart — capsule bars on tracks, glow + pill labels ─
+  // ── Monthly stacked incident chart ─
   useEffect(() => {
     if (activeTab !== "analytics") return;
     const canvas = chartCanvasRef.current;
     if (!canvas) return;
     if (chartInstanceRef.current) { chartInstanceRef.current.destroy(); chartInstanceRef.current = null; }
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const mfTypeLabels = ["Physical","Verbal","Cyber","Social","Property","Others"];
-    const maxVal = Math.max(...mfChartData, 1);
+    const monthLabels = MONTH_NAMES.map((name) => name.slice(0, 3));
+    const monthlyCounts = mfTypes.map((type) => monthLabels.map((_, monthIndex) =>
+      mfFiltered.filter((report) => {
+        if (!report.date) return false;
+        const date = new Date(report.date);
+        return !Number.isNaN(date.getTime()) &&
+          date.getMonth() === monthIndex &&
+          (report.type || "Others") === type;
+      }).length
+    ));
+    const monthlyTotals = monthLabels.map((_, monthIndex) =>
+      monthlyCounts.reduce((sum, counts) => sum + counts[monthIndex], 0)
+    );
+    const maxVal = Math.max(1, ...monthlyTotals);
+    const step = maxVal <= 10 ? 2 : maxVal <= 20 ? 5 : Math.ceil(maxVal / 5);
+    const axisMax = Math.max(step, Math.ceil((maxVal * 1.25) / step) * step);
 
-    // Gradient bar fills — vivid at the base, softened toward the top
-    const makeGradient = (alphaTop) => (ctx) => {
-      const { chart, dataIndex } = ctx;
-      const { ctx: c, chartArea } = chart;
-      const base = mfChartColors[dataIndex];
-      if (!chartArea) return base;
-      const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-      gradient.addColorStop(0, hexToRgba(base, alphaTop));
-      gradient.addColorStop(1, base);
-      return gradient;
+    const chartBackgroundPlugin = {
+      id: "analyticsChartBackground",
+      beforeDraw(chart) {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        ctx.save();
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+        ctx.restore();
+      },
     };
 
-    // Full-height rounded "track" behind every bar, like a modern stat-bar / Linear-style chart
-    const barTrackPlugin = {
-      id: "barTrack",
-      beforeDatasetsDraw(chart) {
-        const { ctx: c, chartArea } = chart;
-        const meta = chart.getDatasetMeta(0);
+    const segmentLabelsPlugin = {
+      id: "segmentLabels",
+      afterDatasetsDraw(chart) {
+        const { ctx: c } = chart;
         c.save();
-        meta.data.forEach((bar, i) => {
-          const base = mfChartColors[i];
-          const width = bar.width * 0.86;
-          const x = bar.x - width / 2;
-          const top = chartArea.top + 4;
-          const bottom = chartArea.bottom;
-          const radius = width / 2;
-          c.beginPath();
-          c.roundRect(x, top, width, bottom - top, radius);
-          c.fillStyle = hexToRgba(base, isDark ? 0.14 : 0.08);
-          c.fill();
+        c.font = "700 12px Nunito, sans-serif";
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+          const meta = chart.getDatasetMeta(datasetIndex);
+          meta.data.forEach((bar, dataIndex) => {
+            const value = dataset.data[dataIndex];
+            if (!value) return;
+            c.fillStyle = "#ffffff";
+            c.fillText(String(value), bar.x, bar.y + bar.height / 2);
+          });
         });
         c.restore();
       },
     };
 
-    // Draws the case count as a small pill badge above each non-zero bar
-    const valueLabelsPlugin = {
-      id: "valueLabels",
+    const monthTotalLabelsPlugin = {
+      id: "monthTotalLabels",
       afterDatasetsDraw(chart) {
-        const { ctx: c } = chart;
-        chart.getDatasetMeta(0).data.forEach((bar, i) => {
-          const value = mfChartData[i];
-          if (!value) return;
-          const base = mfChartColors[i];
-          const text = String(value);
-          c.save();
-          c.font = "800 12px Poppins, sans-serif";
-          const textWidth = c.measureText(text).width;
-          const padX = 8, pillH = 20;
-          const pillW = Math.max(textWidth + padX * 2, pillH);
-          const pillX = bar.x - pillW / 2;
-          const pillY = bar.y - pillH - 10;
-
-          c.shadowColor = hexToRgba(base, 0.25);
-          c.shadowBlur = 6;
-          c.shadowOffsetY = 2;
-          c.beginPath();
-          c.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
-          c.fillStyle = isDark ? hexToRgba(base, 0.22) : hexToRgba(base, 0.12);
-          c.fill();
-
-          c.shadowColor = "transparent";
-          c.fillStyle = base;
-          c.textAlign = "center";
-          c.textBaseline = "middle";
-          c.fillText(text, bar.x, pillY + pillH / 2 + 1);
-          c.restore();
+        const { ctx: c, chartArea } = chart;
+        c.save();
+        c.font = "700 11px Nunito, sans-serif";
+        c.fillStyle = "#334155";
+        c.textAlign = "center";
+        c.textBaseline = "bottom";
+        monthlyTotals.forEach((total, index) => {
+          if (!total) return;
+          let topBar = null;
+          for (let datasetIndex = 0; datasetIndex < mfTypes.length; datasetIndex += 1) {
+            if (!monthlyCounts[datasetIndex][index]) continue;
+            topBar = chart.getDatasetMeta(datasetIndex).data[index];
+          }
+          const bar = topBar;
+          if (!bar) return;
+          if (bar && bar.y < chartArea.top + 18) return;
+          c.fillText(String(total), bar.x, bar.y - 5);
         });
+        c.restore();
       },
     };
 
     chartInstanceRef.current = new Chart(canvas, {
       type: "bar",
       data: {
-        labels: mfTypeLabels,
-        datasets: [{
-          data: mfChartData,
-          backgroundColor: makeGradient(0.65),
-          hoverBackgroundColor: makeGradient(0.9),
-          borderRadius: 100,
+        labels: monthLabels,
+        datasets: mfTypes.map((type, index) => ({
+          label: type,
+          data: monthlyCounts[index],
+          backgroundColor: mfChartColors[index],
+          borderColor: mfChartColors[index],
+          borderWidth: 0,
+          borderRadius: 2,
           borderSkipped: false,
-          barPercentage: 0.42,
-          categoryPercentage: 0.7,
-        }],
+          barPercentage: 0.78,
+          categoryPercentage: 0.72,
+        })),
       },
-      plugins: [barTrackPlugin, valueLabelsPlugin],
+      plugins: [chartBackgroundPlugin, segmentLabelsPlugin, monthTotalLabelsPlugin],
       options: {
         responsive: true, maintainAspectRatio: false,
-        layout: { padding: { top: 34, bottom: 8 } },
+        layout: { padding: { top: 30, bottom: 2, left: 6, right: 6 } },
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: true,
+            position: "top",
+            align: "start",
+            labels: {
+              color: "#334155",
+              usePointStyle: false,
+              boxWidth: 9,
+              boxHeight: 9,
+              padding: 14,
+              font: { size: 12, weight: "600", family: "Nunito" },
+            },
+          },
           tooltip: {
             enabled: true,
-            backgroundColor: isDark ? "#1f2937" : "#0f172a",
+            backgroundColor: "#111827",
             titleColor: "#fff",
             bodyColor: "#e2e8f0",
             padding: 10,
-            cornerRadius: 10,
-            displayColors: false,
+            cornerRadius: 8,
+            displayColors: true,
             caretSize: 6,
             titleFont: { size: 12, weight: "700", family: "Nunito" },
             bodyFont: { size: 12, family: "Nunito" },
             callbacks: {
-              label: (ctx) => `${ctx.parsed.y} incident${ctx.parsed.y !== 1 ? "s" : ""}`,
+              title: (items) => {
+                if (!items.length) return "";
+                const index = items[0].dataIndex;
+                const total = monthlyTotals[index];
+                return `${monthLabels[index]}: ${total} incident${total !== 1 ? "s" : ""}`;
+              },
+              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y}`,
             },
           },
         },
         scales: {
           x: {
-            grid: { display: false },
+            stacked: true,
+          grid: { display: true, color: "rgba(148,163,184,0.22)", drawTicks: false },
             border: { display: false },
             ticks: {
-              color: (ctx) => mfChartColors[ctx.index],
-              font: { size: 12.5, weight: "800" },
+              color: "#334155",
+              font: { size: 12, weight: "700", family: "Nunito" },
               autoSkip: false,
-              padding: 14,
-              callback: (val, idx) => `●  ${mfTypeLabels[idx]}`,
+              padding: 8,
             },
           },
           y: {
-            display: false,
+            stacked: true,
             beginAtZero: true,
-            suggestedMax: Math.ceil(maxVal * 1.35),
+            max: axisMax,
+            ticks: {
+              stepSize: step,
+              color: "#64748b",
+              font: { size: 11, family: "Nunito" },
+              padding: 8,
+            },
+            grid: { color: "rgba(148,163,184,0.28)", drawTicks: false },
+            border: { display: false },
           },
         },
         animation: {
@@ -2663,7 +2691,7 @@ export default function AdminDashboard() {
                   <div className="card-panel" style={{ marginBottom: 0 }}>
                     <div className="analytics-chart-header">
                       <div className="title-group">
-                        <h3>Incident Analytics</h3>
+                        <h3>Monthly Incident Analytics</h3>
                         <p className="panel-subtitle">
                           {mfHasFilters ? `Showing ${mfFiltered.length} of ${incidents.length} incidents` : `All ${incidents.length} incidents · Real-time`}
                         </p>
@@ -2814,7 +2842,7 @@ export default function AdminDashboard() {
                     )}
 
                     {/* Chart */}
-                    <div className="analytics-chart-canvas-wrap" style={{ position: "relative", width: "100%", height: 300, marginTop: 16 }}>
+                    <div className="analytics-chart-canvas-wrap" style={{ position: "relative", width: "100%", height: 320, marginTop: 16, background: "#ffffff", borderRadius: 10, padding: "8px 8px 4px" }}>
                       <canvas ref={chartCanvasRef} role="img" aria-label="Bar chart showing filtered incidents by type" />
                     </div>
 
