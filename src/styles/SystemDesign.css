@@ -74,6 +74,13 @@ button { -webkit-tap-highlight-color: transparent; }
 .s-dashboard .s-menu button.active {
   background: #eaf5ee;
   color: #176b36;
+}
+
+.admin-theme .menu button.active {
+  box-shadow: none;
+}
+
+.s-dashboard .s-menu button.active {
   box-shadow: inset 3px 0 0 #16803c;
 }
 

@@ -46,7 +46,7 @@
   width: 240px;
   height: 100vh;
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--border-green);
+  border-right: 0;
   padding: 0 0 16px;
   display: flex;
   flex-direction: column;
@@ -54,6 +54,12 @@
   overflow-y: auto;
   position: relative;
   z-index: 10;
+}
+
+.admin-theme .sidebar::before,
+.admin-theme .sidebar::after {
+  display: none !important;
+  content: none !important;
 }
 
 .admin-theme .brand {
