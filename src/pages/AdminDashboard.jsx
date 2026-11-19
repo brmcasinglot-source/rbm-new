@@ -4188,10 +4188,16 @@ export default function AdminDashboard() {
               ) : studentIdViewer.error ? (
                 <p role="alert" style={{ color: "#b91c1c" }}>Could not load ID photos: {studentIdViewer.error}</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: studentIdViewer.images?.back ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)",
+                  gap: 16,
+                }}>
                   {[
                     { label: "Front", url: studentIdViewer.images?.front },
-                    { label: "Back", url: studentIdViewer.images?.back },
+                    ...(studentIdViewer.images?.back
+                      ? [{ label: "Back", url: studentIdViewer.images.back }]
+                      : []),
                   ].map(({ label, url }) => (
                     <div key={label}>
                       <strong style={{ display: "block", marginBottom: 8 }}>{label} of Student ID</strong>

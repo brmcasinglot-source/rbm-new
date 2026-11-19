@@ -237,35 +237,20 @@ async function uploadReportEvidence(userId, evidence) {
   }
 }
 
-async function uploadStudentIdImages(studentId, frontDataUrl, backDataUrl) {
-  const images = [
-    { path: `${studentId}/front.webp`, bytes: decodeStudentIdImage(frontDataUrl, "front") },
-    { path: `${studentId}/back.webp`, bytes: decodeStudentIdImage(backDataUrl, "back") },
-  ];
-  const uploadedPaths = [];
-  try {
-    for (const image of images) {
-      const { error } = await getDatabase().storage.from(STUDENT_ID_BUCKET).upload(image.path, image.bytes, {
-        contentType: "image/webp",
-        upsert: false,
-      });
-      if (error) {
-        throw Object.assign(
-          new Error(`Could not securely save the student ID photos. Run supabase/student_id_images.sql and deploy the API again. (${error.message})`),
-          { status: 503 },
-        );
-      }
-      uploadedPaths.push(image.path);
-    }
-    return { frontPath: images[0].path, backPath: images[1].path };
-  } catch (error) {
-    try {
-      await removeStudentIdImages(uploadedPaths);
-    } catch (cleanupError) {
-      console.error("Could not clean up incomplete student ID uploads:", cleanupError.message);
-    }
-    throw error;
+async function uploadStudentIdFrontImage(studentId, dataUrl) {
+  const path = `${studentId}/front.webp`;
+  const bytes = decodeStudentIdImage(dataUrl, "front");
+  const { error } = await getDatabase().storage.from(STUDENT_ID_BUCKET).upload(path, bytes, {
+    contentType: "image/webp",
+    upsert: false,
+  });
+  if (error) {
+    throw Object.assign(
+      new Error(`Could not securely save the student ID photo. Run supabase/student_id_images.sql and deploy the API again. (${error.message})`),
+      { status: 503 },
+    );
   }
+  return { frontPath: path };
 }
 
 function hashOtp(email, purpose, code) {
@@ -868,9 +853,9 @@ async function handleAuth(action, body, req) {
   }
 
   if (action === "signup") {
-    const { name, password, lrn, age, sex, grade, section, studentIdFront, studentIdBack } = body;
-    if (!studentIdFront || !studentIdBack) {
-      throw Object.assign(new Error("Upload both the front and back photos of your student ID before signing up."), { status: 400 });
+    const { name, password, lrn, age, sex, grade, section, studentIdFront } = body;
+    if (!studentIdFront) {
+      throw Object.assign(new Error("Upload the front photo of your student ID before signing up."), { status: 400 });
     }
     const strongPassword = typeof password === "string" && password.length >= 8 &&
       /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) &&
@@ -897,7 +882,7 @@ async function handleAuth(action, body, req) {
     }
 
     const id = randomUUID();
-    const imagePaths = await uploadStudentIdImages(id, studentIdFront, studentIdBack);
+    const imagePaths = await uploadStudentIdFrontImage(id, studentIdFront);
     const payload = {
       id,
       name: name.trim(),
@@ -981,7 +966,7 @@ async function handleAuth(action, body, req) {
       grade: registration.grade,
       section: registration.section,
       student_id_front_path: registration.frontPath,
-      student_id_back_path: registration.backPath,
+      student_id_back_path: registration.backPath || null,
     });
     if (profileError) {
       const { error: cleanupError } = await db.from("auth_credentials").delete().eq("id", registration.id);

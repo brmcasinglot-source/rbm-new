@@ -18,6 +18,7 @@ import {
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
 import { optimizeImageFile } from "../lib/imageOptimization.js";
 import { checkImageQuality } from "../utils/imageQuality.js";
+import { scanStudentIdFront, studentNamesMatch } from "../lib/studentIdOcr.js";
 
 const MAX_STUDENT_ID_IMAGE_SIZE = 350_000;
 
@@ -94,20 +95,25 @@ export default function Login() {
   const [regSex,     setRegSex]     = useState("");
   const [regGrade,   setRegGrade]   = useState("");
   const [regSection, setRegSection] = useState("");
-  const [regStudentIdImages, setRegStudentIdImages] = useState({ front: null, back: null });
-  const [studentIdImageErrors, setStudentIdImageErrors] = useState({ front: "", back: "" });
+  const [regStudentIdImages, setRegStudentIdImages] = useState({ front: null });
+  const [regStudentIdScan, setRegStudentIdScan] = useState(null);
+  const [studentIdImageErrors, setStudentIdImageErrors] = useState({ front: "" });
   const [processingIdImage, setProcessingIdImage] = useState(false);
   const studentIdFileInputs = useRef({});
-  const [studentIdUploadSide, setStudentIdUploadSide] = useState(null);
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
   const resetPasswordStrength = getPasswordStrength(newPassword);
+  const studentIdDetailsMatch = Boolean(
+    regStudentIdScan &&
+    regLRN === regStudentIdScan.lrn &&
+    studentNamesMatch(regName, regStudentIdScan.name)
+  );
 
   // Used for the registration guidance below the submit button.
   const isRegisterFormComplete =
     regName.trim() && regLRN.length === 12 && regEmail.trim() && regAge &&
     regSex && regGrade && regSection && regPass && regConfirm &&
-    regStudentIdImages.front && regStudentIdImages.back;
+    regStudentIdImages.front;
 
   // Admin-managed sections per grade (Grade & Sections page)
   const [gradeSectionsList, setGradeSectionsList] = useState([]);
@@ -125,8 +131,9 @@ export default function Login() {
     lrnCheckRequestId.current += 1;
     setLrnCheckStatus("idle"); setLrnCheckMessage("");
     setRegAge(""); setRegSex(""); setRegGrade(""); setRegSection("");
-    setRegStudentIdImages({ front: null, back: null });
-    setStudentIdImageErrors({ front: "", back: "" });
+    setRegStudentIdImages({ front: null });
+    setRegStudentIdScan(null);
+    setStudentIdImageErrors({ front: "" });
     setProcessingIdImage(false);
   };
 
@@ -331,13 +338,18 @@ export default function Login() {
     setError("");
     setStudentIdImageErrors((current) => ({ ...current, [side]: "" }));
     setRegStudentIdImages((current) => ({ ...current, [side]: null }));
+    if (side === "front") {
+      setRegStudentIdScan(null);
+      setRegGrade("");
+      setRegSection("");
+    }
     setProcessingIdImage(true);
     try {
       const quality = await checkImageQuality(file);
       if (import.meta.env.DEV) {
         console.debug(`Student ID ${side} image blur score:`, quality.blurScore);
       }
-      if (!quality.ok) {
+      if (!quality.ok && !(side === "front" && quality.reason === "blurry")) {
         const messages = {
           blurry: "This photo is blurry. Please retake it.",
           "too-dark": "This photo is too dark. Please retake it in better lighting.",
@@ -352,8 +364,27 @@ export default function Login() {
         return;
       }
 
+      const scan = side === "front" ? await scanStudentIdFront(file) : null;
       const image = await prepareStudentIdImage(file);
       setRegStudentIdImages((current) => ({ ...current, [side]: image }));
+      if (scan) {
+        setRegStudentIdScan(scan);
+        setRegName(scan.name);
+        setRegLRN(scan.lrn);
+
+        const matchingGrade = GRADE_OPTIONS.find(
+          (grade) => grade.toLowerCase() === scan.grade.toLowerCase()
+        );
+        if (matchingGrade) {
+          setRegGrade(matchingGrade);
+          const matchingSection = gradeSectionsList.find(
+            (item) =>
+              item.grade === matchingGrade &&
+              item.section.toLowerCase() === scan.section.toLowerCase()
+          );
+          setRegSection(matchingSection?.section || "");
+        }
+      }
     } catch (imageError) {
       setStudentIdImageErrors((current) => ({ ...current, [side]: imageError.message }));
     } finally {
@@ -371,8 +402,16 @@ export default function Login() {
       setError("Please fill in all required fields.");
       return;
     }
-    if (!regStudentIdImages.front || !regStudentIdImages.back) {
-      setError("Upload both the front and back photos of your student ID.");
+    if (!regStudentIdImages.front) {
+      setError("Upload the front photo of your student ID.");
+      return;
+    }
+    if (!regStudentIdScan) {
+      setError("Scan a readable front photo of your student ID before signing up.");
+      return;
+    }
+    if (!studentIdDetailsMatch) {
+      setError("The name and LRN in the form must match the student ID.");
       return;
     }
     if (regLRN.length !== 12) {
@@ -408,7 +447,6 @@ export default function Login() {
       grade:    regGrade,
       section:  regSection.trim(),
       studentIdFront: regStudentIdImages.front.dataUrl,
-      studentIdBack: regStudentIdImages.back.dataUrl,
     });
     setLoading(false);
 
@@ -417,6 +455,8 @@ export default function Login() {
       return;
     }
 
+    setRegStudentIdImages({ front: null });
+    setRegStudentIdScan(null);
     setEmail(regEmail.trim());
     setVerifyCode("");
     setMode("verify");
@@ -635,6 +675,96 @@ export default function Login() {
 
               <form onSubmit={handleRegister} noValidate>
                 <div className="input-group">
+                  <label className="input-label">Front of Student ID *</label>
+                  <p className="student-id-upload-help">
+                    The front is scanned on this device to fill in your name, LRN, grade, and section. This photo is stored for administrator account validation.
+                  </p>
+                  <button
+                    type="button"
+                    className={`student-id-front-card ${regStudentIdImages.front ? "has-image" : ""}`}
+                    disabled={processingIdImage || loading}
+                    onClick={() => studentIdFileInputs.current["front-file"]?.click()}
+                  >
+                    {regStudentIdImages.front ? (
+                      <>
+                        <img src={regStudentIdImages.front.dataUrl} alt="Front of student ID preview" />
+                        <span>Front of Student ID — ready</span>
+                        <small>Tap to replace</small>
+                      </>
+                    ) : (
+                      <>
+                        <span className="student-id-front-icon">+</span>
+                        <span>Front of Student ID</span>
+                        <small>Choose a photo below or tap here to upload</small>
+                      </>
+                    )}
+                  </button>
+                  <div className="student-id-actions">
+                    <button
+                      type="button"
+                      className="student-id-action"
+                      disabled={processingIdImage || loading}
+                      onClick={() => studentIdFileInputs.current["front-file"]?.click()}
+                    >
+                      Upload photo
+                    </button>
+                    <button
+                      type="button"
+                      className="student-id-action"
+                      disabled={processingIdImage || loading}
+                      onClick={() => studentIdFileInputs.current["front-camera"]?.click()}
+                    >
+                      Take photo
+                    </button>
+                  </div>
+                  <div className="student-id-file-inputs">
+                    <input
+                      ref={(element) => { studentIdFileInputs.current["front-file"] = element; }}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={processingIdImage || loading}
+                      onChange={(event) => {
+                        handleStudentIdImage("front", event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
+                    />
+                    <input
+                      ref={(element) => { studentIdFileInputs.current["front-camera"] = element; }}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      disabled={processingIdImage || loading}
+                      onChange={(event) => {
+                        handleStudentIdImage("front", event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
+                    />
+                  </div>
+                  {studentIdImageErrors.front && (
+                    <div className="student-id-image-error" role="alert">
+                      <p>{studentIdImageErrors.front}</p>
+                      <button
+                        type="button"
+                        disabled={processingIdImage || loading}
+                        onClick={() => studentIdFileInputs.current["front-camera"]?.click()}
+                      >
+                        Retake photo
+                      </button>
+                    </div>
+                  )}
+                  {processingIdImage && <p className="student-id-upload-help">Scanning and preparing photo…</p>}
+                  {regStudentIdScan && (
+                    <p
+                      className={`student-id-scan-status ${studentIdDetailsMatch ? "matched" : "mismatch"}`}
+                      role={studentIdDetailsMatch ? "status" : "alert"}
+                    >
+                      {studentIdDetailsMatch
+                        ? "The name and LRN match the scanned ID."
+                        : "The entered name and LRN must match the scanned ID before you can sign up."}
+                    </p>
+                  )}
+                </div>
+                <div className="input-group">
                   <label className="input-label">Full Name *</label>
                   <input
                     className="input"
@@ -760,129 +890,6 @@ export default function Login() {
                   </div>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Student ID Photos * (front and back required)</label>
-                  <p className="student-id-upload-help">
-                    Take a clear photo of both sides. Photos are kept private and shown only to an administrator for account validation.
-                  </p>
-                  <div className="student-id-upload-grid">
-                    {[
-                      { side: "front", label: "Front of Student ID" },
-                      { side: "back", label: "Back of Student ID" },
-                    ].map(({ side, label }) => {
-                      const image = regStudentIdImages[side];
-                      return (
-                        <div className="student-id-upload-item" key={side}>
-                          <button
-                            type="button"
-                            className={`student-id-upload ${image ? "has-image" : ""}`}
-                            disabled={processingIdImage || loading}
-                            onClick={() => setStudentIdUploadSide(side)}
-                          >
-                            {image ? (
-                              <>
-                                <img src={image.dataUrl} alt="" />
-                                <span>{label} — ready</span>
-                                <small>Tap to replace</small>
-                              </>
-                            ) : (
-                              <>
-                                <span className="student-id-upload-icon">+</span>
-                                <span>{label}</span>
-                                <small>Choose upload method</small>
-                              </>
-                            )}
-                          </button>
-                          {studentIdImageErrors[side] && (
-                            <div role="alert">
-                              <p className="student-id-upload-help" style={{ color: "#b91c1c", margin: "8px 0 0" }}>
-                                {studentIdImageErrors[side]}
-                              </p>
-                              <div className="student-id-modal-actions" style={{ marginTop: 8 }}>
-                                <button
-                                  type="button"
-                                  disabled={processingIdImage || loading}
-                                  onClick={() => studentIdFileInputs.current[`${side}-camera`]?.click()}
-                                >
-                                  Retake
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          <div className="student-id-file-inputs">
-                            <input
-                              ref={(element) => { studentIdFileInputs.current[`${side}-file`] = element; }}
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              disabled={processingIdImage || loading}
-                              onChange={(event) => {
-                                handleStudentIdImage(side, event.target.files?.[0]);
-                                event.target.value = "";
-                              }}
-                            />
-                            <input
-                              ref={(element) => { studentIdFileInputs.current[`${side}-camera`] = element; }}
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              capture="environment"
-                              disabled={processingIdImage || loading}
-                              onChange={(event) => {
-                                handleStudentIdImage(side, event.target.files?.[0]);
-                                event.target.value = "";
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {processingIdImage && <p className="student-id-upload-help">Preparing photo…</p>}
-                  {studentIdUploadSide && (
-                    <div className="student-id-modal-overlay" onClick={() => setStudentIdUploadSide(null)}>
-                      <section
-                        className="student-id-modal"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="student-id-modal-title"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <h2 id="student-id-modal-title">
-                          Add {studentIdUploadSide === "front" ? "Front" : "Back"} of Student ID
-                        </h2>
-                        <p>Choose how you want to add this photo.</p>
-                        <div className="student-id-modal-actions">
-                          <button
-                            type="button"
-                            disabled={processingIdImage || loading}
-                            onClick={() => {
-                              studentIdFileInputs.current[`${studentIdUploadSide}-file`]?.click();
-                              setStudentIdUploadSide(null);
-                            }}
-                          >
-                            Open file
-                          </button>
-                          <button
-                            type="button"
-                            disabled={processingIdImage || loading}
-                            onClick={() => {
-                              studentIdFileInputs.current[`${studentIdUploadSide}-camera`]?.click();
-                              setStudentIdUploadSide(null);
-                            }}
-                          >
-                            Open camera
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          className="student-id-modal-cancel"
-                          onClick={() => setStudentIdUploadSide(null)}
-                        >
-                          Cancel
-                        </button>
-                      </section>
-                    </div>
-                  )}
-                </div>
-                <div className="input-group">
                   <label className="input-label">Password * (strong password required)</label>
                   <div className="input-wrap">
                     <input
@@ -955,8 +962,9 @@ export default function Login() {
                     processingIdImage ||
                     lrnCheckStatus === "checking" ||
                     lrnCheckStatus === "taken" ||
-                    !regStudentIdImages.front ||
-                    !regStudentIdImages.back
+                    !regStudentIdScan ||
+                    !studentIdDetailsMatch ||
+                    !regStudentIdImages.front
                   }
                 >
                   {loading ? "Creating account…" : "Create Account"}
