@@ -155,14 +155,62 @@ export function studentNamesMatch(firstName, secondName) {
     firstInitials.join(" ") === secondInitials.join(" ");
 }
 
+async function createStudentIdRecognitionTargets(file) {
+  const targets = [file];
+  const imageUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+    image.src = imageUrl;
+    await image.decode();
+
+    for (const rotation of [90, 180, 270]) {
+      const rotated = document.createElement("canvas");
+      const context = rotated.getContext("2d");
+      if (!context) continue;
+
+      const quarterTurn = rotation === 90 || rotation === 270;
+      rotated.width = quarterTurn ? image.naturalHeight : image.naturalWidth;
+      rotated.height = quarterTurn ? image.naturalWidth : image.naturalHeight;
+
+      context.translate(rotated.width / 2, rotated.height / 2);
+      context.rotate((rotation * Math.PI) / 180);
+      context.drawImage(
+        image,
+        -image.naturalWidth / 2,
+        -image.naturalHeight / 2
+      );
+
+      const blob = await new Promise((resolve) => rotated.toBlob(resolve, "image/png"));
+      if (blob) targets.push(new File([blob], `rotated-${rotation}.png`, { type: "image/png" }));
+    }
+  } catch {
+    return targets;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+
+  return targets;
+}
+
 export async function scanStudentIdFront(file) {
   const { default: tesseract } = await import("tesseract.js");
   let worker;
-  let text;
+  let text = "";
   try {
     worker = await tesseract.createWorker("eng", tesseract.OEM.LSTM_ONLY);
-    const { data } = await worker.recognize(file);
-    text = data.text;
+    const recognitionTargets = await createStudentIdRecognitionTargets(file);
+
+    for (const target of recognitionTargets) {
+      const { data } = await worker.recognize(target);
+      text = data.text;
+      if (
+        isCasinglotNationalHighSchoolId(text) &&
+        parseStudentIdText(text).lrn
+      ) {
+        break;
+      }
+    }
   } catch (error) {
     throw new Error(
       "Could not scan the ID. Check your connection and upload a clear front photo.",
