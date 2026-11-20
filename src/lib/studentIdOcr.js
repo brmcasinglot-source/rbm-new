@@ -156,7 +156,7 @@ export function studentNamesMatch(firstName, secondName) {
 }
 
 async function createStudentIdRecognitionTargets(file) {
-  const targets = [file];
+  const targets = [];
   const imageUrl = URL.createObjectURL(file);
 
   try {
@@ -164,25 +164,33 @@ async function createStudentIdRecognitionTargets(file) {
     image.src = imageUrl;
     await image.decode();
 
-    for (const rotation of [90, 180, 270]) {
-      const rotated = document.createElement("canvas");
-      const context = rotated.getContext("2d");
+    for (const rotation of [0, 90, 180, 270]) {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { willReadFrequently: true });
       if (!context) continue;
 
       const quarterTurn = rotation === 90 || rotation === 270;
-      rotated.width = quarterTurn ? image.naturalHeight : image.naturalWidth;
-      rotated.height = quarterTurn ? image.naturalWidth : image.naturalHeight;
+      const scale = Math.min(1, 1800 / Math.max(image.naturalWidth, image.naturalHeight));
+      const sourceWidth = Math.round(image.naturalWidth * scale);
+      const sourceHeight = Math.round(image.naturalHeight * scale);
+      canvas.width = quarterTurn ? sourceHeight : sourceWidth;
+      canvas.height = quarterTurn ? sourceWidth : sourceHeight;
 
-      context.translate(rotated.width / 2, rotated.height / 2);
+      context.translate(canvas.width / 2, canvas.height / 2);
       context.rotate((rotation * Math.PI) / 180);
+      context.filter = "contrast(1.25)";
       context.drawImage(
         image,
-        -image.naturalWidth / 2,
-        -image.naturalHeight / 2
+        -sourceWidth / 2,
+        -sourceHeight / 2,
+        sourceWidth,
+        sourceHeight
       );
 
-      const blob = await new Promise((resolve) => rotated.toBlob(resolve, "image/png"));
-      if (blob) targets.push(new File([blob], `rotated-${rotation}.png`, { type: "image/png" }));
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (blob) {
+        targets.push(new File([blob], `student-id-${rotation}.png`, { type: "image/png" }));
+      }
     }
   } catch {
     return targets;
