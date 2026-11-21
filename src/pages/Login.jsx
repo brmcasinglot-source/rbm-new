@@ -684,7 +684,7 @@ export default function Login() {
                 <div className="input-group">
                   <label className="input-label">Front of Student ID *</label>
                   <p className="student-id-upload-help">
-                    The front is scanned on this device for the Casinglot National High School name or school ID (315310) and student details. Face matching is not used. If text cannot be read, enter it manually; the photo is stored for administrator validation.
+                    Upload a clear photo sa front side sa imong student ID. Make sure nga <strong>portrait orientation (vertical)</strong> ang ID, properly aligned, ug dili blurry. Ensure nga readable ug klaro ang tanang details sa ID. Likayi ang unnecessary objects, filters, or anything nga makatakip sa important details sa imong student ID. <strong>Note:</strong> Valid student ID gikan sa Casinglot National High School lamang ang dawaton.
                   </p>
                   <button
                     type="button"
@@ -994,7 +994,7 @@ export default function Login() {
               <h2>Welcome back!</h2>
               <p className="login-sub">Sign in to continue — we're glad you're here</p>
 
-              <p className="login-reassurance">🔒 Your privacy is always protected here</p>
+              <p className="login-reassurance">Your privacy is always protected here</p>
 
               <form onSubmit={handleLogin} noValidate>
                 <div className="input-group">
