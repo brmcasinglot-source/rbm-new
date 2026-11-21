@@ -18,7 +18,7 @@ import {
 import { getGradeSections, GRADE_OPTIONS } from "../data/store.js";
 import { optimizeImageFile } from "../lib/imageOptimization.js";
 import { checkImageQuality } from "../utils/imageQuality.js";
-import { scanStudentIdFront, studentNamesMatch } from "../lib/studentIdOcr.js";
+import { cleanStudentName, scanStudentIdFront, studentNamesMatch } from "../lib/studentIdOcr.js";
 
 const MAX_STUDENT_ID_IMAGE_SIZE = 350_000;
 
@@ -103,10 +103,14 @@ export default function Login() {
   const [showRegPass, setShowRegPass] = useState(false);
   const passwordStrength = getPasswordStrength(regPass);
   const resetPasswordStrength = getPasswordStrength(newPassword);
+  const studentIdHasReadableDetails = Boolean(
+    regStudentIdScan?.name && /^\d{12}$/.test(regStudentIdScan.lrn)
+  );
   const studentIdDetailsMatch = Boolean(
     regStudentIdScan &&
-    regLRN === regStudentIdScan.lrn &&
-    studentNamesMatch(regName, regStudentIdScan.name)
+    (!studentIdHasReadableDetails ||
+      (regLRN === regStudentIdScan.lrn &&
+        studentNamesMatch(regName, regStudentIdScan.name)))
   );
 
   // Used for the registration guidance below the submit button.
@@ -369,7 +373,7 @@ export default function Login() {
       setRegStudentIdImages((current) => ({ ...current, [side]: image }));
       if (scan) {
         setRegStudentIdScan(scan);
-        setRegName(scan.name);
+        setRegName(cleanStudentName(scan.name));
         setRegLRN(scan.lrn);
 
         const matchingGrade = GRADE_OPTIONS.find(
@@ -384,7 +388,9 @@ export default function Login() {
           );
           setRegSection(matchingSection?.section || "");
         }
-        await checkStudentLrnAvailability(scan.lrn);
+        if (/^\d{12}$/.test(scan.lrn)) {
+          await checkStudentLrnAvailability(scan.lrn);
+        }
       }
     } catch (imageError) {
       setStudentIdImageErrors((current) => ({ ...current, [side]: imageError.message }));
@@ -678,7 +684,7 @@ export default function Login() {
                 <div className="input-group">
                   <label className="input-label">Front of Student ID *</label>
                   <p className="student-id-upload-help">
-                    The front is scanned on this device to fill in your name, LRN, grade, and section. This photo is stored for administrator account validation.
+                    The front is scanned on this device for the Casinglot National High School name or school ID (315310) and student details. Face matching is not used. If text cannot be read, enter it manually; the photo is stored for administrator validation.
                   </p>
                   <button
                     type="button"
@@ -760,7 +766,9 @@ export default function Login() {
                       role={studentIdDetailsMatch ? "status" : "alert"}
                     >
                       {studentIdDetailsMatch
-                        ? "The name and LRN match the scanned ID."
+                        ? studentIdHasReadableDetails
+                          ? "The name and LRN match the scanned ID."
+                          : "Casinglot National High School ID recognized. Check or enter the name and LRN shown on the card; an administrator will validate the photo."
                         : "The entered name and LRN must match the scanned ID before you can sign up."}
                     </p>
                   )}

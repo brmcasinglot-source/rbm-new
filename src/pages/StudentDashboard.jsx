@@ -24,6 +24,7 @@ import {
 import { signOut } from "../lib/auth";
 import { optimizeImageFile } from "../lib/imageOptimization";
 import { getYouTubeThumbnail } from "../lib/videoUtils";
+import { cleanStudentName } from "../lib/studentIdOcr";
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 const REPORT_PAGE_SIZE = 30;
@@ -133,7 +134,8 @@ async function readFile(file) {
 export default function StudentDashboard() {
   const navigate = useNavigate();
 
-  const studentName = localStorage.getItem("studentName") || "";
+  const studentName = cleanStudentName(localStorage.getItem("studentName")) || "";
+  const profileStudentId = localStorage.getItem("studentId") || "";
   const languagePreferenceKey = `studentLanguage:${localStorage.getItem("studentId") || "default"}`;
   const profileGrade = localStorage.getItem("studentGrade") || "";
   const profileSection = localStorage.getItem("studentSection") || "";
@@ -323,7 +325,12 @@ export default function StudentDashboard() {
     if (loadingMoreReports || !hasMoreReports) return;
     setLoadingMoreReports(true);
     try {
-      const next = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE, offset: reports.length });
+      const next = await getReports({
+        summaryOnly: true,
+        limit: REPORT_PAGE_SIZE,
+        offset: reports.length,
+        submittedId: profileStudentId,
+      });
       setReports((current) => [...current, ...next]);
       setHasMoreReports(next.length === REPORT_PAGE_SIZE);
     } catch (error) {
@@ -369,6 +376,7 @@ export default function StudentDashboard() {
               ? Promise.resolve(null)
               : getReports({
                   includeEvidence: false,
+                  submittedId: profileStudentId,
                   ...(activeTab === "cases" ? { summaryOnly: true, limit: REPORT_PAGE_SIZE } : {}),
                 }),
             activeTab === "dashboard" ? getAwarenessContent() : Promise.resolve(null),
@@ -435,7 +443,7 @@ export default function StudentDashboard() {
       clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeTab]);
+  }, [activeTab, profileStudentId]);
 
   useEffect(() => {
     const close = (e) => {
@@ -629,7 +637,11 @@ export default function StudentDashboard() {
     setReportCooldownUntil(Date.now() + REPORT_COOLDOWN_MS);
     setCooldownTick(Date.now());
     setReportSubmitting(false);
-    const refreshedReports = await getReports({ summaryOnly: true, limit: REPORT_PAGE_SIZE });
+    const refreshedReports = await getReports({
+      summaryOnly: true,
+      limit: REPORT_PAGE_SIZE,
+      submittedId: profileStudentId,
+    });
     setReports(refreshedReports);
     setHasMoreReports(refreshedReports.length === REPORT_PAGE_SIZE);
     const refreshedNotifications = await getStudentNotifications();
@@ -651,7 +663,10 @@ export default function StudentDashboard() {
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const myReports  = reports.filter((r) => r.submittedBy === studentName);
+  const myReports = reports.filter((report) => {
+    if (profileStudentId && report.submittedId === profileStudentId) return true;
+    return cleanStudentName(report.submittedBy) === studentName;
+  });
   const filteredMyReports = myReports.filter((report) =>
     caseStatusFilter === "all" || report.status === caseStatusFilter
   );

@@ -173,11 +173,12 @@ const REPORT_LIST_COLUMNS = [
   "monitoring_until", "submitted_at", "updated_at",
 ].join(",");
 
-export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0 } = {}) {
+export async function getReports({ includeEvidence = false, summaryOnly = true, limit, offset = 0, submittedId = null } = {}) {
   const baseColumns = summaryOnly ? REPORT_LIST_COLUMNS : REPORT_COLUMNS_WITHOUT_EVIDENCE;
   const columns = includeEvidence ? `${REPORT_COLUMNS_WITHOUT_EVIDENCE},evidence` : baseColumns;
   let query = supabase.from("reports").select(columns)
     .order("submitted_at", { ascending: false }).order("id", { ascending: false });
+  if (submittedId) query = query.eq("submitted_id", submittedId);
   if (Number.isInteger(limit)) query = query.range(offset, offset + limit - 1);
   const { data, error } = await query;
   if (error) throw error;

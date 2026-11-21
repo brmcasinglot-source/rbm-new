@@ -1,4 +1,5 @@
 import { authRequest, supabase } from "./apiClient.js";
+import { cleanStudentName } from "./studentIdOcr.js";
 
 if (localStorage.getItem("cnhsDemoMode") === "true") {
   ["studentName", "studentId", "studentAge", "studentSex", "studentGrade", "studentSection", "userRole"]
@@ -8,7 +9,7 @@ if (localStorage.getItem("cnhsDemoMode") === "true") {
 }
 
 function cacheStudentSession(profile) {
-  localStorage.setItem("studentName", profile.name || "");
+  localStorage.setItem("studentName", cleanStudentName(profile.name));
   localStorage.setItem("studentId", profile.id || "");
   localStorage.setItem("studentLRN", profile.lrn || "");
   localStorage.setItem("studentAge", profile.age ?? "");
