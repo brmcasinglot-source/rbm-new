@@ -81,11 +81,11 @@ export function cleanStudentName(value) {
 
   const noiseWords = new Set(["ne", "wn", "ve", "di", "a"]);
   let tokens = name.split(/[\s]+/).filter(Boolean);
-  tokens = tokens.filter((token, index) => {
+  tokens = tokens.filter((token) => {
     const normalized = normalizeNameTokens(token)[0];
     if (!normalized) return false;
     if (["name", "learner", "student", "lrn"].includes(normalized)) return false;
-    if (noiseWords.has(normalized) && index < tokens.length - 3) return false;
+    if (noiseWords.has(normalized)) return false;
     return true;
   });
 

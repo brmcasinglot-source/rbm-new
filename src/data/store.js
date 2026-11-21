@@ -7,11 +7,12 @@
  */
 import { authRequest, supabase } from "../lib/apiClient";
 import { getStudentIdImages, resendConfirmationEmail as resendOtp } from "../lib/auth";
+import { cleanStudentName } from "../lib/studentIdOcr";
 
 // ─── CURRENT-USER CACHE ────────────────────────────────────────────────────
 // Populated at login time by src/lib/auth.js. Kept as localStorage so the
 // rest of the app can read "who's logged in" synchronously, same as before.
-export function getCurrentUserName()    { return localStorage.getItem("studentName")    || "Student User"; }
+export function getCurrentUserName()    { return cleanStudentName(localStorage.getItem("studentName")) || "Student User"; }
 export function getCurrentUserId()      { return localStorage.getItem("studentId")      || null; }
 export function getCurrentUserAge()     { return localStorage.getItem("studentAge")     || ""; }
 export function getCurrentUserSex()     { return localStorage.getItem("studentSex")     || ""; }
@@ -91,7 +92,7 @@ function reportRowToObj(row) {
     witnesses:          row.witnesses || [],
     status:             row.status,
     priority:           row.priority,
-    submittedBy:        row.submitted_by,
+    submittedBy:        cleanStudentName(row.submitted_by) || row.submitted_by,
     submittedId:        row.submitted_id,
     reporterAge:        row.reporter_age,
     reporterSex:        row.reporter_sex,
@@ -139,7 +140,17 @@ function timeAgo(iso) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 function notifRowToObj(row) {
-  return { id: row.id, title: row.title, time: timeAgo(row.created_at), type: row.type, read: !!row.read };
+  let title = String(row.title || "");
+  const reportSubmitMatch = title.match(/^(.+?\bby )(.+)$/);
+  if (reportSubmitMatch && !/^Anonymous$/i.test(reportSubmitMatch[2].trim())) {
+    title = `${reportSubmitMatch[1]}${cleanStudentName(reportSubmitMatch[2]) || reportSubmitMatch[2].trim()}`;
+  } else {
+    const conferenceMatch = title.match(/^(.+?\bby )(.+)\.$/);
+    if (conferenceMatch) {
+      title = `${conferenceMatch[1]}${cleanStudentName(conferenceMatch[2]) || conferenceMatch[2].trim()}.`;
+    }
+  }
+  return { id: row.id, title, time: timeAgo(row.created_at), type: row.type, read: !!row.read };
 }
 
 function locationRowToObj(row) {
@@ -241,13 +252,13 @@ export async function searchOffenseReports(searchTerm = "", limit = 20, offset =
     victims: report.victims || [],
     offenders: report.offenders || [],
     witnesses: report.witnesses || [],
-    reporterName: report.is_anonymous ? "Anonymous" : report.submitted_by || "—",
+    reporterName: report.is_anonymous ? "Anonymous" : cleanStudentName(report.submitted_by) || report.submitted_by || "—",
     evidenceCount: report.evidence_count || 0,
     scheduledConference: report.scheduled_conference || null,
     conferenceFindings: "",
     submittedAt: report.submitted_at,
     isAnonymous: !!report.is_anonymous,
-    submittedBy: report.is_anonymous ? null : report.submitted_by,
+    submittedBy: report.is_anonymous ? null : cleanStudentName(report.submitted_by) || report.submitted_by,
     linkedToStudent: false,
   }));
 }
