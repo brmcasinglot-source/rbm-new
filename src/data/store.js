@@ -227,7 +227,7 @@ export async function searchOffenseStudents(searchTerm = "", { grade = null, sec
   });
   return (rows || []).map((student) => ({
     id: student.id,
-    name: student.name,
+    name: cleanStudentName(student.name) || student.name,
     lrn: student.lrn,
     grade: student.grade,
     section: student.section,
@@ -294,7 +294,7 @@ export async function getStudentOffenseRecords(filters = {}) {
       id: record.id,
       studentId: record.student_id,
       personKey: record.person_key,
-      studentName: record.student_name,
+      studentName: cleanStudentName(record.student_name) || record.student_name,
       lrn: record.lrn,
       grade: record.grade,
       section: record.section,
@@ -318,7 +318,21 @@ export async function getStudentOffenseRecords(filters = {}) {
 }
 
 export async function getStudentOffenseHistory(personKey) {
-  return offenseRpc("get_student_offense_history", { target_person_key: personKey });
+  const history = await offenseRpc("get_student_offense_history", { target_person_key: personKey });
+  if (!history || typeof history !== "object") return history;
+  if (history.student?.name) {
+    history.student = {
+      ...history.student,
+      name: cleanStudentName(history.student.name) || history.student.name,
+    };
+  }
+  if (Array.isArray(history.records)) {
+    history.records = history.records.map((record) => ({
+      ...record,
+      student_name: cleanStudentName(record.student_name) || record.student_name,
+    }));
+  }
+  return history;
 }
 
 export async function getReportStudentLinks(reportId) {
@@ -336,7 +350,7 @@ export async function saveOffenseDecision(reportId, student, outcome, findings, 
   return offenseRpc("save_offense_decision", {
     target_report_id: reportId,
     attached_report_ids: review.attachedReportIds || [reportId],
-    student_name: student.name,
+    student_name: cleanStudentName(student.name) || student.name,
     student_lrn: student.lrn || null,
     student_grade: student.grade,
     student_section: student.section || null,
@@ -353,7 +367,7 @@ export async function saveOffenseDecision(reportId, student, outcome, findings, 
 export async function createStudentOffenseRecord(reportId, student, reportIds = [reportId]) {
   return offenseRpc("create_student_offense_record", {
     target_report_id: reportId,
-    student_name: student.name,
+    student_name: cleanStudentName(student.name) || student.name,
     student_lrn: student.lrn || null,
     student_grade: student.grade,
     student_section: student.section || null,
@@ -408,7 +422,7 @@ async function getReportPriorityContext() {
     type: row.type,
     date: row.date,
     status: row.status,
-    submittedBy: row.submitted_by,
+    submittedBy: cleanStudentName(row.submitted_by) || row.submitted_by,
   }));
 }
 
@@ -874,7 +888,7 @@ export async function getStudentAccounts(page = 0, pageSize = 25) {
   return {
     accounts: accountRows.slice(0, pageSize).map((student) => ({
       id: student.id,
-      name: student.name,
+      name: cleanStudentName(student.name) || student.name,
       email: student.email,
       lrn: student.lrn,
       grade: student.grade,
@@ -897,7 +911,7 @@ export async function getPendingStudentAccounts(page = 0, pageSize = 25) {
   return {
     accounts: pendingRows.slice(0, pageSize).map((student) => ({
       id: student.id,
-      name: student.name,
+      name: cleanStudentName(student.name) || student.name,
       email: student.email,
       lrn: student.lrn,
       grade: student.grade,

@@ -79,7 +79,7 @@ export function cleanStudentName(value) {
     name = `${givenNames} ${surname}`.trim();
   }
 
-  const noiseWords = new Set(["ne", "wn", "ve", "di", "a"]);
+  const noiseWords = new Set(["ne", "wn", "ve", "di", "a", "camensi"]);
   let tokens = name.split(/[\s]+/).filter(Boolean);
   tokens = tokens.filter((token) => {
     const normalized = normalizeNameTokens(token)[0];
