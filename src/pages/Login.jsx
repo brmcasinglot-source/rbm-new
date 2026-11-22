@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import logo from "../assets/logo.png";
 import cnhs from "../assets/cnhs.jpg";
 import "../styles/Login.css";
@@ -601,8 +602,14 @@ export default function Login() {
                       onChange={(event) => { setNewPassword(event.target.value); setError(""); }}
                       autoComplete="new-password"
                     />
-                    <button type="button" className="show-pass-btn" onClick={() => setShowNewPass((show) => !show)}>
-                      {showNewPass ? "Hide" : "Show"}
+                    <button
+                      type="button"
+                      className="show-pass-btn"
+                      onClick={() => setShowNewPass((show) => !show)}
+                      aria-label={showNewPass ? "Hide new password" : "Show new password"}
+                      aria-pressed={showNewPass}
+                    >
+                      {showNewPass ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   {newPassword && (
@@ -637,8 +644,14 @@ export default function Login() {
                       onChange={(event) => { setConfirmNewPassword(event.target.value); setError(""); }}
                       autoComplete="new-password"
                     />
-                    <button type="button" className="show-pass-btn" onClick={() => setShowConfirmNewPass((show) => !show)}>
-                      {showConfirmNewPass ? "Hide" : "Show"}
+                    <button
+                      type="button"
+                      className="show-pass-btn"
+                      onClick={() => setShowConfirmNewPass((show) => !show)}
+                      aria-label={showConfirmNewPass ? "Hide confirmation password" : "Show confirmation password"}
+                      aria-pressed={showConfirmNewPass}
+                    >
+                      {showConfirmNewPass ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
@@ -912,9 +925,10 @@ export default function Login() {
                       type="button"
                       className="show-pass-btn"
                       onClick={() => setShowRegPass(!showRegPass)}
-                      tabIndex={-1}
+                      aria-label={showRegPass ? "Hide passwords" : "Show passwords"}
+                      aria-pressed={showRegPass}
                     >
-                      {showRegPass ? "Hide" : "Show"}
+                      {showRegPass ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   {regPass && (
@@ -1015,7 +1029,7 @@ export default function Login() {
                     <input
                       className={`input ${error ? "input-error" : ""}`}
                       type={showPass ? "text" : "password"}
-                      placeholder="••••••••"
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => { setPassword(e.target.value); setError(""); }}
                       autoComplete="current-password"
@@ -1024,9 +1038,10 @@ export default function Login() {
                       type="button"
                       className="show-pass-btn"
                       onClick={() => setShowPass(!showPass)}
-                      tabIndex={-1}
+                      aria-label={showPass ? "Hide password" : "Show password"}
+                      aria-pressed={showPass}
                     >
-                      {showPass ? "Hide" : "Show"}
+                      {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
