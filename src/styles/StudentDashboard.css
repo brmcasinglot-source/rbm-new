@@ -2311,7 +2311,6 @@
   background: linear-gradient(135deg, #15803d 0%, #16a34a 60%, #22c55e 100%);
   border-radius: 16px;
   padding: 28px 32px;
-  margin-bottom: 20px;
   color: #fff;
   overflow: hidden;
   position: relative;
@@ -2476,7 +2475,7 @@
 .s-dashboard-main-column {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -2501,7 +2500,7 @@
 
 .s-conference-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 7px;
   font-weight: 800;
   color: #243b2d;
@@ -2513,10 +2512,54 @@
 .s-conference-header > svg {
   color: #16834b;
   flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.s-conference-header-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.s-conference-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.s-conference-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 29px;
+  padding: 5px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #475569;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.s-conference-filters button.active {
+  border-color: #9dc8a8;
+  background: #eaf5ed;
+  color: #427451;
+}
+
+.s-conference-filters button span {
+  min-width: 16px;
+  text-align: center;
+  color: inherit;
+  font-weight: 800;
 }
 
 .s-conference-count {
-  margin-left: auto;
   padding: 4px 8px;
   border: 1px solid #f5dfbd;
   border-radius: 999px;
@@ -2533,11 +2576,56 @@
   gap: 7px;
 }
 
+.s-conference-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.s-conference-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 1px solid #dce7de;
+  border-radius: 7px;
+  background: #f8fbf8;
+  color: #427451;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.s-conference-pagination button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+.s-conference-pagination > span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .s-conference-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
   background: #fcfefc;
   border: 1px solid #e1ebe4;
   border-radius: 11px;
-  padding: 9px 10px;
+  padding: 9px 27px 9px 10px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   transform: none;
   transform-origin: top center;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
@@ -2623,6 +2711,25 @@
 .s-conference-status.overdue {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+.s-conference-attention-note,
+.s-conference-request-note {
+  color: #9a5c14;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.s-conference-request-note {
+  color: #1d4ed8;
+}
+
+.s-conference-chevron {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: #64748b;
+  transform: translateY(-50%);
 }
 
 .s-conference-type {
@@ -2866,7 +2973,6 @@
   background: #fff;
   border-radius: 16px;
   padding: 20px 22px 24px;
-  margin-top: 4px;
   border: 1.5px solid #e5e7eb;
   box-shadow: 0 1px 6px rgba(0,0,0,0.05);
 }

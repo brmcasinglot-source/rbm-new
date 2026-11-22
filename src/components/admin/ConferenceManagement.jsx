@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle, Calendar, CheckCircle, ChevronRight, Clock, X,
+  AlertTriangle, Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, X,
 } from "lucide-react";
 import {
   reviewConferenceRequest,
@@ -16,6 +16,7 @@ const FILTERS = [
   ["Completed", "completed"],
   ["All", "all"],
 ];
+const CONFERENCES_PER_PAGE = 3;
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
@@ -117,6 +118,7 @@ function ConferenceModal({ children, onClose, title, icon = true }) {
 
 export default function ConferenceManagement({ reports, onReportsUpdated, onToast }) {
   const [filter, setFilter] = useState("upcoming");
+  const [conferencePage, setConferencePage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
   const [actionMode, setActionMode] = useState("");
   const [actionSaving, setActionSaving] = useState(false);
@@ -167,6 +169,12 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
     completed,
     all: conferences,
   }[filter];
+  const pageCount = Math.ceil(visibleConferences.length / CONFERENCES_PER_PAGE);
+  const currentPage = Math.min(conferencePage, Math.max(pageCount, 1));
+  const pagedConferences = visibleConferences.slice(
+    (currentPage - 1) * CONFERENCES_PER_PAGE,
+    currentPage * CONFERENCES_PER_PAGE,
+  );
   const active = selectedId === null
     ? null
     : conferences.find((conference) => conference.id === selectedId) || null;
@@ -305,7 +313,10 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
               key={value}
               className={filter === value ? "active" : ""}
               aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
+              onClick={() => {
+                setFilter(value);
+                setConferencePage(1);
+              }}
             >
               {label}<span>{counts[value]}</span>
             </button>
@@ -320,7 +331,7 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
           </div>
         ) : (
           <div className="conference-manager-list">
-            {visibleConferences.map((conference) => {
+            {pagedConferences.map((conference) => {
               return (
                 <button
                   type="button"
@@ -361,6 +372,29 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
               );
             })}
           </div>
+        )}
+        {pageCount > 1 && (
+          <nav className="conference-manager-pagination" aria-label="Conference pages">
+            <button
+              type="button"
+              onClick={() => setConferencePage(currentPage - 1)}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={14} />
+              Previous
+            </button>
+            <span>Page {currentPage} of {pageCount}</span>
+            <button
+              type="button"
+              onClick={() => setConferencePage(currentPage + 1)}
+              disabled={currentPage === pageCount}
+              aria-label="Next page"
+            >
+              Next
+              <ChevronRight size={14} />
+            </button>
+          </nav>
         )}
       </aside>
 

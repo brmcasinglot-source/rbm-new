@@ -616,7 +616,7 @@
 .admin-dashboard-main {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .admin-conference-panel {
@@ -1054,7 +1054,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 0;
 }
 
 .db-grid-bottom {
@@ -7099,7 +7099,7 @@
 .admin-theme .summary-grid.admin-summary.dashboard-summary-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .admin-theme .dashboard-summary-grid .summary-card-modern {

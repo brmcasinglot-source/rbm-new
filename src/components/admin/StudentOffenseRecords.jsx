@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, ChevronLeft, ChevronRight, ClipboardList, Filter,
+  AlertTriangle, ChevronLeft, ChevronRight, ClipboardList,
   FileText, History, LoaderCircle, Search, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import {
@@ -36,12 +36,12 @@ const BULLYING_TYPES = [
   { value: "Cyber", label: "Cyberbullying" },
 ];
 const SORT_OPTIONS = [
-  ["recent", "Most Recent Offense"],
-  ["oldest", "Oldest Offense"],
-  ["name_asc", "Student Name (A–Z)"],
-  ["name_desc", "Student Name (Z–A)"],
-  ["most_offenses", "Most Offenses (2+)"],
-  ["least_offenses", "Lowest Number of Offenses"],
+  ["recent", "Most Recent"],
+  ["oldest", "Oldest"],
+  ["name_asc", "Name (A–Z)"],
+  ["name_desc", "Name (Z–A)"],
+  ["most_offenses", "Most Offenses"],
+  ["least_offenses", "Fewest Offenses"],
 ];
 const DECISION_CHOICES = [
   { value: "Established", label: "Established", description: "The available information supports the allegation." },
@@ -135,7 +135,6 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [history, setHistory] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [reportDetails, setReportDetails] = useState(null);
@@ -151,6 +150,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
   const [reportSearchHasMore, setReportSearchHasMore] = useState(false);
   const reportSearchRequestRef = useRef(0);
   const reportReviewRequestRef = useRef(0);
+  const recordsRequestRef = useRef(0);
   const recordsQueryRef = useRef({ filters: INITIAL_FILTERS, page: 0 });
   const recordsRefreshKeyRef = useRef(refreshKey);
   const decisionFormRef = useRef(null);
@@ -223,6 +223,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
     ));
 
   const loadRecords = useCallback(async (nextFilters, nextPage = 0) => {
+    const requestId = ++recordsRequestRef.current;
     setLoading(true);
     setError("");
     try {
@@ -231,13 +232,14 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
         offset: nextPage * PAGE_SIZE,
         limit: PAGE_SIZE,
       });
+      if (requestId !== recordsRequestRef.current) return;
       setResult(nextResult);
       setFilterOptions(nextResult.options);
       setPage(nextPage);
     } catch (loadError) {
-      setError(loadError.message);
+      if (requestId === recordsRequestRef.current) setError(loadError.message);
     } finally {
-      setLoading(false);
+      if (requestId === recordsRequestRef.current) setLoading(false);
     }
   }, []);
 
@@ -260,14 +262,20 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
 
   useEffect(() => {
     let active = true;
+    const requestId = ++recordsRequestRef.current;
     getStudentOffenseRecords({ limit: PAGE_SIZE })
       .then((records) => {
-        if (!active) return;
+        if (!active || requestId !== recordsRequestRef.current) return;
         setFilterOptions(records.options);
         setResult(records);
+        setPage(0);
       })
-      .catch((loadError) => { if (active) setError(loadError.message); })
-      .finally(() => { if (active) setLoading(false); });
+      .catch((loadError) => {
+        if (active && requestId === recordsRequestRef.current) setError(loadError.message);
+      })
+      .finally(() => {
+        if (active && requestId === recordsRequestRef.current) setLoading(false);
+      });
     return () => { active = false; };
   }, []);
 
@@ -311,10 +319,15 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
     setFilters((current) => ({ ...current, [key]: value, ...(key === "grade" ? { section: "" } : {}) }));
   };
 
+  const updateSearch = (search) => {
+    const nextFilters = { ...filters, search };
+    setFilters(nextFilters);
+    if (!search.trim()) loadRecords({ ...nextFilters, search: "" });
+  };
+
   const applyFilters = async (event) => {
     event.preventDefault();
     await loadRecords(filters);
-    setFiltersOpen(false);
   };
 
   const clearFilters = async () => {
@@ -689,18 +702,14 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
           <Search size={17} />
           <input
             value={filters.search}
-            onChange={(event) => updateFilter("search", event.target.value)}
+            onChange={(event) => updateSearch(event.target.value)}
             placeholder="Search student name, student ID/LRN, or incident report ID"
             aria-label="Search offense records"
           />
           <button type="submit" disabled={loading}>{loading ? "Searching…" : "Search"}</button>
         </form>
 
-        <details className="student-offense-filter-panel" open={filtersOpen} onToggle={(event) => setFiltersOpen(event.currentTarget.open)}>
-          <summary>
-            <span><Filter size={14} aria-hidden="true" /> Filters and sorting</span>
-            <small>{result.total} matching</small>
-          </summary>
+        <div className="student-offense-filter-panel">
           <form onSubmit={applyFilters}>
             <div className="student-offense-filter-grid">
               <label>Grade level
@@ -739,7 +748,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
               <button type="submit" className="student-offense-primary" disabled={loading}>{loading ? "Applying…" : "Apply filters"}</button>
             </div>
           </form>
-        </details>
+        </div>
         </div>
 
         <div className="student-offense-table-wrap">

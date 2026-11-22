@@ -10,7 +10,7 @@ import {
   ExternalLink, Upload, HelpCircle, Lock, Bell,
   CheckCircle, Clock, AlertTriangle, X, Paperclip,
   Eye, Play, AlertCircle, Calendar, Send,
-  Menu, ChevronDown, LogOut, MapPin,
+  Menu, ChevronDown, LogOut, MapPin, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 import {
@@ -167,6 +167,8 @@ export default function StudentDashboard() {
   const [followUpError, setFollowUpError] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   const [conferenceViewItem, setConferenceViewItem] = useState(null);
+  const [conferenceFilter, setConferenceFilter] = useState("upcoming");
+  const [conferencePage, setConferencePage] = useState(1);
   const [conferenceRequestType, setConferenceRequestType] = useState(null);
   const [conferenceRequestReason, setConferenceRequestReason] = useState("");
   const [conferenceRequestSaving, setConferenceRequestSaving] = useState(false);
@@ -693,11 +695,40 @@ export default function StudentDashboard() {
           && conference.request?.state === "Approved",
       };
     })
-    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-  const scheduledConferenceStatuses = ["Scheduled", "Today", "Overdue", "Rescheduled", "Reschedule Requested", "Cancellation Requested"];
-  const scheduledConferenceList = conferenceList.filter((conference) =>
-    scheduledConferenceStatuses.includes(conference.status) || conference.canRequestNewSchedule
+    .sort((a, b) => {
+      const urgency = {
+        Overdue: 0,
+        Today: 1,
+        "No-show": 2,
+        "Reschedule Requested": 3,
+        "Cancellation Requested": 3,
+        Scheduled: 4,
+        Rescheduled: 4,
+        Completed: 5,
+        Cancelled: 6,
+      };
+      return (urgency[a.status] ?? 7) - (urgency[b.status] ?? 7)
+        || String(a.date).localeCompare(String(b.date))
+        || Number(a.id) - Number(b.id);
+    });
+  const upcomingConferences = conferenceList.filter((conference) =>
+    ["Today", "Scheduled", "Rescheduled", "Reschedule Requested"].includes(conference.status)
   );
+  const cancellationConferences = conferenceList.filter((conference) =>
+    ["Cancelled", "Cancellation Requested"].includes(conference.status) ||
+    (conference.request?.type === "cancellation" && conference.request?.state === "Pending")
+  );
+  const conferenceFilters = [
+    { value: "upcoming", label: "Upcoming", conferences: upcomingConferences },
+    { value: "completed", label: "Completed", conferences: conferenceList.filter((conference) => conference.status === "Completed") },
+    { value: "cancellations", label: "Cancellations", conferences: cancellationConferences },
+    { value: "all", label: "All", conferences: conferenceList },
+  ];
+  const conferenceCounts = Object.fromEntries(conferenceFilters.map(({ value, conferences }) => [value, conferences.length]));
+  const visibleConferences = conferenceFilters.find(({ value }) => value === conferenceFilter)?.conferences || [];
+  const conferencePageCount = Math.max(1, Math.ceil(visibleConferences.length / 3));
+  const currentConferencePage = Math.min(conferencePage, conferencePageCount);
+  const pagedConferences = visibleConferences.slice((currentConferencePage - 1) * 3, currentConferencePage * 3);
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
@@ -1012,62 +1043,121 @@ export default function StudentDashboard() {
                 <div className="s-conference-card">
                   <div className="s-conference-header">
                     <Calendar size={15} />
-                    <span>Scheduled Conferences</span>
-                    <span className="s-conference-count">
-                      {scheduledConferenceList.length} active
-                    </span>
+                    <div className="s-conference-header-copy">
+                      <span>Scheduled Conferences</span>
+                      <span className="s-conference-count">
+                        {upcomingConferences.length} {translateStudentUI("Upcoming", language)}
+                      </span>
+                    </div>
                   </div>
 
-                  {scheduledConferenceList.length === 0 ? (
+                  {conferenceList.length === 0 ? (
                     <div className="s-conference-empty">
                       No scheduled conference yet. Once the school sets a meeting, it will appear here.
                     </div>
                   ) : (
-                    <div className="s-conference-list">
-                      {scheduledConferenceList.map((conf) => (
-                        <div
-                          className="s-conference-item"
-                          key={`${conf.id}-${conf.date}`}
-                          onClick={() => setConferenceViewItem(conf)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setConferenceViewItem(conf);
-                            }
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`View conference details for case ${conf.id}`}
-                          style={{ cursor: "pointer" }}
-                        >
-                          <div className="s-conference-top">
-                            <span className="s-conference-badge">Case #{conf.id}</span>
-                            <span className={`s-conference-status ${conf.status.toLowerCase().replace(/\s/g, "-")}`}>
-                              {conf.status}
-                            </span>
-                          </div>
-                          <div className="s-conference-meta s-conference-type">
-                            <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
-                            <strong>{conf.type}</strong>
-                          </div>
-                          <div className="s-conference-schedule">
-                            <span className="s-conference-meta-item">
-                              <Calendar size={12} />
-                              {formatConferenceDate(conf.date, language)}
-                            </span>
-                            <span className="s-conference-meta-item">
-                              <Clock size={12} />
-                              {conf.time}
-                            </span>
-                          </div>
-                          {(conf.rescheduledFrom || conf.previousSchedule?.date) && (
-                            <div className="s-conference-previous">
-                              Rescheduled from {conf.rescheduledFrom || conf.previousSchedule.date}
-                            </div>
-                          )}
+                    <>
+                      <div className="s-conference-filters" aria-label="Filter conferences">
+                        {conferenceFilters.map(({ value, label }) => (
+                          <button
+                            type="button"
+                            key={value}
+                            className={conferenceFilter === value ? "active" : ""}
+                            aria-pressed={conferenceFilter === value}
+                            onClick={() => {
+                              setConferenceFilter(value);
+                              setConferencePage(1);
+                            }}
+                          >
+                            {label}<span>{conferenceCounts[value]}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {visibleConferences.length === 0 ? (
+                        <div className="s-conference-empty">
+                          {conferenceFilter === "upcoming"
+                            ? "No upcoming conferences."
+                            : conferenceFilter === "completed"
+                              ? "No completed conferences."
+                              : conferenceFilter === "cancellations"
+                                ? "No cancelled conferences or pending cancellation requests."
+                                : "No conferences match this filter."}
                         </div>
-                      ))}
-                    </div>
+                      ) : (
+                        <>
+                          <div className="s-conference-list">
+                            {pagedConferences.map((conf) => (
+                              <button
+                                type="button"
+                                className="s-conference-item"
+                                key={`${conf.id}-${conf.date}`}
+                                onClick={() => setConferenceViewItem(conf)}
+                                aria-label={`View conference details for case ${conf.id}`}
+                              >
+                                <div className="s-conference-top">
+                                  <span className="s-conference-badge">Case #{conf.id}</span>
+                                  <span className={`s-conference-status ${conf.status.toLowerCase().replace(/\s/g, "-")}`}>
+                                    {conf.status}
+                                  </span>
+                                </div>
+                                <div className="s-conference-meta s-conference-type">
+                                  <span className="s-conference-type-dot" style={{ background: CONFERENCE_TYPE_COLORS[conf.type] || "#64748b" }} />
+                                  <strong>{conf.type}</strong>
+                                </div>
+                                <div className="s-conference-schedule">
+                                  <span className="s-conference-meta-item">
+                                    <Calendar size={12} />
+                                    {formatConferenceDate(conf.date, language)}
+                                  </span>
+                                  <span className="s-conference-meta-item">
+                                    <Clock size={12} />
+                                    {conf.time}
+                                  </span>
+                                </div>
+                                {(conf.rescheduledFrom || conf.previousSchedule?.date) && (
+                                  <div className="s-conference-previous">
+                                    Rescheduled from {conf.rescheduledFrom || conf.previousSchedule.date}
+                                  </div>
+                                )}
+                                {conf.status === "Overdue" && (
+                                  <span className="s-conference-attention-note">Conference date has passed</span>
+                                )}
+                                {conf.status === "Today" && (
+                                  <span className="s-conference-attention-note">Scheduled for today</span>
+                                )}
+                                {conf.request?.state === "Pending" && (
+                                  <span className="s-conference-request-note">
+                                    {conf.request.type === "reschedule" ? "Reschedule request pending" : "Cancellation request pending"}
+                                  </span>
+                                )}
+                                <ChevronRight className="s-conference-chevron" size={15} aria-hidden="true" />
+                              </button>
+                            ))}
+                          </div>
+                          {visibleConferences.length > 3 && (
+                            <nav className="s-conference-pagination" aria-label="Conference pages">
+                              <button
+                                type="button"
+                                onClick={() => setConferencePage((page) => Math.max(1, page - 1))}
+                                disabled={currentConferencePage === 1}
+                                aria-label="Previous conference page"
+                              >
+                                <ChevronLeft size={14} /> Previous
+                              </button>
+                              <span aria-live="polite">{currentConferencePage} / {conferencePageCount}</span>
+                              <button
+                                type="button"
+                                onClick={() => setConferencePage((page) => Math.min(conferencePageCount, page + 1))}
+                                disabled={currentConferencePage === conferencePageCount}
+                                aria-label="Next conference page"
+                              >
+                                Next <ChevronRight size={14} />
+                              </button>
+                            </nav>
+                          )}
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               </aside>

@@ -2864,69 +2864,21 @@
 }
 
 .student-offense-page .student-offense-filter-panel {
-  flex: 0 0 auto;
-  width: fit-content;
+  flex: 1 0 100%;
+  width: 100%;
   margin: 0;
   border: 0;
   background: transparent;
 }
 
-.student-offense-page .student-offense-filter-panel[open] {
-  flex: 1 0 100%;
+.student-offense-page .student-offense-filter-panel > form {
+  position: static;
   width: 100%;
-}
-
-.student-offense-page .student-offense-filter-panel > summary {
-  display: inline-flex;
-  justify-content: flex-start;
-  width: fit-content;
-  min-height: 32px;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid #d5e6da;
-  border-radius: 8px;
-  background: #f3faf6;
-  font-size: 11.5px;
-}
-
-.student-offense-page .student-offense-filter-panel > summary span {
-  gap: 6px;
-}
-
-.student-offense-page .student-offense-filter-panel > summary small {
-  padding: 3px 6px;
-  border-radius: 999px;
-  background: #e4f2e9;
-  color: #397052;
-  font-size: 9.5px;
-}
-
-.student-offense-page .student-offense-filter-panel > summary::after {
-  content: "";
-  width: 6px;
-  height: 6px;
-  margin: 0 2px 3px 1px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  transition: transform 0.15s ease;
-}
-
-.student-offense-page .student-offense-filter-panel[open] > summary {
-  border-bottom: 1px solid #d5e6da;
-  background: #eaf5ee;
-}
-
-.student-offense-page .student-offense-filter-panel[open] > summary::after {
-  margin-bottom: -2px;
-  transform: rotate(225deg);
-}
-
-.student-offense-page .student-offense-filter-panel[open] > form {
-  margin-top: 8px;
-  padding: 10px 0 0;
-  border-top: 1px solid #e3ece6;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: transparent;
+  box-shadow: none;
 }
 
 .student-offense-page .student-offense-filter-grid {
@@ -2934,15 +2886,15 @@
 }
 
 .student-offense-page .student-offense-filter-grid label {
-  gap: 3px;
-  font-size: 10px;
+  gap: 5px;
+  font-size: 11px;
 }
 
 .student-offense-page .student-offense-filter-grid select,
 .student-offense-page .student-offense-filter-grid input {
-  min-height: 30px;
-  padding: 5px 7px;
-  font-size: 10.5px;
+  min-height: 35px;
+  padding: 7px 9px;
+  font-size: 11.5px;
 }
 
 .student-offense-page .student-offense-filter-actions {
@@ -2963,6 +2915,66 @@
   }
 }
 
+@media (min-width: 1400px) {
+  .student-offense-toolbar {
+    display: grid;
+    grid-template-columns: minmax(230px, 1.5fr) repeat(5, minmax(116px, 1fr)) max-content;
+    gap: 5px;
+    align-items: end;
+  }
+
+  .student-offense-page .student-offense-search {
+    flex: none;
+    width: auto;
+    max-width: none;
+    min-height: 38px;
+  }
+
+  .student-offense-page .student-offense-search input {
+    font-size: 12px;
+  }
+
+  .student-offense-page .student-offense-search > button {
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .student-offense-page .student-offense-filter-panel {
+    display: contents;
+  }
+
+  .student-offense-page .student-offense-filter-panel > form,
+  .student-offense-page .student-offense-filter-grid {
+    display: contents;
+  }
+
+  .student-offense-page .student-offense-filter-actions {
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  .student-offense-page .student-offense-filter-grid select,
+  .student-offense-page .student-offense-filter-grid input {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .student-offense-page .student-offense-filter-actions .student-offense-secondary,
+  .student-offense-page .student-offense-filter-actions .student-offense-primary {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .student-offense-toolbar {
+    grid-template-columns: 350px repeat(5, minmax(0, 1fr)) max-content;
+  }
+}
+
 @media (max-width: 999px) {
   .student-offense-page .student-offense-filter-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2980,3 +2992,4 @@
     grid-template-columns: 1fr;
   }
 }
+
