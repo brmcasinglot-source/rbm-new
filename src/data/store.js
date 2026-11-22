@@ -553,6 +553,11 @@ export async function updateConferenceSchedule(reportId, schedule) {
     (schedule.operation !== "reschedule" && !schedule?.location?.trim())) {
     throw new Error("A conference date and time are required; a location is required when initially scheduling.");
   }
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (schedule.date < today) {
+    throw new Error("The conference date cannot be in the past.");
+  }
   const { data, error } = await supabase.rpc("manage_conference", {
     target_report_id: reportId,
     operation: schedule.operation || "schedule",
@@ -606,6 +611,13 @@ export async function reviewConferenceRequest(reportId, decision, reschedule = u
   }
   if (decision === "approve" && reschedule && (!reschedule.date || !reschedule.time || !reschedule.location?.trim())) {
     throw new Error("A new date, time, and location are required to approve a reschedule.");
+  }
+  if (decision === "approve" && reschedule) {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (reschedule.date < today) {
+      throw new Error("The conference date cannot be in the past.");
+    }
   }
   const { data, error } = await supabase.rpc("manage_conference", {
     target_report_id: reportId,

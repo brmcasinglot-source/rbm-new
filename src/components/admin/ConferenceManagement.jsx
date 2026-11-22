@@ -236,6 +236,10 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
       onToast("Choose a new date and time, and enter a reschedule reason.", "error");
       return;
     }
+    if (newDate < today) {
+      onToast("The conference date cannot be in the past.", "error");
+      return;
+    }
     setActionSaving(true);
     try {
       await updateConferenceSchedule(active.id, {
@@ -260,6 +264,10 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
     if (decision === "approve" && isReschedule &&
       (!requestDate || !requestTime || !requestLocation.trim())) {
       onToast("Choose the approved date, time, and location.", "error");
+      return;
+    }
+    if (decision === "approve" && isReschedule && requestDate < today) {
+      onToast("The conference date cannot be in the past.", "error");
       return;
     }
     setActionSaving(true);
@@ -436,7 +444,7 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
                 {active.request.reason && <p>Student's reason: {active.request.reason}</p>}
                 {active.request.type === "reschedule" && (
                   <div className="conference-manager-fields">
-                    <label>New date<input type="date" value={requestDate} onChange={(event) => setRequestDate(event.target.value)} /></label>
+                    <label>New date<input type="date" min={today} value={requestDate} onChange={(event) => setRequestDate(event.target.value)} /></label>
                     <label>New time<input type="time" value={requestTime} onChange={(event) => setRequestTime(event.target.value)} /></label>
                     <label className="wide">Location<input type="text" value={requestLocation} onChange={(event) => setRequestLocation(event.target.value)} /></label>
                   </div>
@@ -530,7 +538,7 @@ export default function ConferenceManagement({ reports, onReportsUpdated, onToas
               <form className="conference-manager-action-form" onSubmit={handleReschedule}>
                 <h3>Reschedule conference</h3>
                 <div className="conference-manager-fields">
-                  <label>New date <span aria-hidden="true">*</span><input type="date" value={newDate} onChange={(event) => setNewDate(event.target.value)} required /></label>
+                  <label>New date <span aria-hidden="true">*</span><input type="date" min={today} value={newDate} onChange={(event) => setNewDate(event.target.value)} required /></label>
                   <label>New time <span aria-hidden="true">*</span><input type="time" value={newTime} onChange={(event) => setNewTime(event.target.value)} required /></label>
                   <label className="wide">Location<input type="text" value={newLocation} onChange={(event) => setNewLocation(event.target.value)} /></label>
                 </div>

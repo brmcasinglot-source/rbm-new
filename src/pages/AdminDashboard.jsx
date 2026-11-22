@@ -56,6 +56,13 @@ const ANALYTICS_TYPE_COLORS = {
 };
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const LOCATION_DONUT_COLORS = [
   "#3977B8",
   "#CF6B42",
@@ -1358,6 +1365,10 @@ export default function AdminDashboard() {
       showToast("Choose a date, time, and location for the conference.", "error");
       return;
     }
+    if (conferenceDate < localDateKey()) {
+      showToast("The conference date cannot be in the past.", "error");
+      return;
+    }
     if (hasSelectedConference && !conferenceRescheduleReason.trim()) {
       showToast("Enter a reason for changing the conference schedule.", "error");
       return;
@@ -1414,6 +1425,10 @@ export default function AdminDashboard() {
       (!conferenceDate || !conferenceTime || !conferenceLocation.trim())
     ) {
       showToast("Choose the new date, time, and location before approving the reschedule.", "error");
+      return;
+    }
+    if (decision === "approve" && isReschedule && conferenceDate < localDateKey()) {
+      showToast("The conference date cannot be in the past.", "error");
       return;
     }
 
@@ -3617,7 +3632,7 @@ export default function AdminDashboard() {
                     {conferenceEditing && (
                       <div className="manage-conference-editor">
                         <div className="manage-conference-fields">
-                          <label>Date<input type="date" value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
+                          <label>Date<input type="date" min={localDateKey()} value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
                           <label>Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
                           <label className="wide">Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} placeholder="Prefect Office, Guidance Room, or virtual link" /></label>
                           <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} placeholder="What the meeting will cover or who should attend" /></label>
@@ -3713,7 +3728,7 @@ export default function AdminDashboard() {
                     {conferenceEditing && (
                       <div className="manage-conference-editor">
                         <div className="manage-conference-fields">
-                          <label>Date<input type="date" value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
+                          <label>Date<input type="date" min={localDateKey()} value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
                           <label>Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
                           <label className="wide">Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} placeholder="Prefect Office, Guidance Room, or virtual link" /></label>
                           <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} placeholder="What the meeting will cover or who should attend" /></label>
@@ -3734,7 +3749,7 @@ export default function AdminDashboard() {
                       <div className="manage-conference-editor">
                         <p className="manage-conference-request-title">Select the approved new schedule</p>
                         <div className="manage-conference-fields">
-                          <label>New Date<input type="date" value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
+                          <label>New Date<input type="date" min={localDateKey()} value={conferenceDate} onChange={(event) => setConferenceDate(event.target.value)} /></label>
                           <label>New Time<input type="time" value={conferenceTime} onChange={(event) => setConferenceTime(event.target.value)} /></label>
                           <label className="wide">New Location<input type="text" value={conferenceLocation} onChange={(event) => setConferenceLocation(event.target.value)} /></label>
                           <label className="wide">Agenda / Notes<textarea value={conferenceNotes} onChange={(event) => setConferenceNotes(event.target.value)} rows={2} /></label>
