@@ -5758,7 +5758,7 @@
 
 .analytics-export-filter-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .analytics-export-filter-heading button {
@@ -5766,6 +5766,7 @@
   background: transparent;
   color: #426a4b;
   font: 700 11px "Nunito", sans-serif;
+  white-space: nowrap;
   cursor: pointer;
 }
 

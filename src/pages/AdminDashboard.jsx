@@ -341,7 +341,7 @@ function ExportChecklist({ title, options, selected, setSelected, className = ""
       <div className="analytics-export-filter-heading">
         <span>{title}</span>
         <div className="analytics-export-filter-actions">
-          <button type="button" onClick={() => setSelected(null)}>All</button>
+          <button type="button" onClick={() => setSelected(null)}>Select all</button>
           <button type="button" onClick={() => setSelected([])}>Clear</button>
         </div>
       </div>
@@ -597,22 +597,6 @@ export default function AdminDashboard() {
       window.clearTimeout(timer);
     };
   }, [exportOffensesSelected, exportOffenseFilters]);
-
-  useEffect(() => {
-    setExportSelectedIds(new Set());
-    setExportReportPreviewPage(0);
-  }, [
-    exportDataset,
-    exportSearch,
-    exportTypes,
-    exportStatuses,
-    exportGradeFilter,
-    exportGenderFilter,
-    exportSectionFilter,
-    exportMonthFilter,
-    exportYearFilter,
-    exportOffenseFilters,
-  ]);
 
   useEffect(() => {
     if (!previewOffenseDetail) return undefined;
@@ -1609,7 +1593,7 @@ export default function AdminDashboard() {
   };
 
   /* Export helpers */
-  const exportFilteredIncidents = incidents.filter((report) =>
+  const exportFilteredIncidents = useMemo(() => incidents.filter((report) =>
     (!exportSearch.trim() || [
       report.id,
       report.type,
@@ -1625,7 +1609,17 @@ export default function AdminDashboard() {
     (exportSectionFilter === null || exportSectionFilter.includes(report.reporterSection)) &&
     (exportMonthFilter === null || (report.date && exportMonthFilter.includes(MONTH_NAMES[new Date(report.date).getMonth()]))) &&
     (exportYearFilter === null || (report.date && exportYearFilter.includes(String(new Date(report.date).getFullYear()))))
-  );
+  ), [
+    incidents,
+    exportSearch,
+    exportTypes,
+    exportStatuses,
+    exportGradeFilter,
+    exportGenderFilter,
+    exportSectionFilter,
+    exportMonthFilter,
+    exportYearFilter,
+  ]);
   const exportPreviewRecords = exportReportsSelected
     ? exportFilteredIncidents
     : exportOffensePreview.records;
@@ -1642,6 +1636,12 @@ export default function AdminDashboard() {
   const selectedExportPreviewRecords = exportPreviewRecords.filter((record) =>
     exportSelectedIds.has(String(record.id))
   );
+  useEffect(() => {
+    setExportSelectedIds(exportDataset === "incidents"
+      ? new Set(exportFilteredIncidents.map((report) => String(report.id)))
+      : new Set());
+    setExportReportPreviewPage(0);
+  }, [exportDataset, exportFilteredIncidents, exportOffenseFilters]);
   const previewOffensePlanItems = useMemo(
     () => parseInterventionPlan(previewOffenseDetail?.disciplinaryAction),
     [previewOffenseDetail]
@@ -2385,7 +2385,9 @@ export default function AdminDashboard() {
                   <div className="analytics-export-records-heading">
                     <div>
                       <h3>Preview</h3>
-                      <p>Select preview rows to export only those records. Leave all unselected to export every match.</p>
+                      <p>{exportReportsSelected
+                        ? "Matching reports are selected automatically; uncheck rows to exclude them from export."
+                        : "Select preview rows to export only those records. Leave all unselected to export every match."}</p>
                     </div>
                     <div className="analytics-export-preview-actions">
                       <span>{exportReportsSelected ? exportFilteredIncidents.length : exportOffensePreview.total} total</span>
