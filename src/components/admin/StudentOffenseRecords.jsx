@@ -168,6 +168,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
   const [followUpDate, setFollowUpDate] = useState("");
   const [savedDecision, setSavedDecision] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [approvalConfirmationOpen, setApprovalConfirmationOpen] = useState(false);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -351,6 +352,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
     reportSearchRequestRef.current += 1;
     reportReviewRequestRef.current += 1;
     setReportSearchLoading(false);
+    setApprovalConfirmationOpen(false);
     setFormOpen(false);
     setStudentForm({ name: "", lrn: "", grade: "", section: "" });
     setSectionChoice("");
@@ -586,7 +588,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
     }
   };
 
-  const approveOffense = async () => {
+  const openApprovalConfirmation = () => {
     const primaryReport = attachedReports[0];
     const normalizedLrn = normalizeStudentLrn(studentForm.lrn);
     if (!studentForm.name.trim() || !primaryReport || savedDecision !== "Established") return;
@@ -601,11 +603,15 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
       setFormError("Complete all six fields for each intervention plan item before final approval.");
       return;
     }
-    const pendingStatusNotice = attachedReports.some((report) => report.status === "Pending")
-      ? " The pending report will also move to Under Investigation."
-      : "";
-    const reportNumbers = attachedReports.map((report) => `#${report.id}`).join(", ");
-    if (!window.confirm(`Approve one established offense record for ${studentForm.name.trim()} linked to reports ${reportNumbers}?${pendingStatusNotice}`)) return;
+    setFormError("");
+    setApprovalConfirmationOpen(true);
+  };
+
+  const approveOffense = async () => {
+    const primaryReport = attachedReports[0];
+    const normalizedLrn = normalizeStudentLrn(studentForm.lrn);
+    if (!primaryReport || !studentForm.name.trim()) return;
+    setApprovalConfirmationOpen(false);
     setFormLoading(true);
     setFormError("");
     try {
@@ -1087,7 +1093,7 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
                   {savedDecision === "Established" && (
                     <div className="student-offense-approval">
                       <p className="student-offense-help">This creates an official offense record and assigns the next offense number.</p>
-                      <button type="button" className="student-offense-primary" onClick={approveOffense} disabled={formLoading || !disciplinaryAction.trim()}>
+                      <button type="button" className="student-offense-primary" onClick={openApprovalConfirmation} disabled={formLoading || !disciplinaryAction.trim()}>
                         {formLoading ? "Approving…" : "Approve and create offense record"}
                       </button>
                     </div>
@@ -1095,6 +1101,72 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
                 </form>
               )}
               {formError && <p className="student-offense-error" role="alert">{formError}</p>}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {approvalConfirmationOpen && (
+        <div
+          className="student-offense-overlay student-offense-confirm-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !formLoading) setApprovalConfirmationOpen(false);
+          }}
+        >
+          <section
+            className="student-offense-modal student-offense-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="student-offense-confirm-title"
+          >
+            <div className="student-offense-modal-header">
+              <div>
+                <h3 id="student-offense-confirm-title">Approve offense record?</h3>
+                <p>Confirm the final review details before creating the official record.</p>
+              </div>
+              <button type="button" onClick={() => setApprovalConfirmationOpen(false)} aria-label="Close confirmation" disabled={formLoading}>
+                <X size={19} />
+              </button>
+            </div>
+            <div className="student-offense-modal-content">
+              <div className="student-offense-confirmation-box">
+                <span className="student-offense-confirmation-badge">
+                  <ShieldCheck size={13} aria-hidden="true" />
+                  Established decision
+                </span>
+                <div className="student-offense-confirmation-grid">
+                  <div className="student-offense-confirmation-item">
+                    <span>Student</span>
+                    <strong>{studentForm.name.trim()}</strong>
+                  </div>
+                  <div className="student-offense-confirmation-item">
+                    <span>Class</span>
+                    <strong>{[studentForm.grade, studentForm.section].filter(Boolean).join(" / ") || "Not specified"}</strong>
+                  </div>
+                  <div className="student-offense-confirmation-item">
+                    <span>Linked reports</span>
+                    <strong>{attachedReports.map((report) => formatReportNumber(report.id)).join(", ")}</strong>
+                  </div>
+                  <div className="student-offense-confirmation-item">
+                    <span>Records to approve</span>
+                    <strong>{attachedReports.length > 1 ? "1 shared offense record" : "1 established offense"}</strong>
+                  </div>
+                </div>
+                {attachedReports.some((report) => report.status === "Pending") && (
+                  <p className="student-offense-confirmation-note">
+                    Pending linked reports will move to <strong>Under Investigation</strong> after approval.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="student-offense-modal-actions">
+              <button type="button" className="student-offense-secondary" onClick={() => setApprovalConfirmationOpen(false)} disabled={formLoading}>
+                Cancel
+              </button>
+              <button type="button" className="student-offense-primary" onClick={approveOffense} disabled={formLoading}>
+                {formLoading ? "Approving…" : "Approve record"}
+              </button>
             </div>
           </section>
         </div>

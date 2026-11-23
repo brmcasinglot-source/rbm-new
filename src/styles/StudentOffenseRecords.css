@@ -631,16 +631,41 @@
   width: min(560px, 100%);
 }
 
+.student-offense-confirm-overlay {
+  z-index: 1500;
+  background: rgba(23, 43, 34, .42);
+  backdrop-filter: blur(3px);
+}
+
+.student-offense-confirm-modal {
+  border-color: #cfe4d7;
+  box-shadow: 0 24px 70px rgba(15, 81, 50, .24);
+}
+
+.student-offense-confirm-modal .student-offense-modal-header {
+  background: linear-gradient(135deg, #f8fcf9 0%, #edf7f1 100%);
+  border-bottom-color: #dfece4;
+}
+
+.student-offense-confirm-modal .student-offense-modal-actions {
+  border-top: 1px solid #eef4f0;
+  padding-top: 14px;
+  background: #fcfdfc;
+}
+
 .student-offense-confirmation-box {
   display: grid;
   gap: 16px;
   padding: 18px;
   border: 1px solid #dfe7e2;
   border-radius: 12px;
-  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, #fff 0%, #f7fbf8 100%);
 }
 
 .student-offense-confirmation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: fit-content;
   padding: 5px 9px;
   border: 1px solid #bbf7d0;
