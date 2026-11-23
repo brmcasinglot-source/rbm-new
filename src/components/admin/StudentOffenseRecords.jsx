@@ -555,6 +555,10 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
       setFormError("Choose a follow-up date for an established decision.");
       return;
     }
+    if (decision === "Established" && followUpDate < currentDateInput()) {
+      setFormError("Follow-up date cannot be in the past.");
+      return;
+    }
     setFormLoading(true);
     setFormError("");
     try {
@@ -592,6 +596,10 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
     const primaryReport = attachedReports[0];
     const normalizedLrn = normalizeStudentLrn(studentForm.lrn);
     if (!studentForm.name.trim() || !primaryReport || savedDecision !== "Established") return;
+    if (followUpDate && followUpDate < currentDateInput()) {
+      setFormError("Follow-up date cannot be in the past.");
+      return;
+    }
     if (normalizedLrn && normalizedLrn.length !== 12) {
       setFormError("Student LRN must be exactly 12 digits.");
       return;
@@ -1041,7 +1049,17 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
                       </div>
                       <label className="student-offense-field student-offense-follow-up-field">
                         Follow-up date <span aria-hidden="true">*</span>
-                        <input type="date" value={followUpDate} onChange={(event) => { setFollowUpDate(event.target.value); setSavedDecision(""); setFormError(""); }} required />
+                        <input
+                          type="date"
+                          min={currentDateInput()}
+                          value={followUpDate}
+                          onChange={(event) => {
+                            setFollowUpDate(event.target.value);
+                            setSavedDecision("");
+                            setFormError("");
+                          }}
+                          required
+                        />
                       </label>
                     </div>
                     <div className="student-offense-plan-section">
