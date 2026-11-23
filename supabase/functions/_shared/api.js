@@ -776,12 +776,12 @@ async function handleAuth(action, body, req) {
     if (existing) throw Object.assign(new Error("This email is already registered. Please sign in instead."), { status: 409 });
     const { data: lrnRows, error: lrnError } = await db.from("students").select("id").eq("lrn", lrn).limit(1);
     if (lrnError) throw lrnError;
-    if (lrnRows.length) throw Object.assign(new Error("An account already exists for this student ID. Please sign in or contact the school for help."), { status: 409 });
+    if (lrnRows.length) throw Object.assign(new Error("An account already exists for this student ID."), { status: 409 });
     const { data: pendingSignups, error: pendingError } = await db.from("auth_otps")
       .select("payload").eq("purpose", "signup").gt("expires_at", new Date().toISOString());
     if (pendingError) throw pendingError;
     if (pendingSignups.some((signup) => signup.payload?.lrn === String(lrn))) {
-      throw Object.assign(new Error("An account already exists for this student ID. Please sign in or contact the school for help."), { status: 409 });
+      throw Object.assign(new Error("An account already exists for this student ID."), { status: 409 });
     }
 
     const id = randomUUID();

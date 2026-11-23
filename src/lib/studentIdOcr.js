@@ -35,8 +35,6 @@ export function isCasinglotNationalHighSchoolId(text) {
   const words = normalizedText.split(/\s+/);
   const schoolName = "CASINGLOT NATIONAL HIGH SCHOOL";
 
-  if (/\bSCHOOL\s+(?:ID|1D)\s+315\s*310\b/.test(normalizedText)) return true;
-
   for (let index = 0; index <= words.length - 4; index += 1) {
     if (
       words[index] !== "CASINGLOT" ||
@@ -113,6 +111,23 @@ export function cleanStudentName(value) {
 }
 
 function getStudentName(lines) {
+  const commaNameIndex = lines.findIndex((line) =>
+    /^[^,]{2,},/.test(line.trim()) &&
+    isPossibleNameLine(line)
+  );
+  if (commaNameIndex >= 0) {
+    const commaLine = lines[commaNameIndex].trim();
+    const [, givenNamesOnLine = ""] = commaLine.split(/,(.*)$/);
+    if (!givenNamesOnLine.trim() && commaNameIndex + 1 < lines.length) {
+      const followingName = cleanStudentName(lines[commaNameIndex + 1]);
+      if (isPossibleNameLine(followingName)) {
+        const surname = commaLine.replace(/,$/, "").trim();
+        return cleanStudentName(`${followingName} ${surname}`);
+      }
+    }
+    return cleanStudentName(commaLine);
+  }
+
   const nameLabelIndex = lines.findIndex((line) =>
     /\b(?:(?:student|learner|full)\s+)?name\b\s*[:|]?/i.test(line)
   );
@@ -300,7 +315,7 @@ export async function scanStudentIdFront(file) {
   }
 
   if (!isCasinglotNationalHighSchoolId(text)) {
-    throw new Error("Could not confirm Casinglot National High School or school ID 315310. Retake the front photo with the school name or school ID clearly visible.");
+    throw new Error("This system is exclusively for students of Casinglot National High School.");
   }
 
   return parseStudentIdText(text);

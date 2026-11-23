@@ -318,7 +318,7 @@ export default function Login() {
       if (requestId !== lrnCheckRequestId.current) return false;
 
       if (taken) {
-        const message = "An account already exists for this student ID. Please sign in or contact the school for help.";
+        const message = "An account already exists for this student ID.";
         setLrnCheckStatus("taken");
         setLrnCheckMessage(message);
         setError(message);
