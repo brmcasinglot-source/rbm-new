@@ -33,7 +33,7 @@ import {
   GRADE_OPTIONS,
   getStudentAccounts,
   getStudentOffenseRecords, downloadStudentOffenseRecords,
-  getReportDetails, getReportEvidence, getReportStatusHistory, getUnreadNotificationCount,
+  getReportDetails, getReportEvidence, getUnreadNotificationCount,
   saveReportConferenceFindings,
   downloadCSV, downloadDOCX, downloadXLSX,
 } from "../data/store";
@@ -448,10 +448,6 @@ export default function AdminDashboard() {
   const [adminNotes,           setAdminNotes]           = useState("");
   const [caseActionReason,     setCaseActionReason]     = useState("");
   const [monitoringUntil,      setMonitoringUntil]      = useState("");
-  const [statusHistory,        setStatusHistory]        = useState([]);
-  const [statusHistoryLoading, setStatusHistoryLoading] = useState(false);
-  const [statusHistoryError,   setStatusHistoryError]   = useState("");
-  const statusHistoryReportIdRef = useRef(null);
   const [additionalInfoRequest, setAdditionalInfoRequest] = useState("");
   const [additionalInfoSaving, setAdditionalInfoSaving] = useState(false);
   const [conferenceDate,       setConferenceDate]       = useState("");
@@ -1188,7 +1184,6 @@ export default function AdminDashboard() {
   };
 
   const handleOpenManage = async (report) => {
-    statusHistoryReportIdRef.current = report.id;
     if (unseenReportIdsRef.current.has(report.id)) {
       const nextUnseenIds = new Set(unseenReportIdsRef.current);
       nextUnseenIds.delete(report.id);
@@ -1209,9 +1204,6 @@ export default function AdminDashboard() {
     setAdminNotes(report.adminNotes || "");
     setCaseActionReason("");
     setMonitoringUntil(report.monitoringUntil || "");
-    setStatusHistory([]);
-    setStatusHistoryLoading(true);
-    setStatusHistoryError("");
     setAdditionalInfoRequest("");
     setConferenceDate(report.scheduledConference?.date || "");
     setConferenceTime(report.scheduledConference?.time || "");
@@ -1241,14 +1233,6 @@ export default function AdminDashboard() {
         : current);
     } catch (err) {
       showToast(`Could not load report details: ${err.message}`, "error");
-    }
-    try {
-      const history = await getReportStatusHistory(report.id);
-      if (statusHistoryReportIdRef.current === report.id) setStatusHistory(history);
-    } catch (err) {
-      if (statusHistoryReportIdRef.current === report.id) setStatusHistoryError(err.message);
-    } finally {
-      if (statusHistoryReportIdRef.current === report.id) setStatusHistoryLoading(false);
     }
   };
 
@@ -1444,25 +1428,32 @@ export default function AdminDashboard() {
 
     const monitoringChanged = (monitoringUntil || "") !== (selectedReport.monitoringUntil || "");
     const needsAuditReason = newStatus !== selectedReport.status || monitoringChanged;
+    const requiresStudentUpdate = newStatus === "Under Investigation";
+    const requiresPrivateReason = newStatus === "Resolved" && needsAuditReason;
+    if (newStatus === "Pending") {
+      showToast("Change the status to Under Investigation or Resolved before updating.", "error");
+      return;
+    }
+
     const errors = {
-      adminNotes: !adminNotes.trim(),
-      caseActionReason: needsAuditReason && !caseActionReason.trim(),
+      adminNotes: requiresStudentUpdate && !adminNotes.trim(),
+      caseActionReason: requiresPrivateReason && !caseActionReason.trim(),
     };
     if (Object.values(errors).some(Boolean)) {
       setManageFieldErrors(errors);
-      const validationMessage = errors.adminNotes && errors.caseActionReason
-        ? "Add a student-facing update and a private reason for this case change."
-        : errors.adminNotes
+      showToast(
+        errors.adminNotes
           ? "Add a brief update for the student before saving."
-          : "Add a private reason to document this case change.";
-      showToast(validationMessage, "error");
+          : "Add a private reason to document resolving this case.",
+        "error"
+      );
       return;
     }
     setManageFieldErrors({});
 
     try {
       const updatedReport = await updateReportStatus(selectedReport.id, newStatus, adminNotes, {
-        auditReason: caseActionReason,
+        auditReason: newStatus === "Resolved" ? caseActionReason.trim() : adminNotes.trim(),
         monitoringUntil: monitoringUntil || null,
       });
       setIncidents((current) => current.map((item) => item.id === updatedReport.id ? updatedReport : item));
@@ -3943,7 +3934,8 @@ export default function AdminDashboard() {
                     <small>Choose a review date that fits this case. It does not automatically close the case.</small>
                   </div>
                 )}
-                {(newStatus !== selectedReport.status || (monitoringUntil || "") !== (selectedReport.monitoringUntil || "")) && (
+                {newStatus === "Resolved" &&
+                  (newStatus !== selectedReport.status || (monitoringUntil || "") !== (selectedReport.monitoringUntil || "")) && (
                   <div className="form-group" style={{ marginTop: 14 }}>
                     <label htmlFor="case-action-reason">Private case history reason <span style={{ color: "#ef4444" }}>*</span></label>
                     <textarea
@@ -3961,68 +3953,20 @@ export default function AdminDashboard() {
                     {manageFieldErrors.caseActionReason && <span className="field-error-msg">A private reason is required.</span>}
                   </div>
                 )}
-                <div className="form-group" style={{ marginTop: 14 }}>
-                  <label>Student-facing update <span style={{ color: "#ef4444" }}>*</span> <span className="incident-student-visible">(visible to student)</span></label>
-                  <textarea placeholder="Briefly explain the current status and what happens next for the student…"
-                    className={manageFieldErrors.adminNotes ? "field-error" : ""}
-                    style={{ minHeight: 90, fontSize: 13 }}
-                    value={adminNotes} onChange={(e) => { setAdminNotes(e.target.value); setManageFieldErrors((p) => ({ ...p, adminNotes: false })); }} />
-                  <small className="incident-student-note-guidance">
-                    This message is shared with the student so they understand the case status and next steps.
-                    Keep it respectful and concise; do not include private investigation details or another student's personal information.
-                  </small>
-                  {manageFieldErrors.adminNotes && <span className="field-error-msg">Add a brief update for the student before saving.</span>}
-                </div>
-                <section className="incident-info-section case-history-section" aria-label="Case action history">
-                  <h4><History size={15} /> Case action history</h4>
-                  {statusHistoryLoading ? (
-                    <p className="case-history-message">Loading case history…</p>
-                  ) : statusHistoryError ? (
-                    <p role="alert" className="case-history-message case-history-error">Could not load case history: {statusHistoryError}</p>
-                  ) : statusHistory.length === 0 ? (
-                    <p className="case-history-message">No case actions have been recorded yet.</p>
-                  ) : (
-                    <ol className="case-history-list">
-                      {statusHistory.map((entry) => {
-                        const actionLabel = ({
-                            case_resolved: "Case resolved",
-                            case_reopened: "Case reopened",
-                            case_monitoring_updated: "Monitoring date changed",
-                            case_status_changed: "Case status changed",
-                          })[entry.action] || "Case updated";
-                        return (
-                          <li className="case-history-item" key={entry.id}>
-                            <div className="case-history-topline">
-                              <strong className="case-history-action" data-action={entry.action}>{actionLabel}</strong>
-                              <div className="case-history-meta">
-                                <span>{entry.actorName || "Administrator"}</span>
-                                <time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time>
-                              </div>
-                            </div>
-                            {(entry.details?.fromStatus || entry.details?.toStatus) && (
-                              <div className="case-history-transition">
-                                <span>{entry.details?.fromStatus || "—"}</span>
-                                <span aria-hidden="true">→</span>
-                                <span>{entry.details?.toStatus || "—"}</span>
-                              </div>
-                            )}
-                            {entry.details?.monitoringUntil && (
-                              <p className="case-history-monitoring">
-                                Monitor until <time dateTime={entry.details.monitoringUntil}>{new Date(`${entry.details.monitoringUntil}T00:00:00`).toLocaleDateString()}</time>
-                              </p>
-                            )}
-                            {entry.details?.reason && (
-                              <div className="case-history-reason">
-                                <span>Reason</span>
-                                <p>{entry.details.reason}</p>
-                              </div>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  )}
-                </section>
+                {newStatus === "Under Investigation" && (
+                  <div className="form-group" style={{ marginTop: 14 }}>
+                    <label>Student-facing update <span style={{ color: "#ef4444" }}>*</span> <span className="incident-student-visible">(visible to student)</span></label>
+                    <textarea placeholder="Briefly explain the current status and what happens next for the student…"
+                      className={manageFieldErrors.adminNotes ? "field-error" : ""}
+                      style={{ minHeight: 90, fontSize: 13 }}
+                      value={adminNotes} onChange={(e) => { setAdminNotes(e.target.value); setManageFieldErrors((p) => ({ ...p, adminNotes: false })); }} />
+                    <small className="incident-student-note-guidance">
+                      This message is shared with the student so they understand the case status and next steps.
+                      Keep it respectful and concise; do not include private investigation details or another student's personal information.
+                    </small>
+                    {manageFieldErrors.adminNotes && <span className="field-error-msg">Add a brief update for the student before saving.</span>}
+                  </div>
+                )}
                 <details className="incident-more-info">
                   <summary>Request more information from the student</summary>
                   <section className="admin-proof-request" aria-label="Request more information">
