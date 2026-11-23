@@ -4430,6 +4430,111 @@
   gap: 9px;
 }
 
+.s-report-review-icon {
+  display: grid;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e5efe7;
+  color: #35664a;
+}
+
+.s-report-review-empty {
+  margin: 0;
+  color: #66746a;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.s-report-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 13px;
+}
+
+.s-report-review-grid > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.s-report-review-grid span {
+  color: #758178;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.s-report-review-grid strong {
+  color: #2f3e34;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.s-report-review-text,
+.s-report-review-narrative p {
+  margin: 0;
+  color: #35443a;
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.s-report-review-narrative > span {
+  color: #758178;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.s-report-review-narrative {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #edf0ed;
+}
+
+.s-report-review-files {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.s-report-review-files li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #405347;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.s-report-review-files svg {
+  flex: 0 0 auto;
+  color: #62816a;
+}
+
+.s-report-review-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  color: #627066;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.s-report-review-note svg {
+  flex: 0 0 auto;
+  color: #62816a;
+}
+
 .s-report-layout .s-step-num {
   width: 23px;
   height: 23px;
@@ -4520,6 +4625,9 @@
 }
 
 @media (max-width: 600px) {
+  .s-report-review-grid {
+    grid-template-columns: 1fr;
+  }
   .s-report-layout .s-form-panel {
     padding: 14px;
   }
@@ -5370,4 +5478,366 @@
 .s-dashboard .s-case-status-filters .filter-tab:focus-visible {
   outline: 2px solid #087f5b;
   outline-offset: 2px;
+}
+
+.s-report-review-overlay {
+  position: fixed;
+  z-index: 1600;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(23, 43, 34, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.s-report-review-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(660px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: hidden;
+  border: 1px solid #cfe4d7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 81, 50, 0.24);
+}
+
+.s-report-review-header {
+  display: block;
+  flex: 0 0 auto;
+  padding: 12px 17px 13px;
+  border-bottom: 1px solid #dfece4;
+  background: #f7faf7;
+}
+
+.s-report-review-stepper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.s-report-review-stepper li {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #748278;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.s-report-review-stepper li:last-child {
+  flex: 0 0 auto;
+}
+
+.s-report-review-step-number {
+  display: grid;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border: 1px solid #a9c5b1;
+  border-radius: 50%;
+  background: #edf5ef;
+  color: #35664a;
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.s-report-review-step-label {
+  position: relative;
+  z-index: 1;
+  padding-right: 4px;
+  background: #f7faf7;
+}
+
+.s-report-review-step-line {
+  flex: 1 1 auto;
+  min-width: 8px;
+  height: 1px;
+  margin: 0 5px 0 1px;
+  background: #cfe0d4;
+}
+
+.s-report-review-stepper li.current {
+  color: #176b48;
+  font-weight: 750;
+}
+
+.s-report-review-stepper li.current .s-report-review-step-number {
+  border-color: #087f5b;
+  background: #087f5b;
+  color: #fff;
+}
+
+.s-report-review-header-main {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.s-report-review-header .s-report-review-icon {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+}
+
+.s-report-review-header h3 {
+  margin: 0;
+  color: #263d2e;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.s-report-review-header p {
+  margin: 3px 0 0;
+  color: #68786d;
+  font-size: 11px;
+}
+
+.s-report-review-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #617267;
+  cursor: pointer;
+}
+
+.s-report-review-close:hover:not(:disabled) {
+  border-color: #d7e5db;
+  background: #edf5ef;
+  color: #176b48;
+}
+
+.s-report-review-close:focus-visible {
+  outline: 3px solid rgba(8, 127, 91, 0.2);
+  outline-offset: 2px;
+}
+
+.s-report-review-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.s-report-review-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.s-report-review-modal .s-report-review-section {
+  padding: 13px 17px;
+  border: 0;
+  border-bottom: 1px solid #e6ece7;
+  border-radius: 0;
+  background: #fff;
+}
+
+.s-report-review-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.s-report-review-section-heading h4,
+.s-report-review-section > h4 {
+  margin: 0;
+  color: #405d47;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.s-report-review-section > h4 {
+  margin-bottom: 10px;
+}
+
+.s-report-review-edit {
+  flex: 0 0 auto;
+  min-width: 62px;
+  padding: 6px 11px;
+  border: 1px solid #d6e1d9;
+  border-radius: 7px;
+  background: #fff;
+  color: #476354;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.s-report-review-edit:hover {
+  border-color: #b8d0bf;
+  background: #f1f7f2;
+  color: #176b48;
+}
+
+.s-report-review-edit:focus-visible {
+  outline: 3px solid rgba(8, 127, 91, 0.2);
+  outline-offset: 2px;
+}
+
+.s-report-review-modal .s-report-review-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px 13px;
+}
+
+.s-report-review-modal .s-report-review-grid span {
+  font-size: 10px;
+}
+
+.s-report-review-modal .s-report-review-grid strong {
+  font-size: 11.5px;
+}
+
+.s-report-review-people {
+  display: grid;
+  gap: 7px;
+}
+
+.s-report-review-person {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid #e6ece7;
+  border-radius: 7px;
+  background: #f7faf8;
+}
+
+.s-report-review-person strong {
+  color: #30463a;
+  font-size: 11.5px;
+}
+
+.s-report-review-person strong span {
+  color: #6f7e74;
+  font-weight: 500;
+}
+
+.s-report-review-person small {
+  color: #718078;
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.s-report-review-modal .s-report-review-text,
+.s-report-review-modal .s-report-review-narrative p {
+  font-size: 11.5px;
+}
+
+.s-report-review-modal .s-report-review-empty {
+  font-size: 11px;
+}
+
+.s-report-review-error {
+  padding: 9px 17px;
+  border-bottom: 1px solid #f3c7c7;
+  background: #fff7f7;
+  color: #b91c1c;
+  font-size: 11.5px;
+}
+
+.s-report-review-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 17px;
+  border-top: 1px solid #e6ece7;
+  background: #fbfdfb;
+}
+
+.s-report-review-footer .s-report-review-note {
+  flex: 1 1 180px;
+  padding: 0;
+  background: transparent;
+}
+
+.s-report-review-footer .s-cancel-btn,
+.s-report-review-footer .s-submit-btn {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.s-report-review-footer :disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.s-report-submit-spinner {
+  flex: 0 0 auto;
+  animation: s-report-submit-spin 0.9s linear infinite;
+}
+
+@keyframes s-report-submit-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+  .s-report-review-overlay {
+    padding: 10px;
+  }
+
+  .s-report-review-modal {
+    max-height: min(92vh, 760px);
+    border-radius: 10px;
+  }
+
+  .s-report-review-header,
+  .s-report-review-modal .s-report-review-section {
+    padding-right: 13px;
+    padding-left: 13px;
+  }
+
+  .s-report-review-stepper li {
+    gap: 4px;
+    font-size: 9px;
+  }
+
+  .s-report-review-step-line {
+    margin-right: 3px;
+  }
+
+  .s-report-review-modal .s-report-review-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .s-report-review-footer {
+    flex-wrap: wrap;
+    padding: 11px 13px;
+  }
+
+  .s-report-review-footer .s-report-review-note {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .s-report-review-modal .s-report-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .s-report-review-footer .s-cancel-btn,
+  .s-report-review-footer .s-submit-btn {
+    flex: 1 1 auto;
+  }
 }

@@ -3018,3 +3018,23 @@
   }
 }
 
+.student-offense-confirm-modal {
+  max-height: min(88vh, 760px);
+}
+
+.student-offense-confirm-modal .student-offense-modal-header,
+.student-offense-confirm-modal .student-offense-modal-actions {
+  flex: 0 0 auto;
+}
+
+.student-offense-confirm-modal .student-offense-modal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (max-width: 600px) {
+  .student-offense-confirm-modal {
+    max-height: 94vh;
+  }
+}
+

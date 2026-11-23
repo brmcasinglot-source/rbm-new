@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import "../styles/StudentDashboard.css";
 
@@ -10,7 +11,7 @@ import {
   ExternalLink, Upload, HelpCircle, Lock, Bell,
   CheckCircle, Clock, AlertTriangle, X, Paperclip,
   Eye, Play, AlertCircle, Calendar, Send,
-  Menu, ChevronDown, LogOut, MapPin, ChevronLeft, ChevronRight,
+  Menu, ChevronDown, LogOut, MapPin, ChevronLeft, ChevronRight, LoaderCircle,
 } from "lucide-react";
 
 import {
@@ -200,11 +201,14 @@ export default function StudentDashboard() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [evidenceFiles,  setEvidenceFiles]  = useState([]); // { name, type, data }[]
   const [submitSuccess,  setSubmitSuccess]  = useState(false);
+  const [reportPreview, setReportPreview] = useState(false);
   const [formError,      setFormError]      = useState("");
   const [reportCooldownUntil, setReportCooldownUntil] = useState(0);
   const [cooldownTick, setCooldownTick] = useState(Date.now());
   const [cooldownLoading, setCooldownLoading] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const reportSubmissionInProgressRef = useRef(false);
+  const reportReviewTriggerRef = useRef(null);
   const cooldownSeconds = Math.max(0, Math.ceil((reportCooldownUntil - cooldownTick) / 1000));
 
   useEffect(() => {
@@ -233,6 +237,26 @@ export default function StudentDashboard() {
     const timer = setInterval(() => setCooldownTick(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
+
+  useEffect(() => {
+    if (!reportPreview) return undefined;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousBodyOverflow; };
+  }, [reportPreview]);
+
+  useEffect(() => {
+    if (!reportPreview) return undefined;
+    const handlePreviewKeyDown = (event) => {
+      if (event.key === "Escape" && !reportSubmitting) {
+        setFormError("");
+        setReportPreview(false);
+        window.requestAnimationFrame(() => reportReviewTriggerRef.current?.focus());
+      }
+    };
+    document.addEventListener("keydown", handlePreviewKeyDown);
+    return () => document.removeEventListener("keydown", handlePreviewKeyDown);
+  }, [reportPreview, reportSubmitting]);
 
   // Load report-form options only when the student opens that form.
   const [gradeSectionsList, setGradeSectionsList] = useState([]);
@@ -597,7 +621,7 @@ export default function StudentDashboard() {
     });
   };
 
-  const handleReportSubmit = async (e) => {
+  const handleReportSubmit = (e) => {
     e.preventDefault();
     setFormError("");
     if (reportSubmitting || cooldownLoading) return;
@@ -621,6 +645,19 @@ export default function StudentDashboard() {
       setFormError("Approximate Time cannot be in the future.");
       return;
     }
+    setReportPreview(true);
+  };
+
+  const handleReportConfirm = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    if (reportSubmitting || cooldownLoading || reportSubmissionInProgressRef.current) return;
+    if (cooldownSeconds > 0) {
+      setFormError(`Please wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, "0")} before submitting another report.`);
+      return;
+    }
+
+    reportSubmissionInProgressRef.current = true;
     setReportSubmitting(true);
     try {
       await submitReport({
@@ -634,11 +671,14 @@ export default function StudentDashboard() {
     } catch (err) {
       setFormError("Could not submit report: " + err.message);
       setReportSubmitting(false);
+      reportSubmissionInProgressRef.current = false;
       return;
     }
     setReportCooldownUntil(Date.now() + REPORT_COOLDOWN_MS);
     setCooldownTick(Date.now());
+    setReportPreview(false);
     setReportSubmitting(false);
+    reportSubmissionInProgressRef.current = false;
     const refreshedReports = await getReports({
       summaryOnly: true,
       limit: REPORT_PAGE_SIZE,
@@ -659,9 +699,20 @@ export default function StudentDashboard() {
     setHasWitnesses(false);
     setIsAnonymous(false);
     setEvidenceFiles([]);
+    setReportPreview(false);
     setSubmitSuccess(true);
     showToast("Report submitted successfully! Redirecting to Case Monitoring…");
     setTimeout(() => { setSubmitSuccess(false); setActiveTab("cases"); }, 2500);
+  };
+
+  const handleReportEdit = (sectionId) => {
+    setFormError("");
+    setReportPreview(false);
+    window.requestAnimationFrame(() => {
+      const section = document.getElementById(sectionId);
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+      section?.focus({ preventScroll: true });
+    });
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -732,6 +783,39 @@ export default function StudentDashboard() {
   const activeConferenceViewItem = conferenceViewItem
     ? conferenceList.find((conference) => conference.id === conferenceViewItem.id) || conferenceViewItem
     : null;
+  const reportReviewPeople = [
+    {
+      title: "Victim",
+      people: victims,
+      fields: [
+        ["Full name", "name"], ["LRN", "lrn"], ["Age", "age"], ["Grade", "grade"],
+        ["Section", "section"], ["Adviser", "adviser"], ["Parent / guardian", "parentName"],
+        ["Parent / guardian contact", "parentContact"],
+      ],
+    },
+    {
+      title: "Alleged offender",
+      people: offenders,
+      fields: [
+        ["Full name", "name"], ["Age", "age"], ["Grade", "grade"], ["Section", "section"],
+        ["Adviser", "adviser"], ["Parent / guardian", "parentName"],
+        ["Parent / guardian contact", "parentContact"],
+      ],
+    },
+    {
+      title: "Witness",
+      people: reporterType === "Witness" || hasWitnesses ? witnesses : [],
+      fields: [["Full name", "name"], ["Grade", "grade"], ["Section", "section"], ["Contact", "parentContact"]],
+    },
+  ].map((group) => ({
+    ...group,
+    people: group.people
+      .map((person) => ({
+        ...person,
+        reviewFields: group.fields.filter(([, key]) => String(person[key] || "").trim()),
+      }))
+      .filter((person) => person.reviewFields.length > 0),
+  })).filter((group) => group.people.length > 0);
 
   const handleSubmitConferenceRequest = async (event) => {
     event.preventDefault();
@@ -1267,7 +1351,6 @@ export default function StudentDashboard() {
               <div className="s-panel s-form-panel">
                 <h3 className="s-form-title">Incident Details</h3>
 
-                {/* Fake report warning */}
                 <div className="s-fake-report-warning">
                   <AlertCircle size={15} />
                   <div>
@@ -1276,9 +1359,141 @@ export default function StudentDashboard() {
                 </div>
 
                 <form onSubmit={handleReportSubmit}>
+                  {reportPreview && createPortal(
+                    translateStudentUI(
+                      <div
+                        className="s-report-review-overlay"
+                        role="presentation"
+                        onMouseDown={(event) => {
+                          if (event.target === event.currentTarget && !reportSubmitting) {
+                            setFormError("");
+                            setReportPreview(false);
+                            window.requestAnimationFrame(() => reportReviewTriggerRef.current?.focus());
+                          }
+                        }}
+                      >
+                      <section className="s-report-review-modal" role="dialog" aria-modal="true" aria-labelledby="s-report-review-title">
+                        <header className="s-report-review-header">
+                          <div className="s-report-review-header-main">
+                            <div className="s-report-review-icon"><Eye size={18} /></div>
+                            <div>
+                              <h3 id="s-report-review-title">Review your report</h3>
+                              <p>Step 3 of 3 · Nothing has been submitted yet.</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="s-report-review-close"
+                              onClick={() => {
+                                setFormError("");
+                                setReportPreview(false);
+                                window.requestAnimationFrame(() => reportReviewTriggerRef.current?.focus());
+                              }}
+                              aria-label="Close report review"
+                              disabled={reportSubmitting}
+                              autoFocus
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        </header>
+
+                        <div className="s-report-review-body">
+                          <section className="s-report-review-section">
+                            <div className="s-report-review-section-heading">
+                              <h4>Incident</h4>
+                              <button type="button" className="s-report-review-edit" onClick={() => handleReportEdit("s-report-incident-fields")} disabled={reportSubmitting}>Edit</button>
+                            </div>
+                            <div className="s-report-review-grid">
+                              <div><span>Type</span><strong>{reportForm.type}</strong></div>
+                              <div><span>Date and time</span><strong>{[
+                                reportForm.date
+                                  ? new Date(`${reportForm.date}T00:00:00`).toLocaleDateString(language === "fil" ? "fil-PH" : undefined, { year: "numeric", month: "short", day: "numeric" })
+                                  : "",
+                                reportForm.time ? formatConferenceTime(reportForm.time) : "",
+                              ].filter(Boolean).join(" · ") || "Not provided"}</strong></div>
+                              <div><span>Location</span><strong>{reportForm.location || "Not provided"}</strong></div>
+                              <div><span>Reporter role</span><strong>{reporterType || "Not provided"}</strong></div>
+                              <div><span>Identity</span><strong>{isAnonymous ? "Anonymous" : "Visible to authorized staff"}</strong></div>
+                            </div>
+                          </section>
+
+                          <section className="s-report-review-section">
+                            <div className="s-report-review-section-heading">
+                              <h4>People involved</h4>
+                              <button type="button" className="s-report-review-edit" onClick={() => handleReportEdit("s-report-people-fields")} disabled={reportSubmitting}>Edit</button>
+                            </div>
+                            {reportReviewPeople.length > 0 ? (
+                              <div className="s-report-review-people">
+                                {reportReviewPeople.flatMap((group) => group.people.map((person, index) => (
+                                  <div className="s-report-review-person" key={`${group.title}-${index}`}>
+                                    <strong>{person.name || group.title}{person.name && <span> · {group.title}</span>}</strong>
+                                    <small>{person.reviewFields
+                                      .filter(([label]) => label !== "Full name")
+                                      .map(([label, key]) => `${label} ${person[key]}`)
+                                      .join(" · ") || "No additional details"}</small>
+                                  </div>
+                                )))}
+                              </div>
+                            ) : <p className="s-report-review-empty">No details provided.</p>}
+                          </section>
+
+                          <section className="s-report-review-section">
+                            <div className="s-report-review-section-heading">
+                              <h4>What happened</h4>
+                              <button type="button" className="s-report-review-edit" onClick={() => handleReportEdit("s-report-description-fields")} disabled={reportSubmitting}>Edit</button>
+                            </div>
+                            <div className="s-report-review-text">{reportForm.description}</div>
+                            {reportForm.descriptionLeadUp && (
+                              <div className="s-report-review-narrative">
+                                <span>Events leading to the incident</span>
+                                <p>{reportForm.descriptionLeadUp}</p>
+                              </div>
+                            )}
+                            {reportForm.descriptionImpact && (
+                              <div className="s-report-review-narrative">
+                                <span>Impact on the victim</span>
+                                <p>{reportForm.descriptionImpact}</p>
+                              </div>
+                            )}
+                          </section>
+
+                          <section className="s-report-review-section">
+                            <h4>Evidence</h4>
+                            {evidenceFiles.length > 0 ? (
+                              <ul className="s-report-review-files">
+                                {evidenceFiles.map((file, index) => <li key={`${file.name}-${index}`}><Paperclip size={14} />{file.name}</li>)}
+                              </ul>
+                            ) : <p className="s-report-review-empty">No files attached</p>}
+                          </section>
+                        </div>
+
+                        {formError && <div className="s-report-review-error" role="alert">⚠ {formError}</div>}
+                        <footer className="s-report-review-footer">
+                          <div className="s-report-review-note">
+                            <Lock size={15} />
+                            <span>Shared only with authorized staff.</span>
+                          </div>
+                          <button type="button" className="s-cancel-btn" onClick={() => handleReportEdit("s-report-incident-fields")} disabled={reportSubmitting}>Back to edit</button>
+                          <button
+                            type="button"
+                            className="s-submit-btn"
+                            onClick={handleReportConfirm}
+                            disabled={reportSubmitting || cooldownLoading || cooldownSeconds > 0}
+                          >
+                            {reportSubmitting && <LoaderCircle size={15} className="s-report-submit-spinner" aria-hidden="true" />}
+                            {reportSubmitting ? "Submitting…" : cooldownLoading ? "Checking cooldown…" : "Submit report"}
+                          </button>
+                        </footer>
+                      </section>
+                      </div>,
+                      language
+                    ),
+                    document.body
+                  )}
+                  <>
 
                   {/* ── Reporter Information ── */}
-                  <div className="s-form-section-title s-reporter-section-title">Reporter Information</div>
+                  <div id="s-report-incident-fields" className="s-form-section-title s-reporter-section-title" tabIndex="-1">Reporter Information</div>
                   <div className="s-form-row s-reporter-role-row">
                     <div className="s-form-group">
                       <label>Reporter Role *</label>
@@ -1353,7 +1568,7 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   {/* ── Victim Information ── */}
-                  <div className="s-form-section-title">Victim Information</div>
+                  <div id="s-report-people-fields" className="s-form-section-title" tabIndex="-1">Victim Information</div>
                   {victims.map((v, idx) => (
                     <div key={idx} className="s-person-card">
                       {victims.length > 1 && (
@@ -1511,7 +1726,7 @@ export default function StudentDashboard() {
                   )}
 
                   {/* ── Incident Description (split) ── */}
-                  <div className="s-form-section-title">Incident Description</div>
+                  <div id="s-report-description-fields" className="s-form-section-title" tabIndex="-1">Incident Description</div>
                   <div className="s-form-group">
                     <label>What happened? *</label>
                     <textarea placeholder="I-describe ang nahitabo nga insidente sa detalye..." required
@@ -1564,10 +1779,6 @@ export default function StudentDashboard() {
                     )}
                   </div>
 
-                  {formError && (
-                    <div className="s-form-error">⚠ {formError}</div>
-                  )}
-
                   {/* Anonymous Toggle */}
                   <div className="s-anonymous-toggle">
                     <button
@@ -1588,7 +1799,11 @@ export default function StudentDashboard() {
                         : "Your name will be visible to the admin as the reporter."}
                     </p>
                   </div>
+                    </>
 
+                  {!reportPreview && formError && (
+                    <div className="s-form-error" role="alert">⚠ {formError}</div>
+                  )}
                   <div className="s-form-actions">
                     <button type="button" className="s-cancel-btn" onClick={() => setActiveTab("dashboard")}>Discard</button>
                     {cooldownSeconds > 0 && (
@@ -1596,8 +1811,8 @@ export default function StudentDashboard() {
                         You can submit another report in {Math.floor(cooldownSeconds / 60)}:{String(cooldownSeconds % 60).padStart(2, "0")}.
                       </p>
                     )}
-                    <button type="submit" className="s-submit-btn" disabled={reportSubmitting || cooldownLoading || cooldownSeconds > 0}>
-                      {reportSubmitting ? "Submitting…" : cooldownLoading ? "Checking cooldown…" : "Submit Report"}
+                    <button ref={reportReviewTriggerRef} type="submit" className="s-submit-btn" disabled={reportSubmitting || cooldownLoading || cooldownSeconds > 0}>
+                      {cooldownLoading ? "Checking cooldown…" : "Review Report"}
                     </button>
                   </div>
                 </form>

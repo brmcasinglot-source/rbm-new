@@ -172,6 +172,22 @@ function StudentOffenseRecords({ onManageCase, refreshKey = 0 }) {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
 
+  useEffect(() => {
+    if (!approvalConfirmationOpen) return undefined;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousBodyOverflow; };
+  }, [approvalConfirmationOpen]);
+
+  useEffect(() => {
+    if (!approvalConfirmationOpen) return undefined;
+    const handleConfirmationKeyDown = (event) => {
+      if (event.key === "Escape" && !formLoading) setApprovalConfirmationOpen(false);
+    };
+    document.addEventListener("keydown", handleConfirmationKeyDown);
+    return () => document.removeEventListener("keydown", handleConfirmationKeyDown);
+  }, [approvalConfirmationOpen, formLoading]);
+
   const availableGrades = useMemo(() => [...new Set([...GRADE_LEVELS, ...filterOptions.grades])].sort((a, b) => {
     const numberA = Number(a.match(/\d+/)?.[0] || 0);
     const numberB = Number(b.match(/\d+/)?.[0] || 0);
