@@ -107,7 +107,7 @@ const FILIPINO_TRANSLATIONS = {
   "Property Damage / Theft": "Pagsira / Pagnanakaw ng Ari-arian",
   "Others": "Iba pa",
   "Date of Incident *": "Petsa ng Insidente *",
-  "Approximate Time": "Tinatayang Oras",
+  "Time of Incident": "Oras ng Insidente",
   "Location of Incident": "Lugar ng Insidente",
   "Select a place…": "Pumili ng lugar…",
   "Inside School": "Sa Loob ng Paaralan",

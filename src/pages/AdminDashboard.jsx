@@ -3558,7 +3558,7 @@ export default function AdminDashboard() {
                   <div className="detail-value">{formatConferenceDate(selectedReport.date)}</div>
                 </div>
                 <div className="detail-group">
-                  <label>Approximate Time</label>
+                  <label>Time of Incident</label>
                   <div className="detail-value">{to12Hour(selectedReport.time)}</div>
                 </div>
                 <div className="detail-group">

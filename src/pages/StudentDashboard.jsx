@@ -642,7 +642,7 @@ export default function StudentDashboard() {
       reportForm.date === new Date().toISOString().slice(0, 10) &&
       reportForm.time > new Date().toTimeString().slice(0, 5)
     ) {
-      setFormError("Approximate Time cannot be in the future.");
+      setFormError("Time of Incident cannot be in the future.");
       return;
     }
     setReportPreview(true);
@@ -1531,7 +1531,7 @@ export default function StudentDashboard() {
                   </div>
                   <div className="s-form-row s-reporter-detail-row">
                     <div className="s-form-group">
-                      <label>Approximate Time</label>
+                      <label>Time of Incident</label>
                       <input type="time" value={reportForm.time}
                         max={reportForm.date === new Date().toISOString().slice(0, 10)
                           ? new Date().toTimeString().slice(0, 5) : undefined}
